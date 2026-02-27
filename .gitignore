@@ -1,0 +1,47 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# PyInstaller
+*.spec.bak
+dist/
+build/
+
+# Data outputs (large files - do not commit)
+output/
+data/
+*.npz
+*.i33
+*.h33
+*.bat
+!simind/czt_ge.smc
+
+# SIMIND binary (not redistributable - user must provide)
+simind/simind.exe
+simind/*.dll
+simind/*.cr3
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
+logs/
+
+# Settings (user-specific)
+*.ini

@@ -1,0 +1,46 @@
+! SIMIND system configuration for GE NM/CT 870 CZT
+! Manual created on 2025-12-04
+
+! Detector material and layers
+LAYER-0: CZT                ! 探测器材料
+CRYSTAL MATERIAL: czt.cr3   ! 引用交叉截面文件 (必须在同一目录)
+INDEX-9: 0.5                ! 晶体厚度 (cm), CZT 典型 5 mm
+INDEX-11: 0.1               ! 背散射介质厚度 (cm)
+INDEX-13: 0.1               ! 保护盖厚度 (cm)
+
+! Energy resolution and intrinsic resolution
+INDEX-22: 6.3               ! FWHM % @ 140 keV (PDS Page 3)
+INDEX-23: 0.05              ! 固有空间分辨率 FWHM (cm) @ 140 keV, 基于 2.46 mm 像素
+
+! Collimator (WEHR as high-energy general purpose)
+INDEX-53: 1                 ! 准直器模式 (1=模拟穿透和散射)
+INDEX-54: 4                 ! 孔形状 (4=方形, 匹配 WEHR)
+INDEX-55: 0                 ! 类型 (0=平行孔)
+INDEX-56: 0.226             ! 孔开口 (cm) = 2.26 mm, 调整匹配 380 cps/MBq
+INDEX-57: 0.02              ! 隔壁厚度 (cm) = 0.2 mm
+INDEX-58: 4.5               ! 孔长度 (cm) = 45 mm
+INDEX-59: 0.0               ! 空气间隙 (cm)
+
+! Pixel sizes (match input voxel)
+CRYSTAL PIXEL: 0.246        ! 固有像素 (cm) = 2.46 mm
+SYSTEM PIXEL SIZE: 0.42     ! 系统像素 (cm) = 4.2 mm, 匹配 128x128x128 体素
+
+! Rotation and orbit
+INDEX-12: 25.0              ! ROR (cm), 典型 25 cm (PDS)
+INDEX-41: 0.0               ! 起始角度 (度)
+INDEX-42: 0.0               ! 轨道 (0=圆形)
+
+! Energy windows (Tc-99m)
+PRIMARY ENERGY WINDOW: 126 154  ! 主窗 ±10%
+SCATTER WINDOWS: 110 126 154 170  ! TEW 散射窗
+
+! Simulation flags and parameters
+FLAG-12: 1                  ! 启用能量分辨率
+INDEX-25: 1.0               ! 活动乘子
+INDEX-26: 1000              ! 每投影历史数 (千), 测试用低值
+INDEX-70: 1                 ! 计算空白投影 (衰减校正)
+FLAG-1: 1                   ! 启用散射模拟
+FLAG-2: 1                   ! 启用衰减
+FLAG-3: 1                   ! 启用准直器穿透
+
+! End of file
