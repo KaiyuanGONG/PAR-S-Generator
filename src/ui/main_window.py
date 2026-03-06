@@ -164,9 +164,8 @@ class MainWindow(QMainWindow):
 
         # Connect signals between pages
         self.phantom_page.phantom_generated.connect(self.simulation_page.on_phantom_ready)
-        self.phantom_page.phantom_generated.connect(
-            lambda result: self.results_page.set_config(self.phantom_page._collect_config())
-        )
+        # Always read config fresh from phantom_page when batch starts (avoids stale path/n_cases)
+        self.results_page.set_config_getter(self.phantom_page._collect_config)
         self.simulation_page.simulation_finished.connect(self.results_page.on_results_ready)
 
     def _setup_statusbar(self):

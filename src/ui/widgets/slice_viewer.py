@@ -199,7 +199,7 @@ class Surface3DView(QWidget):
 
             n_tumors = len(self._tumor_masks)
             self.lbl_info.setText(
-                f"Liver: {self._liver_mask.sum() * (4.2**3 / 1000):.0f} mL  |  "
+                f"Liver: {self._liver_mask.sum() * (4.42**3 / 1000):.0f} mL  |  "
                 f"Tumors: {n_tumors}"
             )
         except ImportError:
@@ -364,10 +364,15 @@ class SliceViewer(QWidget):
             return
         shape = self._activity.shape
         self.info_labels["shape"].setText(f"{shape[0]}×{shape[1]}×{shape[2]}")
-        self.info_labels["voxel"].setText("4.20 mm")
+        self.info_labels["voxel"].setText("4.42 mm")
         if self._liver_mask is not None:
-            vol_ml = self._liver_mask.sum() * (4.2 ** 3 / 1000)
+            vol_ml = self._liver_mask.sum() * (4.42 ** 3 / 1000)
             self.info_labels["liver_vol"].setText(f"{vol_ml:.0f} mL")
         self.info_labels["n_tumors"].setText(str(len(self._tumor_masks)))
         counts = self._activity.sum()
         self.info_labels["counts"].setText(f"{counts:.2e}")
+
+    def set_meta(self, left_ratio: float, perfusion_mode: str):
+        """Set additional metadata fields not available in set_volumes()."""
+        self.info_labels["left_ratio"].setText(f"{left_ratio:.1%}")
+        self.info_labels["perfusion"].setText(perfusion_mode)

@@ -305,6 +305,7 @@ class PhantomPage(QWidget):
             liver_mask=result.liver_mask,
             tumor_masks=result.tumor_masks
         )
+        self.slice_viewer.set_meta(result.left_ratio, result.perfusion_mode)
 
         # Update stats
         self.stat_labels["vol"].setText(f"{result.liver_volume_ml:.0f}")

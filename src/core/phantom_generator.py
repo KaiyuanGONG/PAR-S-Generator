@@ -26,7 +26,7 @@ class PhantomConfig:
 
     # Volume
     volume_shape: tuple = (128, 128, 128)
-    voxel_size_mm: float = 4.20
+    voxel_size_mm: float = 4.42
 
     # μ-map values (cm⁻¹)
     mu_water: float = 0.15
@@ -367,26 +367,23 @@ class PhantomGenerator:
         if cfg.smooth_sigma > 0:
             liver = gaussian_filter(liver.astype(float), sigma=cfg.smooth_sigma) > cfg.smooth_thr
 
-        # ── 2. Lobe splitting (Cantlie plane) ──
+        # ── 2. Lobe splitting (Cantlie plane) — bisection method ──
         tilt = rng.uniform(*cfg.cantlie_tilt_range)
-        offset_val = rng.uniform(*cfg.cantlie_offset_range)
-        best_offset = offset_val
-        best_diff = float('inf')
+        lo, hi = cfg.cantlie_offset_range[0], cfg.cantlie_offset_range[1]
         liver_vol = liver.sum()
 
         for _ in range(cfg.cantlie_iter_max):
-            left_lobe, right_lobe = Geometry3D.split_liver_lobes(liver, shape, tilt_deg=tilt, offset=offset_val)
+            mid = (lo + hi) / 2.0
+            left_lobe, _ = Geometry3D.split_liver_lobes(liver, shape, tilt_deg=tilt, offset=mid)
             if liver_vol > 0:
-                left_ratio = left_lobe.sum() / liver_vol
-                diff = abs(left_ratio - cfg.target_left_ratio)
-                if diff < best_diff:
-                    best_diff = diff
-                    best_offset = offset_val
-                if left_ratio < cfg.target_left_ratio:
-                    offset_val -= 0.01
+                ratio = left_lobe.sum() / liver_vol
+                # Higher offset → larger left region; lower offset → smaller left region
+                if ratio < cfg.target_left_ratio:
+                    lo = mid   # need higher offset to grow left
                 else:
-                    offset_val += 0.01
+                    hi = mid   # need lower offset to shrink left
 
+        best_offset = (lo + hi) / 2.0
         left_mask, right_mask = Geometry3D.split_liver_lobes(liver, shape, tilt_deg=tilt, offset=best_offset)
         actual_left_ratio = left_mask.sum() / liver_vol if liver_vol > 0 else 0.5
 
@@ -527,11 +524,10 @@ class PhantomGenerator:
             base_val = activity[tmask].mean() if activity[tmask].sum() > 0 else 1.0
             activity[tmask] = base_val * contrast
 
-        # PSF blur
-        if cfg.psf_sigma_px > 0:
-            activity = gaussian_filter(activity, sigma=cfg.psf_sigma_px)
+        # PSF is handled by SIMIND internally (collimator/detector model).
+        # Do NOT blur here — SIMIND source input must be the clean activity map.
 
-        # Poisson noise + normalize
+        # Normalize to total counts + Poisson noise
         if activity.sum() > 0:
             activity = activity / activity.sum() * cfg.total_counts
             activity = rng.poisson(np.maximum(activity, 0)).astype(np.float32)

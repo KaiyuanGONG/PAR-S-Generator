@@ -1,136 +1,71 @@
 """
 Interfile Writer
 ================
-Converts .npz phantom files to SIMIND-compatible Interfile format (.h33 + .i33).
-Based on PAR-S/notebooks/DataPreparation.ipynb
+Converts .npz phantom files to SIMIND-compatible binary format.
+
+SIMIND XcatBinMap convention (Index-14 = -7, Index-15 = -7):
+  - Source file:  <stem>_act_av.bin   (read via /FS:<stem>)
+  - Density file: <stem>_atn_av.bin   (read via /FD:<stem>)
+  - Format: float32, C-order (Z, Y, X), no header
 """
 
 from __future__ import annotations
-import struct
 from pathlib import Path
-from typing import Optional
 import numpy as np
 
 
-def write_interfile(
+def write_bin(
     volume: np.ndarray,
     output_stem: Path,
-    voxel_size_mm: float = 4.20,
-    data_type: str = "float",
-    description: str = "",
-) -> tuple[Path, Path]:
+    suffix: str,
+) -> Path:
     """
-    Write a 3D numpy array as Interfile (.h33 header + .i33 binary data).
+    Write a 3D numpy array as raw float32 binary.
 
     Parameters
     ----------
-    volume : np.ndarray  shape (Z, Y, X)
-    output_stem : Path   e.g. Path("output/case_0001_act")
-    voxel_size_mm : float
-    data_type : "float" | "short"
-    description : str
+    volume      : np.ndarray  shape (Z, Y, X)
+    output_stem : base path, e.g. Path("output/case_0001")
+    suffix      : "_act_av" or "_atn_av"
 
     Returns
     -------
-    (header_path, data_path)
+    bin_path : Path  (e.g. output/case_0001_act_av.bin)
     """
     output_stem = Path(output_stem)
-    header_path = output_stem.with_suffix(".h33")
-    data_path = output_stem.with_suffix(".i33")
-
-    nz, ny, nx = volume.shape
-    vox_cm = voxel_size_mm / 10.0
-
-    if data_type == "float":
-        arr = volume.astype(np.float32)
-        number_format = "short float"
-        bytes_per_pixel = 4
-    else:
-        arr = volume.astype(np.int16)
-        number_format = "signed integer"
-        bytes_per_pixel = 2
-
-    # Write binary data (SIMIND expects Z-major, Fortran-style ordering)
-    arr.tofile(str(data_path))
-
-    # Write Interfile header
-    header = f"""\
-!INTERFILE :=
-!imaging modality := nucmed
-!version of keys := 3.3
-;{description}
-
-!GENERAL DATA :=
-!data offset in bytes := 0
-!name of data file := {data_path.name}
-!total number of images := {nz}
-
-!GENERAL IMAGE DATA :=
-!type of data := Tomographic
-!number format := {number_format}
-!number of bytes per pixel := {bytes_per_pixel}
-imagedata byte order := LITTLEENDIAN
-
-!SPECT STUDY (General) :=
-!number of images/energy window := {nz}
-!process status := Reconstructed
-!number of projections := {nz}
-!extent of rotation := 360
-!time per projection (sec) := 30
-!study duration (sec) := {nz * 30}
-
-!SPECT STUDY (reconstructed data) :=
-!number of slices := {nz}
-!matrix size [1] := {nx}
-!matrix size [2] := {ny}
-!scaling factor (mm/pixel) [1] := {voxel_size_mm:.4f}
-!scaling factor (mm/pixel) [2] := {voxel_size_mm:.4f}
-!slice thickness (pixels) := 1
-slice-to-slice separation (pixels) := 1
-centre-centre slice separation (pixels) := 1
-!END OF INTERFILE :=
-"""
-    with open(header_path, "w", encoding="ascii") as f:
-        f.write(header)
-
-    return header_path, data_path
+    bin_path = output_stem.parent / (output_stem.name + suffix + ".bin")
+    volume.astype(np.float32).tofile(str(bin_path))
+    return bin_path
 
 
 def convert_npz_to_interfile(
     npz_path: Path,
     output_dir: Path,
-    voxel_size_mm: float = 4.20,
+    voxel_size_mm: float = 4.42,  # kept for API compatibility
 ) -> dict:
     """
-    Convert a single .npz phantom file to Interfile pairs.
+    Convert a single .npz phantom file to SIMIND binary pairs.
 
-    Returns dict with paths: {act_h33, act_i33, atn_h33, atn_i33}
+    Output files:
+      case_XXXX_act_av.bin  — activity map  (read by SIMIND via /FS:case_XXXX)
+      case_XXXX_atn_av.bin  — attenuation map (read by SIMIND via /FD:case_XXXX)
+
+    Returns dict with paths: {act_bin, atn_bin}
     """
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
     data = np.load(npz_path)
     stem = npz_path.stem  # e.g. "case_0001"
+    base = output_dir / stem
 
     result = {}
 
     if "activity" in data:
-        act_stem = output_dir / f"{stem}_act_1"
-        h, d = write_interfile(
-            data["activity"], act_stem, voxel_size_mm,
-            data_type="float", description=f"Activity map: {stem}"
-        )
-        result["act_h33"] = h
-        result["act_i33"] = d
+        result["act_bin"] = write_bin(data["activity"], base, "_act_av")
 
     if "mu_map" in data:
-        atn_stem = output_dir / f"{stem}_atn_1"
-        h, d = write_interfile(
-            data["mu_map"], atn_stem, voxel_size_mm,
-            data_type="float", description=f"Attenuation map: {stem}"
-        )
-        result["atn_h33"] = h
-        result["atn_i33"] = d
+        result["atn_bin"] = write_bin(data["mu_map"], base, "_atn_av")
 
     return result
 
@@ -138,11 +73,11 @@ def convert_npz_to_interfile(
 def batch_convert_npz_to_interfile(
     npz_dir: Path,
     output_dir: Path,
-    voxel_size_mm: float = 4.20,
+    voxel_size_mm: float = 4.42,
     progress_callback=None,
 ) -> list[dict]:
     """
-    Convert all .npz files in a directory to Interfile format.
+    Convert all .npz files in a directory to SIMIND binary format.
 
     progress_callback(current, total, filename) -> None
     """
@@ -162,51 +97,73 @@ def generate_simind_bat(
     smc_file: Path,
     output_dir: Path,
     bat_path: Path,
-    photons_per_proj: int = 5_000_000,
+    photons_per_proj: int = 5_000_000,  # informational; actual count set by Index-26 in .smc
 ) -> Path:
     """
-    Generate a Windows .bat script to run SIMIND on all Interfile pairs.
+    Generate a Windows .bat script to run SIMIND on all binary pairs.
+
+    SIMIND XcatBinMap call format:
+        cd /d <binary_dir>
+        copy <smc_file> .
+        simind.exe <smc_stem> <output_abs_path> /FS:<case_stem> /FD:<case_stem>
+
+    Key constraints:
+    - /FS: and /FD: must be SHORT RELATIVE paths (SIMIND parses backslashes as switches)
+    - SIMIND must run from the directory containing the _act_av.bin / _atn_av.bin files
+    - The smc file is copied to the binary dir so it can be referenced by stem only
+    - Output path (2nd positional arg) can be absolute (handled as positional, not switch)
 
     Parameters
     ----------
-    interfile_dir : directory containing *_act_1.h33 files
+    interfile_dir : directory containing case_XXXX_act_av.bin files
     simind_exe    : path to simind.exe
-    smc_file      : path to .smc configuration file
-    output_dir    : where SIMIND writes its output
+    smc_file      : path to .smc configuration file (e.g. simind/ge870_czt.smc)
+    output_dir    : where SIMIND writes its output (.a00, .h00, etc.)
     bat_path      : where to write the .bat file
-    photons_per_proj : number of photon histories per projection
     """
-    interfile_dir = Path(interfile_dir)
-    output_dir = Path(output_dir)
+    interfile_dir = Path(interfile_dir).resolve()
+    output_dir = Path(output_dir).resolve()
+    simind_exe = Path(simind_exe).resolve()
+    smc_file = Path(smc_file).resolve()
     bat_path = Path(bat_path)
 
-    act_headers = sorted(interfile_dir.glob("case_*_act_1.h33"))
+    smc_stem = smc_file.stem          # e.g. "ge870_czt"
+
+    act_bins = sorted(interfile_dir.glob("case_*_act_av.bin"))
 
     lines = [
         "@echo off",
         "echo PAR-S Generator - SIMIND Batch Runner",
         "echo ========================================",
-        f"echo Total cases: {len(act_headers)}",
+        f"echo Total cases: {len(act_bins)}",
+        f"echo SMC: {smc_stem}.smc",
+        f"echo Photons/proj (Index-26 in smc): see ge870_czt.smc",
         "echo.",
         "",
-        f'set SIMIND="{simind_exe}"',
-        f'set SMC="{smc_file}"',
-        f'set OUTDIR="{output_dir}"',
+        f'set "SIMIND={simind_exe}"',
+        f'set "OUTDIR={output_dir}"',
         "",
-        "if not exist %OUTDIR% mkdir %OUTDIR%",
+        'if not exist "%OUTDIR%" mkdir "%OUTDIR%"',
+        "",
+        "REM SIMIND switch parser treats backslashes as delimiters.",
+        "REM Solution: cd to binary dir so /FS: /FD: use short relative stems.",
+        "REM The smc is copied locally so it can be referenced without a path.",
+        f'copy "{smc_file}" "{interfile_dir}\\" /Y > nul',
+        f'pushd "{interfile_dir}"',
         "",
     ]
 
-    for i, act_h33 in enumerate(act_headers):
-        stem = act_h33.stem.replace("_act_1", "")
-        atn_h33 = interfile_dir / f"{stem}_atn_1.h33"
-        out_stem = output_dir / stem
+    for i, act_bin in enumerate(act_bins):
+        # stem = "case_0001"  (SIMIND auto-appends _act_av.bin / _atn_av.bin)
+        stem = act_bin.name.replace("_act_av.bin", "")
+        out_stem = output_dir / stem   # absolute — OK as 2nd positional arg
 
         lines += [
-            f"echo [{i + 1}/{len(act_headers)}] Processing {stem}...",
-            f'%SIMIND% %SMC% /FI:"{act_h33}" /FA:"{atn_h33}" /FO:"{out_stem}" /NN:{photons_per_proj}',
+            f'echo [{i + 1}/{len(act_bins)}] Processing {stem}...',
+            f'"%SIMIND%" {smc_stem} "{out_stem}" /FS:{stem} /FD:{stem}',
             "if errorlevel 1 (",
             f"    echo ERROR: Failed on {stem}",
+            "    popd",
             "    pause",
             "    exit /b 1",
             ")",
@@ -214,6 +171,7 @@ def generate_simind_bat(
         ]
 
     lines += [
+        "popd",
         "echo.",
         "echo All cases completed successfully.",
         "pause",

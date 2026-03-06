@@ -85,7 +85,7 @@ class BatchWorker(QThread):
     all_done = pyqtSignal(object)               # BatchStats
     log = pyqtSignal(str)
 
-    def __init__(self, config: PhantomConfig, start_id: int = 0):
+    def __init__(self, config: PhantomConfig, start_id: int = 1):
         super().__init__()
         self.config = config
         self.start_id = start_id

@@ -77,31 +77,36 @@ class SimulationPage(QWidget):
         left_layout.setSpacing(12)
 
         # ── Step 1: Conversion ──
-        conv_grp = QGroupBox("STEP 1 — FORMAT CONVERSION (npz → Interfile)")
+        conv_grp = QGroupBox("STEP 1 — FORMAT CONVERSION (npz → .bin)")
         conv_form = QFormLayout(conv_grp)
         conv_form.setSpacing(8)
 
         self.edit_npz_dir = QLineEdit()
         self.edit_npz_dir.setPlaceholderText("Directory containing case_XXXX.npz files...")
+        self.edit_npz_dir.textChanged.connect(self._on_npz_dir_changed)
         btn_npz = QPushButton("Browse")
         btn_npz.clicked.connect(lambda: self._browse_dir(self.edit_npz_dir))
         npz_row = self._make_browse_row(self.edit_npz_dir, btn_npz)
 
         self.edit_interfile_dir = QLineEdit()
-        self.edit_interfile_dir.setPlaceholderText("Output directory for .h33/.i33 files...")
+        self.edit_interfile_dir.setPlaceholderText("Output directory for .bin binary files...")
         btn_if = QPushButton("Browse")
         btn_if.clicked.connect(lambda: self._browse_dir(self.edit_interfile_dir))
         if_row = self._make_browse_row(self.edit_interfile_dir, btn_if)
 
         self.spin_voxel = QDoubleSpinBox()
         self.spin_voxel.setRange(0.5, 20.0)
-        self.spin_voxel.setValue(4.20)
+        self.spin_voxel.setValue(4.42)
         self.spin_voxel.setDecimals(2)
         self.spin_voxel.setSuffix(" mm")
 
         conv_form.addRow("npz directory:", npz_row)
         conv_form.addRow("Interfile output:", if_row)
         conv_form.addRow("Voxel size:", self.spin_voxel)
+
+        self.lbl_npz_count = QLabel("")
+        self.lbl_npz_count.setStyleSheet("color: #4fc3f7; font-size: 11px;")
+        conv_form.addRow("", self.lbl_npz_count)
 
         self.btn_convert = QPushButton("Convert All Cases")
         self.btn_convert.setObjectName("primary_btn")
@@ -260,11 +265,22 @@ class SimulationPage(QWidget):
             self.edit_simind_exe.setText(str(bundled))
             self._log(f"[INFO] Bundled SIMIND detected: {bundled}", color="#4fc3f7")
 
-        # Also try to find a default .smc
-        bundled_smc = Path(__file__).parent.parent.parent.parent / "simind" / "czt_ge.smc"
+        # Also try to find a default .smc (ge870_czt.smc created via change.exe)
+        bundled_smc = Path(__file__).parent.parent.parent.parent / "simind" / "ge870_czt.smc"
         if bundled_smc.exists():
             self.edit_smc.setText(str(bundled_smc))
             self._log(f"[INFO] Default .smc found: {bundled_smc}", color="#4fc3f7")
+
+    def _on_npz_dir_changed(self, text: str):
+        p = Path(text.strip())
+        if p.is_dir():
+            count = len(list(p.glob("case_*.npz")))
+            if count > 0:
+                self.lbl_npz_count.setText(f"Found {count} .npz file(s)")
+            else:
+                self.lbl_npz_count.setText("No case_*.npz files found in this directory")
+        else:
+            self.lbl_npz_count.setText("")
 
     def _log(self, message: str, color: str = "#8b949e"):
         self.log_view.setTextColor(QColor(color))
@@ -322,7 +338,10 @@ class SimulationPage(QWidget):
     def _on_gen_bat(self):
         if not self._validate_sim_inputs():
             return
-        bat_path = self.edit_bat_path.text().strip() or "run_simind.bat"
+        bat_path = self.edit_bat_path.text().strip()
+        if not bat_path:
+            out_dir = self.edit_sim_out.text().strip()
+            bat_path = str(Path(out_dir) / "run_simind.bat") if out_dir else "run_simind.bat"
         try:
             generate_simind_bat(
                 interfile_dir=Path(self.edit_interfile_dir.text()),

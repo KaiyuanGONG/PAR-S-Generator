@@ -103,8 +103,8 @@ dist/
             └── dark_theme.qss
 ```
 
-> **关于 SIMIND**：SIMIND 由 Lund 大学免费提供，需在官网申请授权后下载。
-> 申请地址：https://www.mskinstitute.com/simind/
+> **关于 SIMIND**：SIMIND 由 Lund 大学免费提供，需在官网下载。
+> 下载地址：https://www.msf.lu.se/en/research/simind-monte-carlo-program/downloads
 > 下载后将 `simind.exe` 放入 `simind/` 目录即可。
 
 ### 5.4 打包常见问题
