@@ -21,6 +21,7 @@ from PyQt6.QtGui import QFont
 from core.phantom_generator import PhantomGenerator, PhantomConfig, PhantomResult
 from ui.widgets.slice_viewer import SliceViewer
 from ui.widgets.param_widgets import ParamGroup, SpinRow, DoubleSpinRow, RangeRow, LabelRow
+from ui.i18n import tr
 
 
 class GenerateWorker(QThread):
@@ -44,7 +45,8 @@ class GenerateWorker(QThread):
 
 class PhantomPage(QWidget):
     """Page 1: Phantom parameter configuration and preview."""
-    phantom_generated = pyqtSignal(object)  # PhantomResult
+    phantom_generated = pyqtSignal(object)      # PhantomResult
+    start_batch_requested = pyqtSignal()        # emitted when user clicks Start Batch
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -64,14 +66,8 @@ class PhantomPage(QWidget):
         splitter.setHandleWidth(2)
         splitter.setStyleSheet("QSplitter::handle { background: #2d3139; }")
 
-        # Left: parameter panel
-        left_panel = self._build_param_panel()
-        splitter.addWidget(left_panel)
-
-        # Right: preview panel
-        right_panel = self._build_preview_panel()
-        splitter.addWidget(right_panel)
-
+        splitter.addWidget(self._build_param_panel())
+        splitter.addWidget(self._build_preview_panel())
         splitter.setSizes([420, 860])
         root.addWidget(splitter)
 
@@ -83,8 +79,7 @@ class PhantomPage(QWidget):
         layout.setContentsMargins(16, 16, 16, 16)
         layout.setSpacing(12)
 
-        # Title
-        title = QLabel("Phantom Configuration")
+        title = QLabel(tr("Phantom Configuration"))
         title.setObjectName("page_title")
         layout.addWidget(title)
 
@@ -99,60 +94,148 @@ class PhantomPage(QWidget):
         scroll_layout.setContentsMargins(0, 0, 8, 0)
 
         # ── Volume ──
-        vol_grp = ParamGroup("VOLUME")
+        vol_grp = ParamGroup(tr("VOLUME"))
         self.spin_nx = SpinRow("Matrix size", 32, 512, self._config.volume_shape[0])
+        self.spin_nx.setToolTip(
+            tr("Volume matrix size (NxNxN).\n"
+               "Default 128 \u2192 128\xb3 voxels at 4.42 mm = ~56 cm FOV.")
+        )
         self.spin_vox = DoubleSpinRow("Voxel size (mm)", 0.5, 10.0, self._config.voxel_size_mm, 2)
-        vol_grp.add_row("Matrix (NxNxN)", self.spin_nx)
-        vol_grp.add_row("Voxel size (mm)", self.spin_vox)
+        self.spin_vox.setToolTip(
+            tr("Isotropic voxel size in mm.\n"
+               "4.42 mm matches standard SPECT acquisition (GE 870 CZT).")
+        )
+        vol_grp.add_row(tr("Matrix (NxNxN)"), self.spin_nx)
+        vol_grp.add_row(tr("Voxel size (mm)"), self.spin_vox)
         scroll_layout.addWidget(vol_grp)
 
         # ── Liver Geometry ──
-        liver_grp = ParamGroup("LIVER GEOMETRY")
-        self.spin_scale_jitter = DoubleSpinRow("Scale jitter", 0.0, 0.5, self._config.scale_jitter, 2)
-        self.spin_rot_jitter = DoubleSpinRow("Rotation jitter (°)", 0.0, 30.0, self._config.rot_jitter_deg, 1)
-        self.spin_shift_range = DoubleSpinRow("Global shift range", 0.0, 0.3, self._config.global_shift_range, 3)
-        self.spin_left_ratio = DoubleSpinRow("Target left lobe ratio", 0.1, 0.6, self._config.target_left_ratio, 2)
-        self.spin_smooth = DoubleSpinRow("Smoothing σ (px)", 0.0, 5.0, self._config.smooth_sigma, 1)
-        liver_grp.add_row("Scale jitter", self.spin_scale_jitter)
-        liver_grp.add_row("Rotation jitter (°)", self.spin_rot_jitter)
-        liver_grp.add_row("Global shift range", self.spin_shift_range)
-        liver_grp.add_row("Target left ratio", self.spin_left_ratio)
-        liver_grp.add_row("Smoothing σ (px)", self.spin_smooth)
+        liver_grp = ParamGroup(tr("LIVER GEOMETRY"))
+
+        self.spin_scale_jitter = DoubleSpinRow(
+            "Scale jitter", 0.0, 0.5, self._config.scale_jitter, 2)
+        self.spin_scale_jitter.setToolTip(
+            tr("Random scaling of liver shape per case (\xb1fraction).\n"
+               "0.10 means \xb110% size variation across cases.")
+        )
+        self.spin_rot_jitter = DoubleSpinRow(
+            "Rotation jitter (\xb0)", 0.0, 30.0, self._config.rot_jitter_deg, 1)
+        self.spin_rot_jitter.setToolTip(
+            tr("Random rotation of liver shape per case (degrees).\n"
+               "Adds anatomical variety in orientation.")
+        )
+        self.spin_shift_range = DoubleSpinRow(
+            "Global shift range", 0.0, 0.3, self._config.global_shift_range, 3)
+        self.spin_shift_range.setToolTip(
+            tr("Random translation of the entire phantom (normalized units).\n"
+               "0.05 \u2248 1.4 cm shift. Simulates patient positioning variation.")
+        )
+        self.spin_left_ratio = DoubleSpinRow(
+            "Target left lobe ratio", 0.1, 0.6, self._config.target_left_ratio, 2)
+        self.spin_left_ratio.setToolTip(
+            tr("Target fraction of liver volume assigned to the left lobe (Cantlie plane).\n"
+               "Normal adult range: 0.25\u20130.35. Actual value varies per case via jitter.")
+        )
+        self.spin_smooth = DoubleSpinRow(
+            "Smoothing \u03c3 (px)", 0.0, 5.0, self._config.smooth_sigma, 1)
+        self.spin_smooth.setToolTip(
+            tr("Gaussian smoothing of tissue boundaries (pixels).\n"
+               "0 = sharp edges, 1.0 = realistic smooth liver surface.")
+        )
+
+        liver_grp.add_row(tr("Scale jitter"), self.spin_scale_jitter)
+        liver_grp.add_row(tr("Rotation jitter (\xb0)"), self.spin_rot_jitter)
+        liver_grp.add_row(tr("Global shift range"), self.spin_shift_range)
+        liver_grp.add_row(tr("Target left ratio"), self.spin_left_ratio)
+        liver_grp.add_row(tr("Smoothing \u03c3 (px)"), self.spin_smooth)
         scroll_layout.addWidget(liver_grp)
 
         # ── Tumors ──
-        tumor_grp = ParamGroup("TUMORS")
+        tumor_grp = ParamGroup(tr("TUMORS"))
+
         self.spin_tumor_min = SpinRow("Min tumors", 0, 10, self._config.tumor_count_min)
+        self.spin_tumor_min.setToolTip(
+            tr("Minimum number of tumors per case.\n"
+               "Setting to 1 ensures every case contains at least one tumor\n"
+               "for supervised deep-learning training.")
+        )
         self.spin_tumor_max = SpinRow("Max tumors", 0, 20, self._config.tumor_count_max)
-        self.spin_contrast_min = DoubleSpinRow("Contrast min", 1.0, 20.0, self._config.tumor_contrast_min, 1)
-        self.spin_contrast_max = DoubleSpinRow("Contrast max", 1.0, 20.0, self._config.tumor_contrast_max, 1)
-        tumor_grp.add_row("Min tumors", self.spin_tumor_min)
-        tumor_grp.add_row("Max tumors", self.spin_tumor_max)
-        tumor_grp.add_row("Contrast min (T/L)", self.spin_contrast_min)
-        tumor_grp.add_row("Contrast max (T/L)", self.spin_contrast_max)
+        self.spin_tumor_max.setToolTip(
+            tr("Maximum number of tumors per case.\n"
+               "Drawn uniformly from [Min, Max] for each case.")
+        )
+        self.spin_contrast_min = DoubleSpinRow(
+            "Contrast min", 1.0, 20.0, self._config.tumor_contrast_min, 1)
+        self.spin_contrast_min.setToolTip(
+            tr("Minimum tumor-to-normal liver uptake ratio (T/N).\n"
+               "Ho et al. 1997 hepatocellular carcinoma data: typical T/N = 2.0\u20138.0.")
+        )
+        self.spin_contrast_max = DoubleSpinRow(
+            "Contrast max", 1.0, 20.0, self._config.tumor_contrast_max, 1)
+        self.spin_contrast_max.setToolTip(
+            tr("Maximum tumor-to-normal liver uptake ratio (T/N).\n"
+               "Each tumor independently samples from [Contrast min, Contrast max].")
+        )
+
+        tumor_grp.add_row(tr("Min tumors"), self.spin_tumor_min)
+        tumor_grp.add_row(tr("Max tumors"), self.spin_tumor_max)
+        tumor_grp.add_row(tr("Contrast min (T/L)"), self.spin_contrast_min)
+        tumor_grp.add_row(tr("Contrast max (T/L)"), self.spin_contrast_max)
         scroll_layout.addWidget(tumor_grp)
 
         # ── Activity ──
-        act_grp = ParamGroup("ACTIVITY")
-        self.spin_counts = DoubleSpinRow("Total counts (×10⁴)", 1.0, 500.0,
-                                         self._config.total_counts / 1e4, 1)
-        self.spin_psf = DoubleSpinRow("PSF σ (px)", 0.0, 8.0, self._config.psf_sigma_px, 1)
-        self.spin_residual = DoubleSpinRow("Residual BG fraction", 0.0, 0.5, self._config.residual_bg, 2)
-        act_grp.add_row("Total counts (×10⁴)", self.spin_counts)
-        act_grp.add_row("PSF σ (px)", self.spin_psf)
-        act_grp.add_row("Residual BG", self.spin_residual)
+        act_grp = ParamGroup(tr("ACTIVITY"))
+
+        self.spin_counts = DoubleSpinRow(
+            "Total counts (\xd710\u2074)", 1.0, 500.0, self._config.total_counts / 1e4, 1)
+        self.spin_counts.setToolTip(
+            tr("Total activity counts in the phantom (\xd710\u2074).\n"
+               "Scales the activity map amplitude. Does not affect SIMIND photon histories.")
+        )
+        self.spin_psf = DoubleSpinRow("PSF \u03c3 (px)", 0.0, 8.0, self._config.psf_sigma_px, 1)
+        self.spin_psf.setToolTip(
+            tr("Point spread function blur applied to the activity map (pixels).\n"
+               "0 = no blur. SIMIND handles physical PSF; set to 0 for physics-accurate simulation.")
+        )
+        self.spin_residual = DoubleSpinRow(
+            "Residual BG", 0.0, 0.5, self._config.residual_bg, 2)
+        self.spin_residual.setToolTip(
+            tr("Fraction of mean liver activity added as uniform whole-body background.\n"
+               "Models non-specific Tc-99m uptake in surrounding tissue (0.05\u20130.15 typical).")
+        )
+
+        act_grp.add_row(tr("Total counts (\xd710\u2074)"), self.spin_counts)
+        act_grp.add_row(tr("PSF \u03c3 (px)"), self.spin_psf)
+        act_grp.add_row(tr("Residual BG"), self.spin_residual)
         scroll_layout.addWidget(act_grp)
 
         # ── Batch ──
-        batch_grp = ParamGroup("BATCH GENERATION")
+        batch_grp = ParamGroup(tr("BATCH GENERATION"))
+
         self.spin_n_cases = SpinRow("Number of cases", 1, 10000, self._config.n_cases)
+        self.spin_n_cases.setToolTip(
+            tr("Total cases to generate in this batch.\n"
+               "Each case gets a unique random seed and independent anatomy.")
+        )
         self.spin_seed = SpinRow("Global seed", 0, 999999, self._config.global_seed)
-        self.chk_use_seed = QCheckBox("Use fixed seed")
+        self.spin_seed.setToolTip(
+            tr("Base random seed for reproducibility.\n"
+               "Same seed + same config \u2192 identical batch output.")
+        )
+        self.chk_use_seed = QCheckBox(tr("Use fixed seed"))
         self.chk_use_seed.setChecked(self._config.use_global_seed)
+        self.chk_use_seed.setToolTip(
+            tr("If checked, use the Global seed for deterministic output.\n"
+               "Uncheck for fully random batches (seed changes each run).")
+        )
 
         self.edit_output = QLineEdit(self._config.output_dir)
         self.edit_output.setPlaceholderText("Output directory path...")
-        btn_browse = QPushButton("Browse...")
+        self.edit_output.setToolTip(
+            tr("Directory where case_XXXX.npz files will be saved.\n"
+               "Created automatically if it does not exist.")
+        )
+        btn_browse = QPushButton(tr("Browse..."))
         btn_browse.clicked.connect(self._browse_output)
         out_row = QHBoxLayout()
         out_row.addWidget(self.edit_output)
@@ -160,10 +243,10 @@ class PhantomPage(QWidget):
         out_widget = QWidget()
         out_widget.setLayout(out_row)
 
-        batch_grp.add_row("Number of cases", self.spin_n_cases)
-        batch_grp.add_row("Global seed", self.spin_seed)
+        batch_grp.add_row(tr("Number of cases"), self.spin_n_cases)
+        batch_grp.add_row(tr("Global seed"), self.spin_seed)
         batch_grp.add_widget(self.chk_use_seed)
-        batch_grp.add_row("Output directory", out_widget)
+        batch_grp.add_row(tr("Output directory"), out_widget)
         scroll_layout.addWidget(batch_grp)
 
         scroll_layout.addStretch()
@@ -174,20 +257,34 @@ class PhantomPage(QWidget):
         btn_layout = QVBoxLayout()
         btn_layout.setSpacing(8)
 
-        self.btn_preview = QPushButton("⬡  Preview Single Case")
+        self.btn_preview = QPushButton(tr("⬡  Preview Single Case"))
         self.btn_preview.setObjectName("primary_btn")
         self.btn_preview.setMinimumHeight(38)
+        self.btn_preview.setToolTip(
+            tr("Generate one phantom with the current settings and display it in the viewer.\n"
+               "Uses case_id=0 and the configured seed.")
+        )
         self.btn_preview.clicked.connect(self._on_preview)
 
+        self.btn_start_batch = QPushButton(tr("▶  Start Batch"))
+        self.btn_start_batch.setObjectName("success_btn")
+        self.btn_start_batch.setMinimumHeight(38)
+        self.btn_start_batch.setToolTip(
+            tr("Navigate to Results page and start generating all cases.\n"
+               "Number of cases is set by 'Number of cases' above.")
+        )
+        self.btn_start_batch.clicked.connect(self._on_start_batch)
+
         btn_io = QHBoxLayout()
-        btn_save_cfg = QPushButton("Save Config")
-        btn_load_cfg = QPushButton("Load Config")
+        btn_save_cfg = QPushButton(tr("Save Config"))
+        btn_load_cfg = QPushButton(tr("Load Config"))
         btn_save_cfg.clicked.connect(self._save_config)
         btn_load_cfg.clicked.connect(self._load_config)
         btn_io.addWidget(btn_save_cfg)
         btn_io.addWidget(btn_load_cfg)
 
         btn_layout.addWidget(self.btn_preview)
+        btn_layout.addWidget(self.btn_start_batch)
         btn_layout.addLayout(btn_io)
         layout.addLayout(btn_layout)
 
@@ -201,9 +298,9 @@ class PhantomPage(QWidget):
 
         # Title row
         title_row = QHBoxLayout()
-        title = QLabel("Preview")
+        title = QLabel(tr("Preview"))
         title.setObjectName("page_title")
-        self.lbl_case_info = QLabel("No phantom generated yet")
+        self.lbl_case_info = QLabel(tr("No phantom generated yet"))
         self.lbl_case_info.setStyleSheet("color: #6b7280; font-size: 12px;")
         title_row.addWidget(title)
         title_row.addStretch()
@@ -229,16 +326,16 @@ class PhantomPage(QWidget):
 
         self.stat_labels = {}
         stats = [
-            ("Liver Vol.", "vol", "mL"),
-            ("Left Ratio", "left", "%"),
-            ("Tumors", "n_tumors", ""),
-            ("Total Counts", "counts", ""),
-            ("Gen. Time", "time", "s"),
+            (tr("Liver Vol."), "vol", "mL"),
+            (tr("Left Ratio"), "left", "%"),
+            (tr("Tumors"), "n_tumors", ""),
+            (tr("Total Counts"), "counts", ""),
+            (tr("Gen. Time"), "time", "s"),
         ]
         for name, key, unit in stats:
             col = QVBoxLayout()
             col.setSpacing(2)
-            val_lbl = QLabel("—")
+            val_lbl = QLabel("\u2014")
             val_lbl.setObjectName("stat_value")
             val_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
             name_lbl = QLabel(f"{name}" + (f" ({unit})" if unit else ""))
@@ -286,19 +383,23 @@ class PhantomPage(QWidget):
             return
         self._config = self._collect_config()
         self.btn_preview.setEnabled(False)
-        self.btn_preview.setText("Generating...")
+        self.btn_preview.setText(tr("Generating..."))
         self._worker = GenerateWorker(self._config, case_id=0)
         self._worker.finished.connect(self._on_preview_done)
         self._worker.error.connect(self._on_preview_error)
         self._worker.start()
 
+    def _on_start_batch(self):
+        """Collect config and signal MainWindow to navigate to Results + start batch."""
+        self._config = self._collect_config()
+        self.start_batch_requested.emit()
+
     @pyqtSlot(object)
     def _on_preview_done(self, result: PhantomResult):
         self._current_result = result
         self.btn_preview.setEnabled(True)
-        self.btn_preview.setText("⬡  Preview Single Case")
+        self.btn_preview.setText(tr("⬡  Preview Single Case"))
 
-        # Update slice viewer
         self.slice_viewer.set_volumes(
             activity=result.activity,
             mu_map=result.mu_map,
@@ -307,7 +408,6 @@ class PhantomPage(QWidget):
         )
         self.slice_viewer.set_meta(result.left_ratio, result.perfusion_mode)
 
-        # Update stats
         self.stat_labels["vol"].setText(f"{result.liver_volume_ml:.0f}")
         self.stat_labels["left"].setText(f"{result.left_ratio * 100:.1f}")
         self.stat_labels["n_tumors"].setText(str(result.n_tumors))
@@ -324,7 +424,7 @@ class PhantomPage(QWidget):
     @pyqtSlot(str)
     def _on_preview_error(self, msg: str):
         self.btn_preview.setEnabled(True)
-        self.btn_preview.setText("⬡  Preview Single Case")
+        self.btn_preview.setText(tr("⬡  Preview Single Case"))
         QMessageBox.critical(self, "Generation Error", f"Failed to generate phantom:\n{msg}")
 
     def _browse_output(self):

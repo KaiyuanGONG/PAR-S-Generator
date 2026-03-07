@@ -47,7 +47,7 @@ class BatchStats:
         self.liver_volumes.append(result.liver_volume_ml)
         self.left_ratios.append(result.left_ratio)
         self.n_tumors_list.append(result.n_tumors)
-        self.tumor_diameters.extend(result.tumor_radii_mm)
+        self.tumor_diameters.extend(result.tumor_diameters_mm)
         mode = result.perfusion_mode
         self.perfusion_modes[mode] = self.perfusion_modes.get(mode, 0) + 1
         self.gen_times.append(result.generation_time_s)

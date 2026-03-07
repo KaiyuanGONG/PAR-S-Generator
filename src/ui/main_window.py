@@ -1,17 +1,20 @@
 """Main application window with sidebar navigation."""
 
+from pathlib import Path
+
 from PyQt6.QtWidgets import (
     QMainWindow, QWidget, QHBoxLayout, QVBoxLayout,
     QPushButton, QLabel, QStackedWidget, QSizePolicy,
-    QStatusBar, QFrame
+    QStatusBar, QFrame, QApplication
 )
-from PyQt6.QtCore import Qt, QSize, pyqtSignal
+from PyQt6.QtCore import Qt, QSize, pyqtSignal, QSettings
 from PyQt6.QtGui import QFont, QIcon
 
 from ui.pages.phantom_page import PhantomPage
 from ui.pages.simulation_page import SimulationPage
 from ui.pages.results_page import ResultsPage
 from ui.pages.settings_page import SettingsPage
+from ui.i18n import tr
 
 
 class NavButton(QPushButton):
@@ -37,12 +40,14 @@ class Sidebar(QWidget):
     """Left navigation sidebar."""
     page_changed = pyqtSignal(int)
 
-    NAV_ITEMS = [
-        ("⬡", "Phantom"),
-        ("▶", "Simulation"),
-        ("◈", "Results"),
-        ("⚙", "Settings"),
-    ]
+    @property
+    def NAV_ITEMS(self):
+        return [
+            ("\u2b21", tr("Phantom")),
+            ("\u25b6", tr("Simulation")),
+            ("\u25c8", tr("Results")),
+            ("\u2699", tr("Settings")),
+        ]
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -89,7 +94,7 @@ class Sidebar(QWidget):
         layout.addSpacing(8)
 
         # Nav section label
-        nav_label = QLabel("WORKFLOW")
+        nav_label = QLabel(tr("WORKFLOW"))
         nav_label.setStyleSheet("color: #3a4049; font-size: 10px; padding: 4px 16px; letter-spacing: 1.5px;")
         layout.addWidget(nav_label)
 
@@ -167,6 +172,10 @@ class MainWindow(QMainWindow):
         # Always read config fresh from phantom_page when batch starts (avoids stale path/n_cases)
         self.results_page.set_config_getter(self.phantom_page._collect_config)
         self.simulation_page.simulation_finished.connect(self.results_page.on_results_ready)
+        # Start Batch button on Phantom page -> navigate to Results + start
+        self.phantom_page.start_batch_requested.connect(self._on_start_batch_from_phantom)
+        # Theme toggle from Settings
+        self.settings_page.theme_changed.connect(self._apply_theme)
 
     def _setup_statusbar(self):
         self.status_bar = QStatusBar()
@@ -178,3 +187,18 @@ class MainWindow(QMainWindow):
 
     def show_status(self, message: str):
         self.status_bar.showMessage(message)
+
+    def _on_start_batch_from_phantom(self):
+        """Navigate to Results page and start batch generation."""
+        self.sidebar.set_page(2)   # Results is index 2
+        self.results_page.start_batch()
+
+    def _apply_theme(self, theme: str):
+        """Switch QSS theme immediately without restart."""
+        if theme == "light":
+            qss_path = Path(__file__).parent.parent.parent / "resources" / "styles" / "light_theme.qss"
+        else:
+            qss_path = Path(__file__).parent.parent.parent / "resources" / "styles" / "dark_theme.qss"
+        if qss_path.exists():
+            with open(qss_path, "r", encoding="utf-8") as f:
+                QApplication.instance().setStyleSheet(f.read())

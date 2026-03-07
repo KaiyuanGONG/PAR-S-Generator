@@ -1,7 +1,7 @@
 """
 Simulation Page
 ===============
-Step 2: Format conversion (npz → Interfile) and SIMIND execution.
+Step 2: Format conversion (npz -> Interfile) and SIMIND execution.
 """
 
 from __future__ import annotations
@@ -14,7 +14,7 @@ from PyQt6.QtWidgets import (
     QPushButton, QLabel, QLineEdit, QFileDialog,
     QTextEdit, QProgressBar, QSpinBox, QDoubleSpinBox,
     QFormLayout, QFrame, QSplitter, QCheckBox,
-    QMessageBox, QComboBox
+    QMessageBox, QComboBox, QTabWidget
 )
 from PyQt6.QtCore import Qt, pyqtSignal, QThread, pyqtSlot, QProcess
 from PyQt6.QtGui import QTextCursor, QColor
@@ -23,10 +23,12 @@ from core.interfile_writer import (
     batch_convert_npz_to_interfile, generate_simind_bat
 )
 from ui.widgets.param_widgets import ParamGroup
+from ui.widgets.simind_viewer import SimindOutputViewer
+from ui.i18n import tr
 
 
 class ConvertWorker(QThread):
-    """Background thread for npz → Interfile conversion."""
+    """Background thread for npz -> Interfile conversion."""
     progress = pyqtSignal(int, int, str)
     finished = pyqtSignal(int)
     error = pyqtSignal(str)
@@ -62,7 +64,7 @@ class SimulationPage(QWidget):
         root.setContentsMargins(24, 24, 24, 24)
         root.setSpacing(16)
 
-        title = QLabel("Simulation Pipeline")
+        title = QLabel(tr("Simulation Pipeline"))
         title.setObjectName("page_title")
         root.addWidget(title)
 
@@ -76,21 +78,21 @@ class SimulationPage(QWidget):
         left_layout.setContentsMargins(0, 0, 0, 0)
         left_layout.setSpacing(12)
 
-        # ── Step 1: Conversion ──
-        conv_grp = QGroupBox("STEP 1 — FORMAT CONVERSION (npz → .bin)")
+        # -- Step 1: Conversion --
+        conv_grp = QGroupBox(tr("STEP 1 \u2014 FORMAT CONVERSION (npz \u2192 .bin)"))
         conv_form = QFormLayout(conv_grp)
         conv_form.setSpacing(8)
 
         self.edit_npz_dir = QLineEdit()
         self.edit_npz_dir.setPlaceholderText("Directory containing case_XXXX.npz files...")
         self.edit_npz_dir.textChanged.connect(self._on_npz_dir_changed)
-        btn_npz = QPushButton("Browse")
+        btn_npz = QPushButton(tr("Browse"))
         btn_npz.clicked.connect(lambda: self._browse_dir(self.edit_npz_dir))
         npz_row = self._make_browse_row(self.edit_npz_dir, btn_npz)
 
         self.edit_interfile_dir = QLineEdit()
         self.edit_interfile_dir.setPlaceholderText("Output directory for .bin binary files...")
-        btn_if = QPushButton("Browse")
+        btn_if = QPushButton(tr("Browse"))
         btn_if.clicked.connect(lambda: self._browse_dir(self.edit_interfile_dir))
         if_row = self._make_browse_row(self.edit_interfile_dir, btn_if)
 
@@ -99,6 +101,7 @@ class SimulationPage(QWidget):
         self.spin_voxel.setValue(4.42)
         self.spin_voxel.setDecimals(2)
         self.spin_voxel.setSuffix(" mm")
+        self.spin_voxel.setToolTip("Voxel size in mm — must match the phantom configuration.")
 
         conv_form.addRow("npz directory:", npz_row)
         conv_form.addRow("Interfile output:", if_row)
@@ -108,7 +111,7 @@ class SimulationPage(QWidget):
         self.lbl_npz_count.setStyleSheet("color: #4fc3f7; font-size: 11px;")
         conv_form.addRow("", self.lbl_npz_count)
 
-        self.btn_convert = QPushButton("Convert All Cases")
+        self.btn_convert = QPushButton(tr("Convert All Cases"))
         self.btn_convert.setObjectName("primary_btn")
         self.btn_convert.setMinimumHeight(36)
         self.btn_convert.clicked.connect(self._on_convert)
@@ -124,28 +127,28 @@ class SimulationPage(QWidget):
         conv_layout.addWidget(self.lbl_conv_status)
         left_layout.addLayout(conv_layout)
 
-        # ── Step 2: SIMIND Config ──
-        sim_grp = QGroupBox("STEP 2 — SIMIND CONFIGURATION")
+        # -- Step 2: SIMIND Config --
+        sim_grp = QGroupBox(tr("STEP 2 \u2014 SIMIND CONFIGURATION"))
         sim_form = QFormLayout(sim_grp)
         sim_form.setSpacing(8)
 
         self.edit_simind_exe = QLineEdit()
         self.edit_simind_exe.setPlaceholderText("Path to simind.exe (bundled or custom)...")
-        btn_simind = QPushButton("Browse")
+        btn_simind = QPushButton(tr("Browse"))
         btn_simind.clicked.connect(lambda: self._browse_file(
             self.edit_simind_exe, "SIMIND Executable (simind.exe);;All Files (*)"
         ))
 
         self.edit_smc = QLineEdit()
         self.edit_smc.setPlaceholderText("Path to .smc configuration file...")
-        btn_smc = QPushButton("Browse")
+        btn_smc = QPushButton(tr("Browse"))
         btn_smc.clicked.connect(lambda: self._browse_file(
             self.edit_smc, "SIMIND Config (*.smc);;All Files (*)"
         ))
 
         self.edit_sim_out = QLineEdit()
         self.edit_sim_out.setPlaceholderText("SIMIND output directory...")
-        btn_sim_out = QPushButton("Browse")
+        btn_sim_out = QPushButton(tr("Browse"))
         btn_sim_out.clicked.connect(lambda: self._browse_dir(self.edit_sim_out))
 
         self.spin_photons = QSpinBox()
@@ -153,6 +156,10 @@ class SimulationPage(QWidget):
         self.spin_photons.setValue(5_000_000)
         self.spin_photons.setSingleStep(1_000_000)
         self.spin_photons.setSuffix("  photons/proj")
+        self.spin_photons.setToolTip(
+            "Photon histories per projection angle.\n"
+            "Higher = less noise, longer simulation. 5M is a practical baseline."
+        )
 
         sim_form.addRow("simind.exe:", self._make_browse_row(self.edit_simind_exe, btn_simind))
         sim_form.addRow(".smc config:", self._make_browse_row(self.edit_smc, btn_smc))
@@ -161,8 +168,8 @@ class SimulationPage(QWidget):
 
         left_layout.addWidget(sim_grp)
 
-        # ── Step 3: Run ──
-        run_grp = QGroupBox("STEP 3 — GENERATE & RUN")
+        # -- Step 3: Run --
+        run_grp = QGroupBox(tr("STEP 3 \u2014 GENERATE & RUN"))
         run_layout = QVBoxLayout(run_grp)
 
         self.chk_gen_bat = QCheckBox("Generate .bat script only (do not run SIMIND now)")
@@ -170,7 +177,7 @@ class SimulationPage(QWidget):
 
         self.edit_bat_path = QLineEdit()
         self.edit_bat_path.setPlaceholderText("Path to save .bat script...")
-        btn_bat = QPushButton("Browse")
+        btn_bat = QPushButton(tr("Browse"))
         btn_bat.clicked.connect(lambda: self._browse_save(
             self.edit_bat_path, "Batch Script (*.bat)"
         ))
@@ -181,9 +188,9 @@ class SimulationPage(QWidget):
         run_layout.addWidget(bat_row)
 
         btn_row = QHBoxLayout()
-        self.btn_gen_bat = QPushButton("Generate .bat Script")
+        self.btn_gen_bat = QPushButton(tr("Generate .bat Script"))
         self.btn_gen_bat.clicked.connect(self._on_gen_bat)
-        self.btn_run_sim = QPushButton("▶  Run SIMIND Now")
+        self.btn_run_sim = QPushButton(tr("\u25b6  Run SIMIND Now"))
         self.btn_run_sim.setObjectName("success_btn")
         self.btn_run_sim.setMinimumHeight(36)
         self.btn_run_sim.clicked.connect(self._on_run_simind)
@@ -196,34 +203,45 @@ class SimulationPage(QWidget):
 
         splitter.addWidget(left)
 
-        # Right: log console
+        # Right: tabbed (Console + SIMIND Preview)
         right = QWidget()
         right_layout = QVBoxLayout(right)
         right_layout.setContentsMargins(0, 0, 0, 0)
-        right_layout.setSpacing(8)
+        right_layout.setSpacing(4)
 
-        log_title = QLabel("Console Output")
-        log_title.setStyleSheet("color: #6b7280; font-size: 11px; letter-spacing: 1px;")
-        right_layout.addWidget(log_title)
+        self.right_tabs = QTabWidget()
+        self.right_tabs.setDocumentMode(True)
+
+        # Tab 0: Console
+        console_widget = QWidget()
+        cl = QVBoxLayout(console_widget)
+        cl.setContentsMargins(0, 4, 0, 0)
+        cl.setSpacing(6)
 
         self.log_view = QTextEdit()
         self.log_view.setReadOnly(True)
         self.log_view.setMinimumWidth(400)
-        right_layout.addWidget(self.log_view, stretch=1)
+        cl.addWidget(self.log_view, stretch=1)
 
-        # Progress bar for SIMIND
         self.sim_progress = QProgressBar()
         self.sim_progress.setVisible(False)
         self.lbl_sim_status = QLabel("")
         self.lbl_sim_status.setStyleSheet("color: #6b7280; font-size: 12px;")
-        right_layout.addWidget(self.sim_progress)
-        right_layout.addWidget(self.lbl_sim_status)
+        cl.addWidget(self.sim_progress)
+        cl.addWidget(self.lbl_sim_status)
 
-        btn_stop = QPushButton("■  Stop")
+        btn_stop = QPushButton(tr("\u25a0  Stop"))
         btn_stop.setObjectName("danger_btn")
         btn_stop.clicked.connect(self._on_stop)
-        right_layout.addWidget(btn_stop)
+        cl.addWidget(btn_stop)
 
+        self.right_tabs.addTab(console_widget, tr("Console"))
+
+        # Tab 1: SIMIND Preview
+        self.simind_preview = SimindOutputViewer()
+        self.right_tabs.addTab(self.simind_preview, tr("SIMIND Preview"))
+
+        right_layout.addWidget(self.right_tabs)
         splitter.addWidget(right)
         splitter.setSizes([500, 500])
         root.addWidget(splitter, stretch=1)
@@ -231,7 +249,7 @@ class SimulationPage(QWidget):
         # Auto-detect bundled simind
         self._auto_detect_simind()
 
-    # ── Helpers ──────────────────────────────────────────────────────
+    # -- Helpers ----------------------------------------------------------
 
     def _make_browse_row(self, edit: QLineEdit, btn: QPushButton) -> QWidget:
         w = QWidget()
@@ -265,7 +283,6 @@ class SimulationPage(QWidget):
             self.edit_simind_exe.setText(str(bundled))
             self._log(f"[INFO] Bundled SIMIND detected: {bundled}", color="#4fc3f7")
 
-        # Also try to find a default .smc (ge870_czt.smc created via change.exe)
         bundled_smc = Path(__file__).parent.parent.parent.parent / "simind" / "ge870_czt.smc"
         if bundled_smc.exists():
             self.edit_smc.setText(str(bundled_smc))
@@ -287,7 +304,7 @@ class SimulationPage(QWidget):
         self.log_view.append(message)
         self.log_view.moveCursor(QTextCursor.MoveOperation.End)
 
-    # ── Actions ──────────────────────────────────────────────────────
+    # -- Actions ----------------------------------------------------------
 
     def on_phantom_ready(self, result):
         """Called when phantom page emits phantom_generated."""
@@ -319,7 +336,7 @@ class SimulationPage(QWidget):
             self.conv_progress.setMaximum(total)
             self.conv_progress.setValue(current + 1)
         self.lbl_conv_status.setText(f"Converting {filename} ({current + 1}/{total})")
-        self._log(f"  → {filename}", color="#8b949e")
+        self._log(f"  -> {filename}", color="#8b949e")
 
     @pyqtSlot(int)
     def _on_conv_done(self, count: int):
@@ -361,7 +378,6 @@ class SimulationPage(QWidget):
         if not self._validate_sim_inputs():
             return
 
-        # Generate bat first, then run it
         bat_path = Path(self.edit_sim_out.text()) / "run_simind.bat"
         try:
             generate_simind_bat(
@@ -406,6 +422,17 @@ class SimulationPage(QWidget):
         if exit_code == 0:
             self._log("[OK] SIMIND simulation completed successfully.", color="#4caf50")
             self.simulation_finished.emit(self.edit_sim_out.text())
+            # Auto-switch to SIMIND Preview tab and try to load the first .a00
+            out_dir = Path(self.edit_sim_out.text())
+            a00_files = sorted(out_dir.glob("*.a00"))
+            if a00_files:
+                self.right_tabs.setCurrentIndex(1)
+                self.simind_preview.load_file(str(a00_files[0]))
+                self._log(
+                    f"[INFO] Auto-loaded first .a00: {a00_files[0].name}  "
+                    f"(use SIMIND Preview tab to view)",
+                    color="#4fc3f7"
+                )
         else:
             self._log(f"[ERROR] SIMIND exited with code {exit_code}.", color="#ff6b6b")
 
@@ -426,6 +453,6 @@ class SimulationPage(QWidget):
             missing.append("SIMIND output directory")
         if missing:
             QMessageBox.warning(self, "Missing Input",
-                                "Please provide:\n• " + "\n• ".join(missing))
+                                "Please provide:\n\u2022 " + "\n\u2022 ".join(missing))
             return False
         return True

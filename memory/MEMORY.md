@@ -28,6 +28,17 @@ Windows 桌面应用（PyQt6），用于生成肝脏 SPECT 合成数据集：
 - Settings 页线程数 UI 无效（Issue-9）
 - Total counts 太小（8e4）导致 SIMIND 仿真无计数，建议用 1e7
 
+## UI 改进（v2.2 → v2.3，已完成）
+- `src/ui/i18n.py` — 新建双语模块（中/英），`tr()` 函数，`init_language()` 启动调用
+- `resources/styles/light_theme.qss` — 新建浅色主题 QSS
+- `src/ui/widgets/simind_viewer.py` — SimindOutputViewer 提取为独立 widget（原在 results_page.py）
+- `results_page.py`: 移除重复 SimindOutputViewer，改为 import；修复 `tumor_radii_mm` → `tumor_diameters_mm`；新增 `start_batch()` public 方法
+- `phantom_page.py`: 新增 `start_batch_requested` 信号、"Start Batch" 按钮（绿色）、所有参数 ToolTip 提示
+- `simulation_page.py`: 右侧改为 Console/SIMIND Preview 两个 tab；仿真完成后自动切换并加载第一个 .a00
+- `settings_page.py`: 新增 APPEARANCE 组（主题深/浅色、语言英/中），主题即时生效，语言需重启
+- `main_window.py`: 连接 `start_batch_requested` → 导航 Results + 调用 `start_batch()`；连接 `theme_changed` → `_apply_theme()`
+- `main.py`: `init_language()` 在创建窗口前调用；`load_stylesheet()` 读取 QSettings 选择主题
+
 ## SIMIND 关键信息（已验证）
 - 文件命名：`_act_av.bin` 和 `_atn_av.bin`（不可更改，SIMIND 强制要求）
 - 调用：`simind ge870_czt "abs_out_stem" /FS:case_XXXX /FD:case_XXXX`（相对 stem）

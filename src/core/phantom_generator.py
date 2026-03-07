@@ -39,23 +39,31 @@ class PhantomConfig:
     mu_noise_sigma: float = 2.0
 
     # Liver base center (Z, Y, X) in normalized [-1,1] coords
-    liver_base_center: tuple = (-0.2, 0.1, 0.2)
+    # X=0.10: liver CoM at 2.8cm right of midline (anatomically correct).
+    # Right lobe X=[-.02,+.50], left lobe X=[-.16,+.20]: Cantlie plane
+    # at X~0.02-0.05 achieves the 35/65 left/right volume split.
+    liver_base_center: tuple = (-0.20, 0.10, 0.10)
 
-    # Right lobe
-    right_radii: tuple = (0.38, 0.30, 0.30)
-    right_shift: tuple = (0.0, 0.0, 0.10)
+    # Right lobe -- semi-axes (rz, ry, rx) before intersection with body/dome
+    # Physical after clipping: ~835-987 ml
+    right_radii: tuple = (0.28, 0.22, 0.26)
+    right_shift: tuple = (0.0, 0.0, 0.14)
     right_rot_deg: float = -15.0
 
-    # Left lobe
-    left_radii: tuple = (0.20, 0.26, 0.26)
-    left_shift: tuple = (0.18, 0.07, 0.00)
+    # Left lobe -- semi-axes before intersection
+    # Physical after clipping: ~321-379 ml. Negative X shift places
+    # left lobe toward patient midline so Cantlie plane can separate lobes.
+    left_radii: tuple = (0.18, 0.19, 0.18)
+    left_shift: tuple = (0.14, 0.06, -0.08)
     left_rot_deg: float = 10.0
 
     # Dome / fossa
-    dome_radius: float = 0.46
-    fossa_radius: float = 0.34
-    dome_offset: tuple = (-0.07, 0.0, 0.0)
-    fossa_offset: tuple = (-0.22, -0.04, 0.0)
+    # dome top at Z=+0.09 (2.5cm above FOV center); 2.5cm diaphragm gap to lung bottom.
+    # fossa_radius=0.14 -> 4cm gallbladder fossa (was 0.23=6.5cm, over-carved liver).
+    dome_radius: float = 0.34
+    fossa_radius: float = 0.14
+    dome_offset: tuple = (-0.05, 0.0, 0.0)
+    fossa_offset: tuple = (-0.12, -0.03, 0.0)
 
     # Jitter ranges
     global_shift_range: float = 0.05
@@ -70,33 +78,25 @@ class PhantomConfig:
     # Lobe splitting
     target_left_ratio: float = 0.35
     cantlie_tilt_range: tuple = (-6.0, 10.0)
-    cantlie_offset_range: tuple = (-0.12, 0.12)
+    cantlie_offset_range: tuple = (-0.05, 0.12)  # covers Cantlie plane at X~0.02-0.05
     cantlie_iter_max: int = 12
 
     # Tumors
-    tumor_count_min: int = 0
+    tumor_count_min: int = 1
     tumor_count_max: int = 5
-    tumor_size_bins_mm: list = field(default_factory=lambda: [[5, 10], [10, 20], [20, 40], [40, 60]])
-    tumor_probs: list = field(default_factory=lambda: [0.20, 0.35, 0.30, 0.15])
-    tumor_contrast_min: float = 4.0
+    tumor_size_bins_mm: list = field(default_factory=lambda: [[10, 20], [20, 40], [40, 60]])
+    tumor_probs: list = field(default_factory=lambda: [0.45, 0.40, 0.15])
+    # Tumor-to-normal liver ratio (TNR) for Tc-99m MAA hepatic arterial scintigraphy:
+    # Ho et al. (1997) J Nucl Med: median TNR 3.4, range 1.5–12; practical range 2–8.
+    tumor_contrast_min: float = 2.0
     tumor_contrast_max: float = 8.0
     min_edge_dist_px: int = 4
-    min_center_dist_px: int = 6
-    tumor_modes: list = field(default_factory=lambda: ["spiculated", "ellipsoid", "superellipsoid", "noise_threshold"])
+    tumor_modes: list = field(default_factory=lambda: ["ellipsoid", "spiculated"])
+    tumor_mode_probs: list = field(default_factory=lambda: [0.7, 0.3])
 
     # Spiculated params
     spiculated_roughness: float = 0.35
     spiculated_spiciness: float = 3.0
-
-    # Superellipsoid
-    superellipse_p_min: float = 2.2
-    superellipse_p_max: float = 3.0
-    superellipse_elong_min: float = 0.6
-    superellipse_elong_max: float = 1.2
-
-    # Noise threshold
-    noise_thresh_corr: float = 1.2
-    noise_thresh_bias: float = 0.2
 
     # Perfusion
     perfusion_probs: dict = field(default_factory=lambda: {
@@ -265,7 +265,7 @@ class PhantomResult:
     left_mask: np.ndarray         # bool
     right_mask: np.ndarray        # bool
     tumor_masks: list             # list of bool arrays
-    tumor_radii_mm: list          # list of floats
+    tumor_diameters_mm: list      # list of floats (diameter, not radius)
     tumor_modes_used: list        # list of str
     perfusion_mode: str
     total_counts_actual: float
@@ -294,7 +294,7 @@ class PhantomResult:
             "liver_volume_ml": float(self.liver_volume_ml),
             "left_ratio": float(self.left_ratio),
             "n_tumors": self.n_tumors,
-            "tumor_radii_mm": [float(r) for r in self.tumor_radii_mm],
+            "tumor_diameters_mm": [float(d) for d in self.tumor_diameters_mm],
             "tumor_modes": self.tumor_modes_used,
             "voxel_size_mm": self.voxel_size_mm,
             "volume_shape": list(self.volume_shape),
@@ -350,7 +350,9 @@ class PhantomGenerator:
             rotation_deg=cfg.left_rot_deg, rotation_plane='xz', rng=rng
         )
 
-        body = Geometry3D.create_ellipsoid(shape, (0, 0, 0), (0.90, 0.65, 0.85))
+        # body inner shell — realistic adult torso (Z=37.9cm, Y=22.1cm, X=33.9cm)
+        # Ref: typical adult supine CT dimensions for abdominal SPECT
+        body = Geometry3D.create_ellipsoid(shape, (0, 0, 0), (0.67, 0.39, 0.60))
 
         dome_r = cfg.dome_radius + rng.uniform(-cfg.detail_jitter, cfg.detail_jitter)
         dome = Geometry3D.create_ellipsoid(
@@ -390,21 +392,24 @@ class PhantomGenerator:
         # ── 3. μ-map ──
         mu = np.ones(shape, dtype=np.float32) * cfg.mu_water
 
-        # Lungs (positioned in upper thorax, above liver)
-        lung_r = Geometry3D.create_ellipsoid(shape, (0.55, 0.05, -0.28), (0.28, 0.20, 0.20))
-        lung_l = Geometry3D.create_ellipsoid(shape, (0.55, 0.05, 0.28), (0.28, 0.20, 0.20))
+        # Lungs — centers at Z=0.38 (10.8cm above FOV center), above the diaphragm.
+        # Semi-axes (rz=0.20, ry=0.14, rx=0.18): lung top Z=0.58 < body top 0.69 ✓
+        # 2.5cm diaphragm gap between liver dome top (Z=0.09) and lung bottom (Z=0.18) ✓
+        lung_r = Geometry3D.create_ellipsoid(shape, (0.38, 0.05, -0.22), (0.20, 0.14, 0.18))
+        lung_l = Geometry3D.create_ellipsoid(shape, (0.38, 0.05,  0.22), (0.20, 0.14, 0.18))
         mu[lung_r | lung_l] = cfg.mu_lung
 
-        # Spine
+        # Spine — vertebral body ~3.4cm diameter, 8.5cm posterior from FOV center.
+        # Y=-0.30 is 73% of body AP semi-axis (0.41) toward posterior — anatomically correct.
         Z, Y, X = Geometry3D.get_grid(shape)
-        spine_mask = ((X - 0) ** 2 + (Y + 0.55) ** 2) <= 0.08 ** 2
+        spine_mask = ((X - 0) ** 2 + (Y + 0.30) ** 2) <= 0.06 ** 2
         mu[spine_mask] = cfg.mu_spine
 
         # Liver
         mu[liver] = cfg.mu_liver
 
-        # Fat layer (outer body shell)
-        outer_body = Geometry3D.create_ellipsoid(shape, (0, 0, 0), (0.92, 0.67, 0.87))
+        # Fat layer (outer body shell) — adds ~0.57cm fat per side to body
+        outer_body = Geometry3D.create_ellipsoid(shape, (0, 0, 0), (0.69, 0.41, 0.62))
         fat_layer = outer_body & ~body
         mu[fat_layer] = cfg.mu_fat
 
@@ -414,87 +419,10 @@ class PhantomGenerator:
         noise = (noise - noise.mean()) * cfg.mu_noise_amp
         mu = np.clip(mu + noise, 0, None)
 
-        # ── 4. Tumors ──
-        n_tumors = rng.integers(cfg.tumor_count_min, cfg.tumor_count_max + 1)
-        tumor_masks = []
-        tumor_radii_mm = []
-        tumor_modes_used = []
-        tumor_centers = []
+        # Air: voxels outside the body boundary must be 0.0 (μ_air = 0)
+        mu[~outer_body] = 0.0
 
-        liver_indices = np.argwhere(liver)
-        if len(liver_indices) == 0:
-            n_tumors = 0
-
-        for _ in range(n_tumors):
-            # Sample size
-            bin_idx = rng.choice(len(cfg.tumor_size_bins_mm), p=cfg.tumor_probs)
-            r_min_mm, r_max_mm = cfg.tumor_size_bins_mm[bin_idx]
-            radius_mm = rng.uniform(r_min_mm / 2, r_max_mm / 2)
-            radius_vox = radius_mm / cfg.voxel_size_mm
-
-            # Sample mode
-            mode = rng.choice(cfg.tumor_modes)
-
-            # Sample position (inside liver, away from edges)
-            placed = False
-            for attempt in range(50):
-                idx = liver_indices[rng.integers(len(liver_indices))]
-                cz, cy, cx = int(idx[0]), int(idx[1]), int(idx[2])
-
-                # Edge distance check
-                edge_ok = (cz >= cfg.min_edge_dist_px and cz < shape[0] - cfg.min_edge_dist_px and
-                           cy >= cfg.min_edge_dist_px and cy < shape[1] - cfg.min_edge_dist_px and
-                           cx >= cfg.min_edge_dist_px and cx < shape[2] - cfg.min_edge_dist_px)
-                if not edge_ok:
-                    continue
-
-                # Center distance check
-                center_ok = all(
-                    np.sqrt(sum((c - cz) ** 2 + (d - cy) ** 2 + (e - cx) ** 2
-                                for c, d, e in [tc]))
-                    >= cfg.min_center_dist_px
-                    for tc in tumor_centers
-                ) if tumor_centers else True
-
-                if not center_ok:
-                    continue
-
-                placed = True
-                tumor_centers.append((cz, cy, cx))
-                break
-
-            if not placed:
-                continue
-
-            # Generate tumor mask
-            if mode == "spiculated":
-                tmask = Geometry3D.create_spiculated_tumor(
-                    shape, (cz, cy, cx), radius_vox,
-                    roughness=cfg.spiculated_roughness,
-                    spiciness=cfg.spiculated_spiciness, rng=rng
-                )
-            elif mode == "superellipsoid":
-                p = rng.uniform(cfg.superellipse_p_min, cfg.superellipse_p_max)
-                elong = rng.uniform(cfg.superellipse_elong_min, cfg.superellipse_elong_max)
-                tmask = Geometry3D.create_superellipsoid(shape, (cz, cy, cx), radius_vox, p=p, elong=elong)
-            elif mode == "noise_threshold":
-                tmask = Geometry3D.create_noise_threshold(
-                    shape, (cz, cy, cx), radius_vox,
-                    corr=cfg.noise_thresh_corr, bias=cfg.noise_thresh_bias, rng=rng
-                )
-            else:  # ellipsoid
-                elong = rng.uniform(0.7, 1.3)
-                tmask = Geometry3D.create_superellipsoid(shape, (cz, cy, cx), radius_vox, p=2.0, elong=elong)
-
-            tmask = tmask & liver
-            if tmask.sum() == 0:
-                continue
-
-            tumor_masks.append(tmask)
-            tumor_radii_mm.append(float(radius_mm * 2))  # store diameter
-            tumor_modes_used.append(mode)
-
-        # ── 5. Activity map ──
+        # ── 4. Perfusion mode & base activity (determined before tumor placement) ──
         perf_keys = list(cfg.perfusion_probs.keys())
         perf_vals = list(cfg.perfusion_probs.values())
         perfusion_mode = rng.choice(perf_keys, p=perf_vals)
@@ -512,17 +440,96 @@ class PhantomGenerator:
         elif perfusion_mode == "Tumor Only":
             activity[liver] = cfg.residual_bg
 
-        # Gradient
+        # Gradient applied before tumor placement so per-tumor base_val is correct
         if cfg.gradient_gain > 0 and liver_vol > 0:
             Z_grid, _, _ = Geometry3D.get_grid(shape)
             grad = (Z_grid + 1) / 2 * cfg.gradient_gain
             activity += (grad * liver).astype(np.float32)
 
-        # Tumors
-        contrast = rng.uniform(cfg.tumor_contrast_min, cfg.tumor_contrast_max)
-        for tmask in tumor_masks:
+        # ── 5. Tumors ──
+        # Placement region constrained to the active lobe: tumors in the cold lobe
+        # produce near-invisible signal and are not useful for training.
+        if perfusion_mode == "Left Only":
+            placement_indices = np.argwhere(left_mask)
+        elif perfusion_mode == "Right Only":
+            placement_indices = np.argwhere(right_mask)
+        else:
+            placement_indices = np.argwhere(liver)
+
+        n_tumors = rng.integers(cfg.tumor_count_min, cfg.tumor_count_max + 1)
+        if len(placement_indices) == 0:
+            n_tumors = 0
+
+        tumor_masks = []
+        tumor_diameters_mm = []
+        tumor_modes_used = []
+        tumor_centers = []  # (cz, cy, cx, radius_vox)
+
+        for _ in range(n_tumors):
+            # Sample size
+            bin_idx = rng.choice(len(cfg.tumor_size_bins_mm), p=cfg.tumor_probs)
+            r_min_mm, r_max_mm = cfg.tumor_size_bins_mm[bin_idx]
+            radius_mm = rng.uniform(r_min_mm / 2, r_max_mm / 2)
+            radius_vox = radius_mm / cfg.voxel_size_mm
+
+            # Sample mode
+            mode = rng.choice(cfg.tumor_modes, p=cfg.tumor_mode_probs)
+
+            # Sample position inside the active lobe, away from edges
+            placed = False
+            for attempt in range(50):
+                idx = placement_indices[rng.integers(len(placement_indices))]
+                cz, cy, cx = int(idx[0]), int(idx[1]), int(idx[2])
+
+                # Edge margin: at least radius_vox or min_edge_dist_px, whichever is larger
+                margin = max(cfg.min_edge_dist_px, int(np.ceil(radius_vox)))
+                edge_ok = (cz >= margin and cz < shape[0] - margin and
+                           cy >= margin and cy < shape[1] - margin and
+                           cx >= margin and cx < shape[2] - margin)
+                if not edge_ok:
+                    continue
+
+                # Size-aware center distance: no overlap = r_new + r_prev + 2 vox gap
+                center_ok = all(
+                    np.sqrt((pc - cz) ** 2 + (pd - cy) ** 2 + (pe - cx) ** 2)
+                    >= radius_vox + pr + 2
+                    for pc, pd, pe, pr in tumor_centers
+                ) if tumor_centers else True
+
+                if not center_ok:
+                    continue
+
+                placed = True
+                tumor_centers.append((cz, cy, cx, radius_vox))
+                break
+
+            if not placed:
+                continue
+
+            # Generate tumor mask
+            if mode == "spiculated":
+                tmask = Geometry3D.create_spiculated_tumor(
+                    shape, (cz, cy, cx), radius_vox,
+                    roughness=cfg.spiculated_roughness,
+                    spiciness=cfg.spiculated_spiciness, rng=rng
+                )
+            else:  # ellipsoid
+                elong = rng.uniform(0.7, 1.3)
+                tmask = Geometry3D.create_superellipsoid(shape, (cz, cy, cx), radius_vox, p=2.0, elong=elong)
+
+            tmask = tmask & liver
+            if tmask.sum() == 0:
+                continue
+
+            # Per-tumor contrast: TNR range 2–8 based on Tc-99m MAA hepatic arterial
+            # scintigraphy (Ho et al. 1997, J Nucl Med: median 3.4, range 1.5–12)
+            contrast = rng.uniform(cfg.tumor_contrast_min, cfg.tumor_contrast_max)
             base_val = activity[tmask].mean() if activity[tmask].sum() > 0 else 1.0
             activity[tmask] = base_val * contrast
+
+            tumor_masks.append(tmask)
+            tumor_diameters_mm.append(float(radius_mm * 2))
+            tumor_modes_used.append(mode)
 
         # PSF is handled by SIMIND internally (collimator/detector model).
         # Do NOT blur here — SIMIND source input must be the clean activity map.
@@ -547,7 +554,7 @@ class PhantomGenerator:
             left_mask=left_mask,
             right_mask=right_mask,
             tumor_masks=tumor_masks,
-            tumor_radii_mm=tumor_radii_mm,
+            tumor_diameters_mm=tumor_diameters_mm,
             tumor_modes_used=tumor_modes_used,
             perfusion_mode=perfusion_mode,
             total_counts_actual=total_counts_actual,
