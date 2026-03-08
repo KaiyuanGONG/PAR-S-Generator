@@ -30,6 +30,7 @@
 - **21** (Lower window threshold) = **126.0** (直接在这里设置主窗下限 )
 - **22** (Energy resolution) = **6.3**
 - ==**23** (Intrinsic resolution) = **0**==
+- ==**25** (Source Activity) = **0**== (改成1704就可以 表示60MBq和28.4s， 因为根据手册上，这个活度是和每投影照射时间一起算的)
 - **28** (Pixel size simulated image) = **0.442** 
 
 #### 3. SPECT 与 体模参数 (Index 29-45)
