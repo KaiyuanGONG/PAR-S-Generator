@@ -1,143 +1,369 @@
-"""
-Bilingual support for PAR-S Generator  (English / Chinese).
-
-Usage:
-    from ui.i18n import tr, init_language
-
-    # At app startup (before any window is created):
-    init_language()
-
-    # In widget constructors:
-    self.setWindowTitle(tr("Settings"))
-
-Language change requires a restart to take effect.
+﻿"""
+UI localization helpers for PAR-S Generator.
 """
 
 from __future__ import annotations
-from PyQt6.QtCore import QSettings
 
-_LANG: str = "en"
+from PyQt6.QtCore import QObject, pyqtSignal
 
-# Key = English string.  Value = {"zh": "Chinese translation"}.
-# Only strings that differ between languages need entries.
+from ui.settings_store import SettingsStore
+
+
+class LanguageManager(QObject):
+    language_changed = pyqtSignal(str)
+
+    def __init__(self):
+        super().__init__()
+        self._language = "en"
+
+    @property
+    def language(self) -> str:
+        return self._language
+
+    def set_language(self, lang: str, emit: bool = True) -> None:
+        if lang not in {"en", "zh", "fr"}:
+            lang = "en"
+        changed = lang != self._language
+        self._language = lang
+        if emit and changed:
+            self.language_changed.emit(lang)
+
+
+_MANAGER = LanguageManager()
+
+
 _STRINGS: dict[str, dict[str, str]] = {
-    # ── Navigation ──────────────────────────────────────────────────
-    "Phantom":    {"zh": "体模"},
-    "Simulation": {"zh": "仿真"},
-    "Results":    {"zh": "结果"},
-    "Settings":   {"zh": "设置"},
-    "WORKFLOW":   {"zh": "工作流"},
+    "Settings": {"zh": "设置", "fr": "Parametres"},
+    "About": {"zh": "关于", "fr": "A propos"},
+    "WORKFLOW": {"zh": "工作流", "fr": "Flux"},
+    "Workflow": {"zh": "工作流", "fr": "Flux"},
+    "Generate": {"zh": "生成", "fr": "Generation"},
+    "Simulate": {"zh": "仿真", "fr": "Simulation"},
+    "Preview": {"zh": "预览", "fr": "Apercu"},
+    "Batch Monitor": {"zh": "批量监控", "fr": "Suivi lot"},
+    "Settings file": {"zh": "设置文件", "fr": "Fichier de config"},
+    "Open Settings": {"zh": "打开设置", "fr": "Ouvrir parametres"},
+    "Open About": {"zh": "打开关于", "fr": "Ouvrir a propos"},
+    "Theme": {"zh": "主题", "fr": "Theme"},
+    "Language": {"zh": "语言", "fr": "Langue"},
+    "Theme:": {"zh": "主题:", "fr": "Theme :"},
+    "Language:": {"zh": "语言:", "fr": "Langue :"},
+    "Dark": {"zh": "深色", "fr": "Sombre"},
+    "Light": {"zh": "浅色", "fr": "Clair"},
+    "Ready": {"zh": "就绪", "fr": "Pret"},
+    "Close": {"zh": "关闭", "fr": "Fermer"},
+    "Saved": {"zh": "已保存", "fr": "Sauve"},
+    "Reset": {"zh": "已重置", "fr": "Reinitialise"},
+    "Error": {"zh": "错误", "fr": "Erreur"},
+    "Done": {"zh": "完成", "fr": "Termine"},
+    "Browse": {"zh": "浏览", "fr": "Parcourir"},
+    "Browse...": {"zh": "浏览...", "fr": "Parcourir..."},
+    "Select File": {"zh": "选择文件", "fr": "Choisir fichier"},
+    "Select Directory": {"zh": "选择目录", "fr": "Choisir dossier"},
+    "Save File": {"zh": "保存文件", "fr": "Enregistrer fichier"},
+    "Save Configuration": {"zh": "保存配置", "fr": "Enregistrer configuration"},
+    "Load Configuration": {"zh": "加载配置", "fr": "Charger configuration"},
+    "Load Summary": {"zh": "加载摘要", "fr": "Charger resume"},
+    "Load Batch Summary": {"zh": "加载批量摘要", "fr": "Charger resume de lot"},
+    "Load Existing Summary": {"zh": "加载已有摘要", "fr": "Charger resume existant"},
+    "Save Settings": {"zh": "保存设置", "fr": "Enregistrer"},
+    "Reset to Defaults": {"zh": "恢复默认", "fr": "Reinitialiser"},
+    "Settings saved successfully.": {"zh": "设置已成功保存。", "fr": "Parametres enregistres."},
+    "Settings reset to defaults.": {"zh": "设置已恢复默认。", "fr": "Parametres reinitialises."},
+    "Errors:": {"zh": "错误:", "fr": "Erreurs :"},
+    "Warnings:": {"zh": "警告:", "fr": "Avertissements :"},
+    "Min tumors cannot be greater than Max tumors.": {"zh": "最少肿瘤数不能大于最多肿瘤数。", "fr": "Le minimum de tumeurs ne peut pas depasser le maximum."},
+    "Contrast min cannot be greater than Contrast max.": {"zh": "最低对比度不能大于最高对比度。", "fr": "Le contraste minimum ne peut pas depasser le contraste maximum."},
+    "Number of cases must be at least 1.": {"zh": "案例数量至少为 1。", "fr": "Le nombre de cas doit etre au moins 1."},
+    "Output directory is required.": {"zh": "必须填写输出目录。", "fr": "Le dossier de sortie est requis."},
+    "Only cubic volumes are supported by the current workflow.": {"zh": "当前工作流只支持立方体体积。", "fr": "Le flux actuel ne prend en charge que des volumes cubiques."},
+    "Bundled GE 870 CZT workflow assumes 128 x 128 x 128 voxels at 4.42 mm. Custom matrix or voxel size requires a matching .smc configuration.": {"zh": "内置 GE 870 CZT 工作流默认使用 128 x 128 x 128 和 4.42 mm。若自定义矩阵或体素尺寸，必须使用匹配的 .smc 配置。", "fr": "Le flux GE 870 CZT integre suppose 128 x 128 x 128 voxels a 4.42 mm. Une matrice ou un voxel personnalise exige un fichier .smc compatible."},
+    "Global seed must be non-negative.": {"zh": "全局种子必须为非负数。", "fr": "La graine globale doit etre positive ou nulle."},
+    "npz directory is required.": {"zh": "必须填写 npz 目录。", "fr": "Le dossier npz est requis."},
+    "npz directory does not contain any case_*.npz files.": {"zh": "npz 目录中没有 case_*.npz 文件。", "fr": "Le dossier npz ne contient aucun fichier case_*.npz."},
+    "Binary output directory is required.": {"zh": "必须填写二进制输出目录。", "fr": "Le dossier de sortie binaire est requis."},
+    "Binary output directory does not exist.": {"zh": "二进制输出目录不存在。", "fr": "Le dossier de sortie binaire n'existe pas."},
+    "Binary output directory does not contain any case_*_act_av.bin files.": {"zh": "二进制输出目录中没有 case_*_act_av.bin 文件。", "fr": "Le dossier de sortie binaire ne contient aucun fichier case_*_act_av.bin."},
+    "simind.exe path is required.": {"zh": "必须填写 simind.exe 路径。", "fr": "Le chemin vers simind.exe est requis."},
+    "simind.exe path does not exist.": {"zh": "simind.exe 路径不存在。", "fr": "Le chemin simind.exe n'existe pas."},
+    ".smc config file is required.": {"zh": "必须填写 .smc 配置文件。", "fr": "Le fichier de configuration .smc est requis."},
+    ".smc config file does not exist.": {"zh": ".smc 配置文件不存在。", "fr": "Le fichier de configuration .smc n'existe pas."},
+    "SIMIND output directory is required.": {"zh": "必须填写 SIMIND 输出目录。", "fr": "Le dossier de sortie SIMIND est requis."},
+    "Bundled ge870_czt.smc only supports 128 x 128 x 128 phantom volumes.": {"zh": "内置 ge870_czt.smc 只支持 128 x 128 x 128 的体模体积。", "fr": "Le fichier ge870_czt.smc integre ne prend en charge que des volumes fantomes 128 x 128 x 128."},
+    "Bundled ge870_czt.smc only supports 4.42 mm voxel size.": {"zh": "内置 ge870_czt.smc 只支持 4.42 mm 体素尺寸。", "fr": "Le fichier ge870_czt.smc integre ne prend en charge qu'une taille de voxel de 4.42 mm."},
+    "{label} must stay within {hard_min:g} to {hard_max:g}.": {"zh": "{label} 必须保持在 {hard_min:g} 到 {hard_max:g} 之间。", "fr": "{label} doit rester entre {hard_min:g} et {hard_max:g}."},
+    "{label} is outside the recommended range {recommended_min:g} to {recommended_max:g}.": {"zh": "{label} 超出了推荐范围 {recommended_min:g} 到 {recommended_max:g}。", "fr": "{label} est hors de la plage recommandee {recommended_min:g} a {recommended_max:g}."},
 
-    # ── Phantom page ────────────────────────────────────────────────
-    "Phantom Configuration":    {"zh": "体模配置"},
-    "Preview":                  {"zh": "预览"},
-    "No phantom generated yet": {"zh": "尚未生成体模"},
-    "⬡  Preview Single Case":  {"zh": "⬡  预览单个案例"},
-    "▶  Start Batch":          {"zh": "▶  开始批量生成"},
-    "Generating...":            {"zh": "生成中..."},
-    "Save Config":              {"zh": "保存配置"},
-    "Load Config":              {"zh": "加载配置"},
-    "VOLUME":                   {"zh": "体积"},
-    "LIVER GEOMETRY":           {"zh": "肝脏几何"},
-    "TUMORS":                   {"zh": "肿瘤"},
-    "ACTIVITY":                 {"zh": "活度"},
-    "BATCH GENERATION":         {"zh": "批量生成"},
-    "Matrix (NxNxN)":           {"zh": "矩阵 (NxNxN)"},
-    "Voxel size (mm)":          {"zh": "体素尺寸 (mm)"},
-    "Scale jitter":             {"zh": "尺度抖动"},
-    "Rotation jitter (°)":      {"zh": "旋转抖动 (°)"},
-    "Global shift range":       {"zh": "全局偏移范围"},
-    "Target left ratio":        {"zh": "目标左叶比例"},
-    "Smoothing \u03c3 (px)":    {"zh": "平滑 \u03c3 (像素)"},
-    "Min tumors":               {"zh": "最少肿瘤数"},
-    "Max tumors":               {"zh": "最多肿瘤数"},
-    "Contrast min (T/L)":       {"zh": "最低对比度 (T/L)"},
-    "Contrast max (T/L)":       {"zh": "最高对比度 (T/L)"},
-    "Total counts (\xd710\u2074)": {"zh": "总计数 (\xd710\u2074)"},
-    "PSF \u03c3 (px)":          {"zh": "PSF \u03c3 (像素)"},
-    "Residual BG":              {"zh": "残余本底"},
-    "Number of cases":          {"zh": "案例数量"},
-    "Global seed":              {"zh": "全局随机种子"},
-    "Use fixed seed":           {"zh": "使用固定种子"},
-    "Output directory":         {"zh": "输出目录"},
-    "Browse...":                {"zh": "浏览..."},
-    "Liver Vol.":               {"zh": "肝脏体积"},
-    "Left Ratio":               {"zh": "左叶比例"},
-    "Tumors":                   {"zh": "肿瘤数"},
-    "Total Counts":             {"zh": "总计数"},
-    "Gen. Time":                {"zh": "生成时间"},
+    "No phantom generated yet": {"zh": "尚未生成体模", "fr": "Aucun fantome genere"},
+    "Generate subtitle": {"zh": "先调一个体模完成验证，再用同一组参数启动可复现批量。", "fr": "Reglez un fantome, validez, puis lancez le lot reproductible."},
+    "Tune one phantom, validate the workflow, then launch the reproducible batch in the second tab.": {"zh": "先调一个体模完成验证，再在第二个标签中启动可复现批量。", "fr": "Reglez un fantome, validez, puis lancez le lot reproductible dans le second onglet."},
+    "VOLUME": {"zh": "体积", "fr": "Volume"},
+    "LIVER GEOMETRY": {"zh": "肝脏几何", "fr": "Geometrie hepatique"},
+    "TUMORS": {"zh": "肿瘤", "fr": "Tumeurs"},
+    "ACTIVITY": {"zh": "活度", "fr": "Activite"},
+    "BATCH GENERATION": {"zh": "批量生成", "fr": "Generation lot"},
+    "Preset": {"zh": "预设", "fr": "Preset"},
+    "Advanced": {"zh": "高级", "fr": "Avance"},
+    "Enable advanced range override": {"zh": "启用高级范围覆盖", "fr": "Activer le mode de plage avancee"},
+    "Matrix (NxNxN)": {"zh": "矩阵 (NxNxN)", "fr": "Matrice (NxNxN)"},
+    "Voxel size (mm)": {"zh": "体素尺寸 (mm)", "fr": "Taille voxel (mm)"},
+    "Scale jitter": {"zh": "尺度抖动", "fr": "Variation echelle"},
+    "Rotation jitter (°)": {"zh": "旋转抖动 (°)", "fr": "Variation rotation (°)"},
+    "Global shift range": {"zh": "全局偏移范围", "fr": "Plage decalage global"},
+    "Target left ratio": {"zh": "目标左叶比例", "fr": "Ratio lobe gauche cible"},
+    "Smoothing σ (px)": {"zh": "平滑 σ (像素)", "fr": "Lissage σ (px)"},
+    "Min tumors": {"zh": "最少肿瘤数", "fr": "Tumeurs min"},
+    "Max tumors": {"zh": "最多肿瘤数", "fr": "Tumeurs max"},
+    "Exact preview tumors": {"zh": "预览精确肿瘤数", "fr": "Tumeurs exactes apercu"},
+    "Use exact count": {"zh": "使用精确数量", "fr": "Utiliser nombre exact"},
+    "Contrast min (T/L)": {"zh": "最低对比度 (T/L)", "fr": "Contraste min (T/F)"},
+    "Contrast max (T/L)": {"zh": "最高对比度 (T/L)", "fr": "Contraste max (T/F)"},
+    "Tumor style": {"zh": "肿瘤样式", "fr": "Style tumeur"},
+    "Tumor count": {"zh": "肿瘤数", "fr": "Nombre de tumeurs"},
+    "Tumor contrast (T/L)": {"zh": "肿瘤对比度 (T/L)", "fr": "Contraste tumoral (T/F)"},
+    "Perfusion mode": {"zh": "灌注模式", "fr": "Mode perfusion"},
+    "Total counts (×10⁴)": {"zh": "总计数 (×10⁴)", "fr": "Comptes totaux (×10^4)"},
+    "Residual BG": {"zh": "残余本底", "fr": "Fond residuel"},
+    "Number of cases": {"zh": "案例数量", "fr": "Nombre de cas"},
+    "Global seed": {"zh": "全局随机种子", "fr": "Graine globale"},
+    "Use fixed seed": {"zh": "使用固定种子", "fr": "Utiliser graine fixe"},
+    "Output directory": {"zh": "输出目录", "fr": "Dossier sortie"},
+    "Generating...": {"zh": "生成中...", "fr": "Generation..."},
+    "Save Config": {"zh": "保存配置", "fr": "Enregistrer config"},
+    "Load Config": {"zh": "加载配置", "fr": "Charger config"},
+    "⬡  Preview Single Case": {"zh": "⬡  预览单个案例", "fr": "⬡  Apercu unitaire"},
+    "▶  Start Batch": {"zh": "▶  开始批量生成", "fr": "▶  Lancer le lot"},
+    "Tumor diameters stay in physical millimeters even when matrix or voxel size changes.": {"zh": "即使矩阵或体素尺寸改变，肿瘤直径仍按物理毫米定义。", "fr": "Le diametre tumoral reste defini en millimetres physiques meme si la matrice ou le voxel change."},
+    "Tumor size bins: 10–20 mm, 20–40 mm, 40–60 mm.": {"zh": "肿瘤尺寸分箱：10–20 mm、20–40 mm、40–60 mm。", "fr": "Classes de taille : 10–20 mm, 20–40 mm, 40–60 mm."},
+    "PSF blur remains a SIMIND responsibility. The Python preview keeps a clean activity map.": {"zh": "PSF 模糊仍由 SIMIND 负责，Python 预览保持干净活度图。", "fr": "Le flou PSF reste gere par SIMIND ; l'aperçu Python garde une carte d'activite propre."},
+    "Preview uses case_id=0. Batch uses case_id=1..N. With fixed seed enabled, each case uses global_seed + case_id, so preview does not consume the batch sequence.": {"zh": "预览使用 case_id=0；批量使用 case_id=1..N；若启用固定种子，每个案例使用 global_seed + case_id，因此预览不会消耗批量序列。", "fr": "L'apercu utilise case_id=0 ; le lot utilise case_id=1..N ; avec une graine fixe, chaque cas utilise global_seed + case_id, donc l'apercu ne consomme pas la sequence du lot."},
+    "Validation blocked.": {"zh": "校验已阻断。", "fr": "Validation bloquee."},
+    "Compatibility warning.": {"zh": "兼容性警告。", "fr": "Avertissement de compatibilite."},
+    "Ready. Current phantom configuration is valid for preview and batch generation.": {"zh": "就绪：当前体模配置可用于预览和批量生成。", "fr": "La configuration actuelle est valide pour l'apercu et le lot."},
+    "Preview blocked": {"zh": "预览已阻断", "fr": "Apercu bloque"},
+    "Batch start blocked": {"zh": "批量启动已阻断", "fr": "Demarrage lot bloque"},
+    "Generation Error": {"zh": "生成错误", "fr": "Erreur generation"},
+    "Failed to generate phantom:": {"zh": "体模生成失败：", "fr": "Echec generation fantome :"},
+    "Load Error": {"zh": "加载错误", "fr": "Erreur chargement"},
+    "Liver Vol.": {"zh": "肝脏体积", "fr": "Vol. foie"},
+    "Left Ratio": {"zh": "左叶比例", "fr": "Ratio gauche"},
+    "Tumors": {"zh": "肿瘤数", "fr": "Tumeurs"},
+    "Total Counts": {"zh": "总计数", "fr": "Comptes totaux"},
+    "Gen. Time": {"zh": "生成时间", "fr": "Temps gen."},
 
-    # ── Simulation page ─────────────────────────────────────────────
-    "Simulation Pipeline":      {"zh": "仿真流程"},
-    "STEP 1 \u2014 FORMAT CONVERSION (npz \u2192 .bin)":
-                                {"zh": "步骤1 \u2014 格式转换 (npz \u2192 .bin)"},
-    "STEP 2 \u2014 SIMIND CONFIGURATION":
-                                {"zh": "步骤2 \u2014 SIMIND 配置"},
-    "STEP 3 \u2014 GENERATE & RUN":
-                                {"zh": "步骤3 \u2014 生成 & 运行"},
-    "Console":                  {"zh": "控制台"},
-    "SIMIND Preview":           {"zh": "SIMIND 预览"},
-    "Convert All Cases":        {"zh": "转换所有案例"},
-    "Generate .bat Script":     {"zh": "生成 .bat 脚本"},
-    "\u25b6  Run SIMIND Now":   {"zh": "\u25b6  立即运行 SIMIND"},
-    "\u25a0  Stop":             {"zh": "\u25a0  停止"},
+    "Channel:": {"zh": "通道：", "fr": "Canal :"},
+    "Overlay:": {"zh": "叠加：", "fr": "Surimpression :"},
+    "Activity Map": {"zh": "活度图", "fr": "Carte activite"},
+    "mu-map (Attenuation)": {"zh": "mu 图 (衰减)", "fr": "mu-map (attenuation)"},
+    "Liver + Tumors": {"zh": "肝脏 + 肿瘤", "fr": "Foie + tumeurs"},
+    "Liver": {"zh": "肝脏", "fr": "Foie"},
+    "Tumors Only": {"zh": "仅肿瘤", "fr": "Tumeurs seules"},
+    "Liver Only": {"zh": "仅肝脏", "fr": "Foie seul"},
+    "Contours": {"zh": "轮廓", "fr": "Contours"},
+    "No Overlay": {"zh": "无叠加", "fr": "Sans surimpression"},
+    "Multi-Plane": {"zh": "多平面", "fr": "Multi-plans"},
+    "3D Surface": {"zh": "3D 曲面", "fr": "Surface 3D"},
+    "Show:": {"zh": "显示：", "fr": "Afficher :"},
+    "Install scikit-image for 3D view": {"zh": "安装 scikit-image 以启用 3D 视图", "fr": "Installez scikit-image pour la vue 3D"},
+    "3D Phantom": {"zh": "3D 体模", "fr": "Fantome 3D"},
+    "Preview Metrics": {"zh": "预览指标", "fr": "Metriques apercu"},
+    "Configure output matrix and voxel size for spatial sampling.": {"zh": "设置输出矩阵与体素尺寸，决定空间采样。", "fr": "Configurez la matrice et la taille de voxel pour l'echantillonnage spatial."},
+    "Adjust global liver geometry randomness and lobe proportion.": {"zh": "调整肝脏几何随机性与左右叶比例。", "fr": "Ajustez la variabilite geometrique du foie et la proportion des lobes."},
+    "Set tumor count/contrast and morphology policy for generation.": {"zh": "设置肿瘤数量/对比度与形态策略。", "fr": "Definissez le nombre/contraste tumoral et la politique de morphologie."},
+    "Control total counts, residual background, and perfusion strategy.": {"zh": "控制总计数、残余本底与灌注策略。", "fr": "Controlez les comptes totaux, le fond residuel et la strategie de perfusion."},
+    "Geometry": {"zh": "几何", "fr": "Geometrie"},
 
-    # ── Results page ─────────────────────────────────────────────────
-    "Batch Generation & Results": {"zh": "批量生成与结果"},
-    "Load Existing Summary":    {"zh": "加载已有摘要"},
-    "\u25b6  Start Batch Generation": {"zh": "\u25b6  开始批量生成"},
-    "Statistics Charts":        {"zh": "统计图表"},
-    "Case Table":               {"zh": "案例表格"},
-    "Log":                      {"zh": "日志"},
-    "SIMIND Output":            {"zh": "SIMIND 输出"},
+    "SIMIND CONFIGURATION": {"zh": "SIMIND 配置", "fr": "Configuration SIMIND"},
+    "DEFAULT PATHS": {"zh": "默认路径", "fr": "Chemins par defaut"},
+    "APPEARANCE": {"zh": "外观", "fr": "Apparence"},
+    "ABOUT": {"zh": "关于", "fr": "A propos"},
+    "Auto-save config on batch start": {"zh": "批量开始时自动保存配置", "fr": "Auto-sauver au demarrage du lot"},
+    "PAR-S Generator is a research-facing liver SPECT phantom workflow that now groups preview and batch monitoring under Generate, and keeps the .a00 viewer inside Simulate.": {"zh": "PAR-S Generator 是一个面向科研的肝脏 SPECT 体模工作流：预览和批量监控集中在生成模块，.a00 查看器保留在仿真模块。", "fr": "PAR-S Generator est un flux de travail de fantome hepatique SPECT oriente recherche : l'apercu et le suivi lot sont regroupes dans Generation et le viewer .a00 reste dans Simulation."},
 
-    # ── Settings page ────────────────────────────────────────────────
-    "SIMIND CONFIGURATION":     {"zh": "SIMIND 配置"},
-    "DEFAULT PATHS":            {"zh": "默认路径"},
-    "PERFORMANCE":              {"zh": "性能"},
-    "APPEARANCE":               {"zh": "外观"},
-    "ABOUT":                    {"zh": "关于"},
-    "Batch threads:":           {"zh": "批量线程数:"},
-    "Auto-save config on batch start": {"zh": "批量开始时自动保存配置"},
-    "Theme:":                   {"zh": "主题:"},
-    "Dark":                     {"zh": "深色"},
-    "Light":                    {"zh": "浅色"},
-    "Language:":                {"zh": "语言:"},
-    "Save Settings":            {"zh": "保存设置"},
-    "Reset to Defaults":        {"zh": "恢复默认"},
-    "Settings saved successfully.": {"zh": "设置已成功保存。"},
-    "Settings reset to defaults.":  {"zh": "设置已恢复默认。"},
-    "Language change will apply on next restart.":
-                                {"zh": "语言更改将在下次重启后生效。"},
-    "Browse":                   {"zh": "浏览"},
-    "Saved":                    {"zh": "已保存"},
-    "Reset":                    {"zh": "已重置"},
+    "Step 1: Raw Binary Export": {"zh": "步骤1：原始二进制导出", "fr": "Etape 1 : Export binaire brut"},
+    "Step 2: SIMIND Configuration": {"zh": "步骤2：SIMIND 配置", "fr": "Etape 2 : Configuration SIMIND"},
+    "Step 3: Script or Run": {"zh": "步骤3：脚本或运行", "fr": "Etape 3 : Script ou execution"},
+    "Step 4: Visual Check": {"zh": "步骤4：可视化确认", "fr": "Etape 4 : Verification visuelle"},
+    "Phantom source": {"zh": "体模来源", "fr": "Source fantome"},
+    "Save .bat to:": {"zh": "保存 .bat 到：", "fr": "Sauver le .bat vers :"},
+    "Photon histories remain controlled by the selected .smc file, not by a fake UI slider.": {"zh": "光子历史数仍由所选 .smc 文件控制，而不是假的 UI 滑块。", "fr": "Les historiques de photons restent controles par le fichier .smc selectionne, pas par un faux curseur UI."},
+    "Use the .bat script when you want to inspect or run SIMIND outside the application.": {"zh": "如果你想在软件外检查或运行 SIMIND，请使用 .bat 脚本。", "fr": "Utilisez le script .bat si vous voulez inspecter ou executer SIMIND hors de l'application."},
+    "After a successful run, the first .a00 file will be loaded automatically into SPECT Preview for a quick visual check.": {"zh": "运行成功后，首个 .a00 文件会自动载入 SPECT 预览用于快速检查。", "fr": "Apres une execution reussie, le premier fichier .a00 sera charge automatiquement dans l'apercu SPECT pour un controle visuel rapide."},
+    "Console": {"zh": "控制台", "fr": "Console"},
+    "SPECT Preview": {"zh": "SPECT 预览", "fr": "Apercu SPECT"},
+    "Convert All Cases": {"zh": "转换所有案例", "fr": "Convertir tous les cas"},
+    "Generate .bat Script": {"zh": "生成 .bat 脚本", "fr": "Generer script .bat"},
+    "▶  Run SIMIND Now": {"zh": "▶  立即运行 SIMIND", "fr": "▶  Lancer SIMIND"},
+    "■  Stop": {"zh": "■  停止", "fr": "■  Arreter"},
+    "Ready. Simulation inputs and bundled compatibility checks passed.": {"zh": "仿真输入和内置兼容性检查已通过。", "fr": "Les entrees de simulation et les verifications de compatibilite sont valides."},
+    "No case_*.npz files found in this directory": {"zh": "此目录下未找到 case_*.npz 文件", "fr": "Aucun fichier case_*.npz trouve dans ce dossier"},
+    "Missing Input": {"zh": "缺少输入", "fr": "Entree manquante"},
+    "Please specify npz and binary output directories.": {"zh": "请指定 npz 和二进制输出目录。", "fr": "Veuillez specifier les dossiers npz et de sortie binaire."},
+    "npz directory does not exist.": {"zh": "npz 目录不存在。", "fr": "Le dossier npz n'existe pas."},
+    "No case_*.npz files found in the selected directory.": {"zh": "所选目录中未找到 case_*.npz 文件。", "fr": "Aucun fichier case_*.npz dans le dossier selectionne."},
+    "SIMIND blocked": {"zh": "SIMIND 已阻断", "fr": "SIMIND bloque"},
+    "Converting...": {"zh": "转换中...", "fr": "Conversion..."},
+    "Conversion Error": {"zh": "转换错误", "fr": "Erreur conversion"},
+    "SIMIND is running...": {"zh": "SIMIND 运行中...", "fr": "SIMIND en cours..."},
+
+    "Load .a00 File": {"zh": "加载 .a00 文件", "fr": "Charger fichier .a00"},
+    "No file loaded — click to open a SIMIND .a00 projection file": {"zh": "尚未加载文件，点击打开 SIMIND .a00 投影文件", "fr": "Aucun fichier charge - cliquez pour ouvrir un fichier de projection SIMIND .a00"},
+    "Projection View  (one angle)": {"zh": "投影视图（单角度）", "fr": "Vue projection (un angle)"},
+    "Sinogram  (all angles, one detector row)": {"zh": "正弦图（全部角度，单探测器行）", "fr": "Sinogramme (tous angles, une rangee)"},
+    "Tip: Sinogram shows all angles for a single detector row. A point source produces a sine curve; uniform liver activity produces a broad band.": {"zh": "提示：正弦图显示单个探测器行在所有角度上的响应。点源会形成正弦曲线，均匀肝脏活度会形成宽带。", "fr": "Astuce : le sinogramme montre tous les angles pour une seule rangee detecteur. Une source ponctuelle produit une courbe sinusoidale ; une activite hepatique uniforme produit une large bande."},
+    "Proj: —  |  Angle: —": {"zh": "投影：—  |  角度：—", "fr": "Proj : —  |  Angle : —"},
+    "Row: —": {"zh": "行：—", "fr": "Rangee : —"},
+    "Load SIMIND Projection": {"zh": "加载 SIMIND 投影", "fr": "Charger projection SIMIND"},
+    "Failed to load .a00 file:": {"zh": "加载 .a00 文件失败：", "fr": "Echec de chargement du fichier .a00 :"},
+
+    "Statistics Charts": {"zh": "统计图表", "fr": "Graphiques"},
+    "Case Table": {"zh": "案例表格", "fr": "Table des cas"},
+    "Log": {"zh": "日志", "fr": "Journal"},
+    "Liver Volume": {"zh": "肝脏体积", "fr": "Volume du foie"},
+    "Volume (mL)": {"zh": "体积 (mL)", "fr": "Volume (mL)"},
+    "Left Lobe Ratio": {"zh": "左叶比例", "fr": "Ratio lobe gauche"},
+    "Ratio (%)": {"zh": "比例 (%)", "fr": "Ratio (%)"},
+    "Tumor Count per Case": {"zh": "每例肿瘤数", "fr": "Nombre de tumeurs par cas"},
+    "Number of Tumors": {"zh": "肿瘤数量", "fr": "Nombre de tumeurs"},
+    "Tumor Diameter": {"zh": "肿瘤直径", "fr": "Diametre tumoral"},
+    "Diameter (mm)": {"zh": "直径 (mm)", "fr": "Diametre (mm)"},
+    "Perfusion Mode": {"zh": "灌注模式", "fr": "Mode de perfusion"},
+    "Mode": {"zh": "模式", "fr": "Mode"},
+    "Generation Time": {"zh": "生成时间", "fr": "Temps generation"},
+    "Case Index": {"zh": "案例索引", "fr": "Indice cas"},
+    "Time (s)": {"zh": "时间 (s)", "fr": "Temps (s)"},
+    "Completed": {"zh": "已完成", "fr": "Termines"},
+    "Liver Vol. Mean": {"zh": "平均肝体积", "fr": "Moyenne vol. foie"},
+    "Left Ratio Mean": {"zh": "平均左叶比例", "fr": "Moyenne ratio gauche"},
+    "Avg Tumors/Case": {"zh": "平均肿瘤数/例", "fr": "Moyenne tumeurs/cas"},
+    "Total Tumors": {"zh": "总肿瘤数", "fr": "Total tumeurs"},
+    "Avg Gen. Time": {"zh": "平均生成时间", "fr": "Temps gen. moyen"},
+    "ETA: —": {"zh": "预计剩余：—", "fr": "ETA : —"},
+    "Elapsed: —": {"zh": "已耗时：—", "fr": "Ecoule : —"},
+    "Case ID": {"zh": "案例 ID", "fr": "ID cas"},
+    "Seed": {"zh": "种子", "fr": "Graine"},
+    "Liver Vol (mL)": {"zh": "肝体积 (mL)", "fr": "Vol. foie (mL)"},
+    "N Tumors": {"zh": "肿瘤数", "fr": "Nb tumeurs"},
+    "Tumor Diameters (mm)": {"zh": "肿瘤直径 (mm)", "fr": "Diametres tumeurs (mm)"},
+    "Perfusion": {"zh": "灌注", "fr": "Perfusion"},
+    "Counts": {"zh": "计数", "fr": "Comptes"},
+    "Batch blocked": {"zh": "批量已阻断", "fr": "Lot bloque"},
+    "mm": {"zh": "mm", "fr": "mm"},
+    "mL": {"zh": "mL", "fr": "mL"},
+    "Random": {"zh": "随机", "fr": "Aleatoire"},
+    "Ellipsoid": {"zh": "椭球", "fr": "Ellipsoide"},
+    "Spiculated": {"zh": "毛刺球", "fr": "Spicule"},
+    "Whole Liver": {"zh": "全肝", "fr": "Foie entier"},
+    "Tumor Only": {"zh": "仅肿瘤", "fr": "Tumeur seule"},
+    "Left Only": {"zh": "仅左叶", "fr": "Lobe gauche seul"},
+    "Right Only": {"zh": "仅右叶", "fr": "Lobe droit seul"},
+    "Axial (Z)": {"zh": "轴向 (Z)", "fr": "Axial (Z)"},
+    "Coronal (Y)": {"zh": "冠状 (Y)", "fr": "Coronal (Y)"},
+    "Sagittal (X)": {"zh": "矢状 (X)", "fr": "Sagittal (X)"},
+    "Slice: {current} / {total}": {"zh": "切片：{current} / {total}", "fr": "Coupe : {current} / {total}"},
+    "Common geometry pairs that preserve the usual abdominal coverage.": {"zh": "常用几何组合，尽量保持常见腹部覆盖范围。", "fr": "Paires geometriques usuelles qui conservent la couverture abdominale standard."},
+    "Volume matrix size. Larger matrices give finer sampling but need more compute.": {"zh": "体积矩阵大小。矩阵越大采样越细，但计算更重。", "fr": "Taille de la matrice volumique. Une matrice plus grande donne un echantillonnage plus fin mais demande plus de calcul."},
+    "Physical voxel edge length in millimeters. Tumor size remains defined in millimeters.": {"zh": "体素物理边长，单位毫米。肿瘤尺寸始终按毫米定义。", "fr": "Longueur physique d'un voxel en millimetres. La taille tumorale reste definie en millimetres."},
+    "Random overall liver size variation around the base geometry.": {"zh": "围绕基础几何的整体肝脏尺寸随机变化。", "fr": "Variation aleatoire globale de la taille du foie autour de la geometrie de base."},
+    "Random liver rotation amplitude in degrees.": {"zh": "肝脏随机旋转幅度，单位度。", "fr": "Amplitude de rotation aleatoire du foie en degres."},
+    "Random whole-liver position shift around the reference center.": {"zh": "围绕参考中心的整体肝脏随机位移范围。", "fr": "Decalage aleatoire global du foie autour du centre de reference."},
+    "Desired proportion of liver volume in the left lobe.": {"zh": "目标左叶体积占比。", "fr": "Proportion souhaitee du volume hepatique dans le lobe gauche."},
+    "Surface smoothing applied to the liver mask after geometry composition.": {"zh": "肝脏几何合成后施加到肝脏掩膜上的表面平滑。", "fr": "Lissage de surface applique au masque du foie apres composition geometrique."},
+    "Number of tumors. Preview can force an exact count; batch still uses min/max.": {"zh": "肿瘤数量。预览可强制精确数量；批量仍使用最小/最大范围。", "fr": "Nombre de tumeurs. L'apercu peut imposer un nombre exact ; le lot utilise toujours min/max."},
+    "Tumor-to-liver activity ratio.": {"zh": "肿瘤与肝脏的活度比。", "fr": "Rapport d'activite tumeur/foie."},
+    "Total activity normalisation target for the source map (used by SIMIND as probability density).": {"zh": "源活度图的归一化目标计数（SIMIND 将其作为概率密度使用）。", "fr": "Cible de normalisation de la carte source (utilisee par SIMIND comme densite de probabilite)."},
+    "Residual activity in non-dominant perfusion regions.": {"zh": "非主灌注区域中的残余活度。", "fr": "Activite residuelle dans les regions de perfusion non dominantes."},
+    "Force the preview to use an exact tumor count instead of the batch min/max range.": {"zh": "强制预览使用精确肿瘤数，而不是批量的最小/最大范围。", "fr": "Force l'apercu a utiliser un nombre exact de tumeurs au lieu de la plage min/max du lot."},
+    "Choose a fixed tumor morphology for the whole batch or leave it random.": {"zh": "为整个批量选择固定肿瘤形态，或保持随机。", "fr": "Choisissez une morphologie tumorale fixe pour tout le lot ou laissez aleatoire."},
+    "Choose which liver region stays active; random uses the algorithm probabilities.": {"zh": "选择哪一块肝区保持活跃；随机模式会使用算法概率。", "fr": "Choisissez la region hepatique qui reste active ; le mode aleatoire utilise les probabilites de l'algorithme."},
+    "simind.exe:": {"zh": "simind.exe:", "fr": "simind.exe :"},
+    "Default .smc:": {"zh": "默认 .smc:", "fr": ".smc par defaut :"},
+    "npz directory:": {"zh": "npz 目录:", "fr": "Dossier npz :"},
+    "Binary output:": {"zh": "二进制输出:", "fr": "Sortie binaire :"},
+    ".smc config:": {"zh": ".smc 配置:", "fr": "Config .smc :"},
+    "Output directory path...": {"zh": "输出目录路径...", "fr": "Chemin du dossier de sortie..."},
+    "Directory containing case_*.npz files": {"zh": "包含 case_*.npz 文件的目录", "fr": "Dossier contenant les fichiers case_*.npz"},
+    "Binary output directory": {"zh": "二进制输出目录", "fr": "Dossier de sortie binaire"},
+    "SIMIND output directory": {"zh": "SIMIND 输出目录", "fr": "Dossier de sortie SIMIND"},
+    "Matrix/Voxel summary": {"zh": "矩阵 {matrix}^3  |  体素 {voxel:.2f} mm  |  输出 {output}", "fr": "Matrice {matrix}^3  |  Voxel {voxel:.2f} mm  |  Sortie {output}"},
+    "Preview ready log": {"zh": "[INFO] 预览就绪：voxel={voxel:.2f} mm, output={output}", "fr": "[INFO] Apercu pret : voxel={voxel:.2f} mm, sortie={output}"},
+    "Found {count} .npz file(s)": {"zh": "找到 {count} 个 .npz 文件", "fr": "{count} fichier(s) .npz trouve(s)"},
+    "[INFO] Starting binary export...": {"zh": "[INFO] 开始导出二进制...", "fr": "[INFO] Debut de l'export binaire..."},
+    "Converting {filename} ({current}/{total})": {"zh": "正在转换 {filename} ({current}/{total})", "fr": "Conversion de {filename} ({current}/{total})"},
+    "  -> {filename}": {"zh": "  -> {filename}", "fr": "  -> {filename}"},
+    "Done: {count} cases converted.": {"zh": "完成：已转换 {count} 个案例。", "fr": "Termine : {count} cas convertis."},
+    "[OK] Binary export complete: {count} cases.": {"zh": "[OK] 二进制导出完成：{count} 个案例。", "fr": "[OK] Export binaire termine : {count} cas."},
+    "[OK] .bat script generated: {path}": {"zh": "[OK] .bat 脚本已生成：{path}", "fr": "[OK] Script .bat genere : {path}"},
+    "Script saved to:\n{path}": {"zh": "脚本已保存到：\n{path}", "fr": "Script enregistre dans :\n{path}"},
+    "[ERROR] Failed to generate .bat: {msg}": {"zh": "[ERROR] 生成 .bat 失败：{msg}", "fr": "[ERROR] Echec de generation du .bat : {msg}"},
+    "[INFO] Launching SIMIND batch: {path}": {"zh": "[INFO] 启动 SIMIND 批处理：{path}", "fr": "[INFO] Lancement du lot SIMIND : {path}"},
+    "SIMIND exited with code {code}.": {"zh": "SIMIND 以退出码 {code} 结束。", "fr": "SIMIND s'est termine avec le code {code}."},
+    "[OK] SIMIND simulation completed successfully.": {"zh": "[OK] SIMIND 仿真已成功完成。", "fr": "[OK] La simulation SIMIND est terminee avec succes."},
+    "[INFO] Auto-loaded first .a00: {name}": {"zh": "[INFO] 已自动加载首个 .a00：{name}", "fr": "[INFO] Premier .a00 charge automatiquement : {name}"},
+    "[ERROR] SIMIND exited with code {code}.": {"zh": "[ERROR] SIMIND 以退出码 {code} 结束。", "fr": "[ERROR] SIMIND s'est termine avec le code {code}."},
+    "[WARN] Process terminated by user.": {"zh": "[WARN] 进程已被用户终止。", "fr": "[WARN] Processus termine par l'utilisateur."},
+    "3D info summary": {"zh": "肝脏：{liver:.0f} mL  |  肿瘤：{tumors}  |  体素：{voxel:.2f} mm", "fr": "Foie : {liver:.0f} mL  |  Tumeurs : {tumors}  |  Voxel : {voxel:.2f} mm"},
+    "Select Output Directory": {"zh": "选择输出目录", "fr": "Choisir le dossier de sortie"},
+    "▶  Start Batch Generation": {"zh": "▶  开始批量生成", "fr": "▶  Lancer la generation lot"},
+    "Loaded summary: {completed}/{total} completed, {failed} failed": {"zh": "已加载摘要：完成 {completed}/{total}，失败 {failed}", "fr": "Resume charge : {completed}/{total} termines, {failed} echecs"},
+    "[INFO] Loaded summary: {path}": {"zh": "[INFO] 已加载摘要：{path}", "fr": "[INFO] Resume charge : {path}"},
+    "Done: {completed}/{total}  |  Failed: {failed}  |  Elapsed: {elapsed:.1f}s": {"zh": "完成：{completed}/{total}  |  失败：{failed}  |  已耗时：{elapsed:.1f}s", "fr": "Termine : {completed}/{total}  |  Echecs : {failed}  |  Ecoule : {elapsed:.1f}s"},
+    "[OK] Batch complete: {completed} cases, {tumors} total tumors, avg {avg:.3f}s/case": {"zh": "[OK] 批量完成：{completed} 个案例，总肿瘤 {tumors}，平均 {avg:.3f}s/例", "fr": "[OK] Lot termine : {completed} cas, {tumors} tumeurs au total, moyenne {avg:.3f}s/cas"},
+    "ETA: {seconds:.0f}s": {"zh": "预计剩余：{seconds:.0f}s", "fr": "ETA : {seconds:.0f}s"},
+    "Elapsed: {seconds:.0f}s": {"zh": "已耗时：{seconds:.0f}s", "fr": "Ecoule : {seconds:.0f}s"},
+    "[WARN] Stop requested...": {"zh": "[WARN] 已请求停止...", "fr": "[WARN] Arret demande..."},
+    "[ERROR] Case {case_id:04d}: {msg}": {"zh": "[ERROR] 案例 {case_id:04d}: {msg}", "fr": "[ERROR] Cas {case_id:04d} : {msg}"},
+    "[INFO] Starting batch: {count} cases": {"zh": "[INFO] 开始批量生成：{count} 个案例", "fr": "[INFO] Demarrage du lot : {count} cas"},
+    "[INFO] SIMIND output ready: {output_dir}": {"zh": "[INFO] SIMIND 输出已就绪：{output_dir}", "fr": "[INFO] Sortie SIMIND prete : {output_dir}"},
+    "[INFO] Loaded {name} into SPECT Preview.": {"zh": "[INFO] 已将 {name} 加载到 SPECT 预览。", "fr": "[INFO] {name} charge dans l'apercu SPECT."},
+    "Projection stats summary": {"zh": "{proj} 个投影  |  {size}×{size}  |  最大值: {max:.1f}  |  总计: {total:.3e}", "fr": "{proj} proj  |  {size}×{size}  |  Max : {max:.1f}  |  Total : {total:.3e}"},
+    "[INFO] Starting batch: {count} cases -> {output_dir}": {"zh": "[INFO] 开始批量生成：{count} 个案例 -> {output_dir}", "fr": "[INFO] Demarrage du lot : {count} cas -> {output_dir}"},
+    "[WARN] Batch stopped by user.": {"zh": "[WARN] 批量生成已被用户停止。", "fr": "[WARN] Le lot a ete arrete par l'utilisateur."},
+    "[PROGRESS] [{current}/{total}] case_{case_id:04d}: {tumors} tumors, {volume:.0f} mL, {seconds:.2f}s": {"zh": "[进度] [{current}/{total}] case_{case_id:04d}: {tumors} 个肿瘤, {volume:.0f} mL, {seconds:.2f}s", "fr": "[PROGRES] [{current}/{total}] case_{case_id:04d} : {tumors} tumeurs, {volume:.0f} mL, {seconds:.2f}s"},
+    "[ERROR] case_{case_id:04d}: {msg}": {"zh": "[ERROR] case_{case_id:04d}: {msg}", "fr": "[ERROR] case_{case_id:04d} : {msg}"},
+    "[OK] Batch complete. Summary saved: {path}": {"zh": "[OK] 批量完成，摘要已保存：{path}", "fr": "[OK] Lot termine. Resume enregistre : {path}"},
+    "Proj: {index} / {total}  |  Angle: {angle:.1f}°": {"zh": "投影: {index} / {total}  |  角度: {angle:.1f}°", "fr": "Proj : {index} / {total}  |  Angle : {angle:.1f}°"},
+    "Row: {index} / {total}": {"zh": "行: {index} / {total}", "fr": "Rangee : {index} / {total}"},
+    "Binary output directory is missing case_*_atn_av.bin for: {stems}": {"zh": "二进制输出目录缺少以下案例对应的 case_*_atn_av.bin：{stems}", "fr": "Le dossier binaire ne contient pas case_*_atn_av.bin pour : {stems}"},
+    "[ERROR] Failed to write summary: {msg}": {"zh": "[ERROR] 写入摘要失败：{msg}", "fr": "[ERROR] Echec d'ecriture du resume : {msg}"},
+    "[ERROR] Batch initialization failed: {msg}": {"zh": "[ERROR] 批量初始化失败：{msg}", "fr": "[ERROR] Echec d'initialisation du lot : {msg}"},
+    "[WARN] Batch is already running.": {"zh": "[WARN] 批量任务已在运行。", "fr": "[WARN] Le lot est deja en cours."},
+    "Batch already running": {"zh": "批量任务正在运行", "fr": "Lot deja en cours"},
+    "Batch already running. Stop current batch before starting a new one.": {"zh": "批量任务已在运行，请先停止当前任务再启动新任务。", "fr": "Un lot est deja en cours. Arretez-le avant d'en lancer un nouveau."},
+    "[WARN] SIMIND process is already running.": {"zh": "[WARN] SIMIND 进程已在运行。", "fr": "[WARN] Le processus SIMIND est deja en cours."},
+    "SIMIND failed to start.": {"zh": "SIMIND 启动失败。", "fr": "Echec du demarrage de SIMIND."},
+    "[ERROR] SIMIND process failed to start: {msg}": {"zh": "[ERROR] SIMIND 进程启动失败：{msg}", "fr": "[ERROR] Echec du demarrage du processus SIMIND : {msg}"},
+    "SIMIND process failed to start: {msg}": {"zh": "SIMIND 进程启动失败：{msg}", "fr": "Le processus SIMIND n'a pas pu demarrer : {msg}"},
+    "Stopped by user.": {"zh": "已由用户停止。", "fr": "Arrete par l'utilisateur."},
+    "Generated liver mask is empty. Adjust geometry parameters and retry.": {"zh": "生成的肝脏掩膜为空，请调整几何参数后重试。", "fr": "Le masque hepatique genere est vide. Ajustez les parametres geometriques puis reessayez."},
 }
 
 
-def init_language() -> None:
-    """Load saved language preference.  Call once before creating any window."""
-    global _LANG
-    s = QSettings("PAR-S", "Generator")
-    _LANG = str(s.value("appearance/language", "en"))
+def language_manager() -> LanguageManager:
+    return _MANAGER
+
+
+def init_language(lang: str | None = None) -> None:
+    if lang is None:
+        store = SettingsStore()
+        lang = str(store.load()["appearance"].get("language", "en"))
+    _MANAGER.set_language(lang, emit=False)
 
 
 def set_language(lang: str) -> None:
-    """Persist a new language choice ('en' or 'zh')."""
-    global _LANG
-    _LANG = lang
-    QSettings("PAR-S", "Generator").setValue("appearance/language", lang)
+    _MANAGER.set_language(lang, emit=True)
 
 
 def current_language() -> str:
-    return _LANG
+    return _MANAGER.language
 
 
 def tr(text: str) -> str:
-    """Return translated text for the current language, or the original string."""
-    if _LANG == "en":
+    lang = _MANAGER.language
+    if lang == "en":
         return text
     entry = _STRINGS.get(text)
     if entry is None:
         return text
-    return entry.get(_LANG, text)
+    return entry.get(lang, text)
+

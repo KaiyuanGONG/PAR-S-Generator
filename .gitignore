@@ -45,3 +45,16 @@ logs/
 
 # Settings (user-specific)
 *.ini
+
+# Pytest / local temp artifacts
+.pytest_tmp/
+.test_tmp/
+foo_tmp/
+bar_tmp/
+baz_tmp/
+tests/_tmp_pytest/
+.par-s-generator/
+.tmp_settings.json
+
+# Keep shared pytest config tracked
+!pytest.ini

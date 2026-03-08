@@ -1,4 +1,4 @@
-"""
+﻿"""
 Phantom Generator Core
 ======================
 3D analytical liver phantom generation.
@@ -14,6 +14,8 @@ from typing import Optional
 
 import numpy as np
 from scipy.ndimage import gaussian_filter
+
+_GRID_CACHE: dict[tuple[int, int, int], tuple[np.ndarray, np.ndarray, np.ndarray]] = {}
 
 
 # ─────────────────────────────────────────────
@@ -93,6 +95,7 @@ class PhantomConfig:
     min_edge_dist_px: int = 4
     tumor_modes: list = field(default_factory=lambda: ["ellipsoid", "spiculated"])
     tumor_mode_probs: list = field(default_factory=lambda: [0.7, 0.3])
+    tumor_mode_policy: str = "random"
 
     # Spiculated params
     spiculated_roughness: float = 0.35
@@ -102,6 +105,7 @@ class PhantomConfig:
     perfusion_probs: dict = field(default_factory=lambda: {
         "Whole Liver": 0.05, "Tumor Only": 0.25, "Left Only": 0.35, "Right Only": 0.35
     })
+    perfusion_mode_policy: str = "random"
     residual_bg: float = 0.05
     gradient_gain: float = 0.08
     psf_sigma_px: float = 2.5
@@ -130,6 +134,14 @@ class PhantomConfig:
             return cls.from_dict(json.load(f))
 
 
+@dataclass
+class PreviewOverrides:
+    exact_tumor_count: int | None = None
+    exact_tumor_contrast: float | None = None   # overrides the per-tumor contrast range
+    tumor_mode: str | None = None
+    perfusion_mode: str | None = None
+
+
 # ─────────────────────────────────────────────
 # Geometry helpers
 # ─────────────────────────────────────────────
@@ -138,10 +150,20 @@ class Geometry3D:
 
     @staticmethod
     def get_grid(shape):
-        z = np.linspace(-1, 1, shape[0])
-        y = np.linspace(-1, 1, shape[1])
-        x = np.linspace(-1, 1, shape[2])
-        return np.meshgrid(z, y, x, indexing='ij')
+        shape_key = tuple(int(v) for v in shape)
+        cached = _GRID_CACHE.get(shape_key)
+        if cached is not None:
+            return cached
+
+        z = np.linspace(-1, 1, shape_key[0], dtype=np.float32)
+        y = np.linspace(-1, 1, shape_key[1], dtype=np.float32)
+        x = np.linspace(-1, 1, shape_key[2], dtype=np.float32)
+        grid = np.meshgrid(z, y, x, indexing='ij', copy=False)
+
+        if len(_GRID_CACHE) >= 4:
+            _GRID_CACHE.pop(next(iter(_GRID_CACHE)))
+        _GRID_CACHE[shape_key] = grid
+        return grid
 
     @staticmethod
     def create_ellipsoid(shape, center, radii, rotation_deg=0.0,
@@ -278,6 +300,13 @@ class PhantomResult:
 
     def save(self, output_dir: Path):
         output_dir.mkdir(parents=True, exist_ok=True)
+        # Stack tumor masks into a single (N, Z, Y, X) bool array.
+        # Shape is (0, Z, Y, X) when no tumors are present.
+        if self.tumor_masks:
+            tumor_masks_arr = np.stack(self.tumor_masks, axis=0)
+        else:
+            tumor_masks_arr = np.zeros((0, *self.volume_shape), dtype=bool)
+
         np.savez_compressed(
             output_dir / f"case_{self.case_id:04d}.npz",
             activity=self.activity,
@@ -285,6 +314,7 @@ class PhantomResult:
             liver_mask=self.liver_mask,
             left_mask=self.left_mask,
             right_mask=self.right_mask,
+            tumor_masks=tumor_masks_arr,
         )
         meta = {
             "case_id": self.case_id,
@@ -311,10 +341,40 @@ class PhantomResult:
 class PhantomGenerator:
     """Generates synthetic 3D liver SPECT phantoms."""
 
+    PERFUSION_POLICY_MAP = {
+        "whole_liver": "Whole Liver",
+        "tumor_only": "Tumor Only",
+        "left_only": "Left Only",
+        "right_only": "Right Only",
+    }
+
     def __init__(self, config: PhantomConfig):
         self.cfg = config
 
-    def generate_one(self, case_id: int, seed: Optional[int] = None) -> PhantomResult:
+    def _resolve_perfusion_mode(self, rng, overrides: PreviewOverrides | None):
+        if overrides and overrides.perfusion_mode in self.PERFUSION_POLICY_MAP.values():
+            return overrides.perfusion_mode
+        if self.cfg.perfusion_mode_policy != "random":
+            return self.PERFUSION_POLICY_MAP[self.cfg.perfusion_mode_policy]
+        perf_keys = list(self.cfg.perfusion_probs.keys())
+        perf_vals = list(self.cfg.perfusion_probs.values())
+        return rng.choice(perf_keys, p=perf_vals)
+
+    def _resolve_tumor_mode(self, rng, overrides: PreviewOverrides | None):
+        if overrides and overrides.tumor_mode in self.cfg.tumor_modes:
+            return overrides.tumor_mode
+        if self.cfg.tumor_mode_policy in self.cfg.tumor_modes:
+            return self.cfg.tumor_mode_policy
+        return rng.choice(self.cfg.tumor_modes, p=self.cfg.tumor_mode_probs)
+
+    def _resolve_tumor_count(self, rng, placement_indices, overrides: PreviewOverrides | None):
+        if len(placement_indices) == 0:
+            return 0
+        if overrides and overrides.exact_tumor_count is not None:
+            return overrides.exact_tumor_count
+        return rng.integers(self.cfg.tumor_count_min, self.cfg.tumor_count_max + 1)
+
+    def generate_one(self, case_id: int, seed: Optional[int] = None, overrides: PreviewOverrides | None = None) -> PhantomResult:
         t0 = time.time()
         cfg = self.cfg
 
@@ -369,10 +429,13 @@ class PhantomGenerator:
         if cfg.smooth_sigma > 0:
             liver = gaussian_filter(liver.astype(float), sigma=cfg.smooth_sigma) > cfg.smooth_thr
 
+        liver_vol = int(liver.sum())
+        if liver_vol <= 0:
+            raise RuntimeError("Generated liver mask is empty. Adjust geometry parameters and retry.")
+
         # ── 2. Lobe splitting (Cantlie plane) — bisection method ──
         tilt = rng.uniform(*cfg.cantlie_tilt_range)
         lo, hi = cfg.cantlie_offset_range[0], cfg.cantlie_offset_range[1]
-        liver_vol = liver.sum()
 
         for _ in range(cfg.cantlie_iter_max):
             mid = (lo + hi) / 2.0
@@ -423,9 +486,7 @@ class PhantomGenerator:
         mu[~outer_body] = 0.0
 
         # ── 4. Perfusion mode & base activity (determined before tumor placement) ──
-        perf_keys = list(cfg.perfusion_probs.keys())
-        perf_vals = list(cfg.perfusion_probs.values())
-        perfusion_mode = rng.choice(perf_keys, p=perf_vals)
+        perfusion_mode = self._resolve_perfusion_mode(rng, overrides)
 
         activity = np.zeros(shape, dtype=np.float32)
 
@@ -456,9 +517,7 @@ class PhantomGenerator:
         else:
             placement_indices = np.argwhere(liver)
 
-        n_tumors = rng.integers(cfg.tumor_count_min, cfg.tumor_count_max + 1)
-        if len(placement_indices) == 0:
-            n_tumors = 0
+        n_tumors = self._resolve_tumor_count(rng, placement_indices, overrides)
 
         tumor_masks = []
         tumor_diameters_mm = []
@@ -473,7 +532,7 @@ class PhantomGenerator:
             radius_vox = radius_mm / cfg.voxel_size_mm
 
             # Sample mode
-            mode = rng.choice(cfg.tumor_modes, p=cfg.tumor_mode_probs)
+            mode = self._resolve_tumor_mode(rng, overrides)
 
             # Sample position inside the active lobe, away from edges
             placed = False
@@ -523,7 +582,10 @@ class PhantomGenerator:
 
             # Per-tumor contrast: TNR range 2–8 based on Tc-99m MAA hepatic arterial
             # scintigraphy (Ho et al. 1997, J Nucl Med: median 3.4, range 1.5–12)
-            contrast = rng.uniform(cfg.tumor_contrast_min, cfg.tumor_contrast_max)
+            if overrides and overrides.exact_tumor_contrast is not None:
+                contrast = overrides.exact_tumor_contrast
+            else:
+                contrast = rng.uniform(cfg.tumor_contrast_min, cfg.tumor_contrast_max)
             base_val = activity[tmask].mean() if activity[tmask].sum() > 0 else 1.0
             activity[tmask] = base_val * contrast
 
@@ -534,10 +596,11 @@ class PhantomGenerator:
         # PSF is handled by SIMIND internally (collimator/detector model).
         # Do NOT blur here — SIMIND source input must be the clean activity map.
 
-        # Normalize to total counts + Poisson noise
+        # Normalize to total counts — no Poisson noise here.
+        # SIMIND uses this as a probability density (source distribution);
+        # photon-count statistics are handled internally by Monte Carlo sampling.
         if activity.sum() > 0:
-            activity = activity / activity.sum() * cfg.total_counts
-            activity = rng.poisson(np.maximum(activity, 0)).astype(np.float32)
+            activity = (activity / activity.sum() * cfg.total_counts).astype(np.float32)
 
         total_counts_actual = float(activity.sum())
 
@@ -566,3 +629,6 @@ class PhantomGenerator:
             generation_time_s=time.time() - t0,
         )
         return result
+
+
+

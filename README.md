@@ -1,186 +1,234 @@
-# PAR-S Generator
+﻿# PAR-S Generator
 
-**PAR-S Generator** is an open-source Windows desktop application for generating synthetic liver SPECT phantom datasets, designed to support the training of the [PAR-S](https://github.com/KaiyuanGONG/PAR-S) deep learning network for partial-volume and activity recovery in SPECT imaging.
+PAR-S Generator is a Windows desktop workflow for synthetic liver SPECT phantom generation and downstream SIMIND preparation.
 
 ![Phantom Preview](docs/phantom_preview.png)
 
----
+## Current Workflow
 
-## Features
+The application now has two main workspaces in the left sidebar:
 
-- **Analytic Phantom Generation** — Procedurally generates 3D liver phantoms with randomized geometry (right/left lobe morphology, gallbladder fossa, dome), multiple tumors, and heterogeneous perfusion patterns.
-- **Full Pipeline Integration** — Covers the complete data generation chain:
-  1. Phantom generation (activity map + μ-map) → `.npz`
-  2. Format conversion → SIMIND-compatible Interfile (`.h33` + `.i33`)
-  3. SIMIND Monte Carlo simulation execution
-- **Interactive Visualization** — Multi-planar (Axial / Coronal / Sagittal) slice viewer with liver/tumor contour overlay, plus 3D surface rendering.
-- **Batch Generation** — Generate thousands of cases with a single click, with real-time progress tracking, ETA, and comprehensive statistical charts.
-- **Scientific Dark UI** — Professional dark-themed interface built with PyQt6.
-- **Reproducible** — Fixed seed support for reproducible dataset generation.
+- `Generate`
+- `Simulate`
 
----
+The bottom-left utility area contains:
 
-## Simulated Scanner
+- `Settings`
+- `About`
 
-The default configuration targets the **GE Discovery NM/CT 870 CZT** system:
+`Review` is no longer a standalone page. Batch monitoring is now part of `Generate`.
 
-| Parameter | Value |
-|:---|:---|
-| Detector type | CZT solid-state |
-| Crystal thickness | 7.25 mm |
-| Pixel size | 2.46 mm |
-| Collimator | WEHR (W-LEHR) |
-| Hole diameter | 2.26 mm |
-| Septa thickness | 0.20 mm |
-| Hole length | 45 mm |
-| Matrix | 128 × 128 |
-| Projections | 60 (6° step, 360°) |
-| Energy window | 126–154 keV (main) |
-| Radionuclide | ⁹⁹ᵐTc |
+## What Changed in v0.3
 
----
+- Task flow simplified to `Generate -> Simulate`
+- `Generate` now contains two tabs:
+  - `Preview`
+  - `Batch Monitor`
+- `Settings` moved to a dialog and `About` is now separate
+- File-backed settings replaced unreliable `QSettings`
+- UI language now supports `English`, `中文`, and `Français`
+- `.a00` viewing now exists in one place only: `Simulate > SPECT Preview`
+- Preview metrics now live in the fourth preview panel instead of a duplicated info block
+- Left-lobe ratio is displayed as a true percentage, e.g. `0.35 -> 35.0%`
 
-## Installation
+## Generate
 
-### Prerequisites
+`Generate` is the full phantom authoring workspace.
 
-- Python ≥ 3.10
-- [SIMIND](https://simind.blogg.lu.se/) Monte Carlo simulation software (free academic license)
+### Preview tab
 
-### From Source
+Use it to:
+
+- tune one phantom interactively
+- inspect the 2D/3D preview
+- validate configuration before long-running work
+- define reproducible batch settings
+
+The left side is organized into four parameter groups:
+
+- `Volume`
+- `Liver Geometry`
+- `Tumors`
+- `Activity`
+
+Each group now follows the same interaction model:
+
+- default mode uses sliders limited to recommended values
+- `Advanced` unlocks manual control up to hard safety bounds
+- tooltips explain each parameter in one sentence
+
+### Important behavior
+
+- Tumor size stays defined in physical `mm`
+- Changing `matrix` or `voxel size` does not automatically rescale tumor diameter metadata
+- Preview is for one case only and may force an `exact tumor count`
+- Batch generation still uses `min/max tumors`
+- Tumor morphology can be set to `Ellipsoid`, `Spiculated`, or `Random`
+- Perfusion mode can be set to `Whole Liver`, `Tumor Only`, `Left Only`, `Right Only`, or `Random`
+
+### Recommended volume presets
+
+The default volume presets are:
+
+- `96 / 5.89 mm`
+- `128 / 4.42 mm`
+- `160 / 3.54 mm`
+
+These preserve roughly similar anatomic coverage while changing sampling density.
+
+### Batch settings
+
+The batch bar below the preview now contains:
+
+- `Number of cases`
+- `Use fixed seed`
+- `Global seed`
+- `Output directory`
+- `Start Batch`
+
+Reproducibility rule:
+
+- Preview uses `case_id = 0`
+- Batch uses `case_id = 1..N`
+- When fixed seed is enabled, the seed is `global_seed + case_id`
+- Preview does not consume the batch sequence
+
+### Batch Monitor tab
+
+This tab now owns the old review functionality:
+
+- live progress
+- ETA and elapsed time
+- summary cards
+- charts
+- case table
+- log panel
+- load existing `batch_summary.json`
+
+It does not contain the `.a00` viewer anymore.
+
+## Simulate
+
+`Simulate` is now the only place for SIMIND conversion and output inspection.
+
+### Step 1: Raw Binary Export
+
+- choose the source `case_*.npz` directory
+- choose the raw binary output directory
+- export all cases to:
+  - `case_XXXX_act_av.bin`
+  - `case_XXXX_atn_av.bin`
+
+### Step 2: SIMIND Configuration
+
+- configure `simind.exe`
+- configure `.smc`
+- configure the SIMIND output directory
+
+### Step 3: Script or Run
+
+- generate a `.bat` script
+- or run SIMIND directly
+
+### Step 4: Visual Check
+
+The right-side viewer is now called `SPECT Preview`.
+
+After a successful run, the first `.a00` file is loaded automatically for quick inspection.
+
+## Validation Rules
+
+The UI now blocks or warns before preview, batch, conversion, or SIMIND launch.
+
+Blocked cases include:
+
+- `Min tumors > Max tumors`
+- `Contrast min > Contrast max`
+- empty output directory
+- invalid `simind.exe` or `.smc` path
+- missing `case_*.npz`
+- non-cubic volume
+- bundled `ge870_czt.smc` used with unsupported geometry
+
+Warnings include:
+
+- parameters outside recommended ranges but still within hard safety bounds
+- custom matrix/voxel settings that no longer match the bundled `ge870_czt.smc`
+
+## Settings
+
+Settings are stored in a JSON file instead of `QSettings`.
+
+Default location:
+
+- `%APPDATA%/PAR-S Generator/settings.json`
+
+Stored items:
+
+- default `simind.exe`
+- default `.smc`
+- default phantom output directory
+- theme
+- language
+- auto-save batch config
+
+If `Auto-save config on batch start` is enabled, the app writes:
+
+- `last_batch_config.json`
+
+into the selected batch output folder.
+
+## Output Structure
+
+### Phantom output
+
+```text
+output/syn3d/
+├── case_0001.npz
+├── case_0001_meta.json
+├── case_0002.npz
+└── batch_summary.json
+```
+
+### Raw binary export
+
+```text
+output/interfile/
+├── case_0001_act_av.bin
+├── case_0001_atn_av.bin
+├── case_0002_act_av.bin
+└── ...
+```
+
+### SIMIND output
+
+```text
+output/simind/
+├── case_0001.a00
+├── case_0001.h00
+├── case_0001.res
+└── ...
+```
+
+## Notes on `.smc`
+
+The bundled `ge870_czt.smc` still assumes:
+
+- `128 x 128 x 128`
+- `4.42 mm`
+
+If you change matrix or voxel size, you must use a compatible `.smc` file.
+
+Photon histories are controlled by the selected `.smc` file, not by the UI.
+
+## Tests
+
+Core and workflow regression:
 
 ```bash
-git clone https://github.com/KaiyuanGONG/PAR-S-Generator.git
-cd PAR-S-Generator
-pip install -r requirements.txt
-python main.py
+python -m pytest tests/test_phantom_anatomy.py tests/test_validation.py tests/test_workflow_state.py tests/test_ui_smoke.py -q
 ```
-
-### Windows Executable
-
-Download the latest `.exe` installer from the [Releases](https://github.com/KaiyuanGONG/PAR-S-Generator/releases) page.
-
-> **Note:** SIMIND (`simind.exe`) must be placed in the `simind/` subdirectory or configured via Settings before running simulations.
-
----
-
-## Project Structure
-
-```
-PAR-S-Generator/
-├── main.py                    # Application entry point
-├── requirements.txt
-├── build_windows.spec         # PyInstaller spec for Windows packaging
-├── src/
-│   ├── core/
-│   │   ├── phantom_generator.py   # Analytic phantom generation engine
-│   │   ├── interfile_writer.py    # npz → Interfile format converter
-│   │   └── batch_runner.py        # Batch generation worker thread
-│   └── ui/
-│       ├── main_window.py         # Main application window
-│       ├── pages/
-│       │   ├── phantom_page.py    # Phantom config & single preview
-│       │   ├── simulation_page.py # Format conversion & SIMIND runner
-│       │   ├── results_page.py    # Batch generation & statistics
-│       │   └── settings_page.py   # Application settings
-│       └── widgets/
-│           ├── slice_viewer.py    # Multi-planar + 3D viewer
-│           └── param_widgets.py   # Reusable parameter input widgets
-├── resources/
-│   └── styles/
-│       └── dark_theme.qss         # Application stylesheet
-├── simind/                        # Place simind.exe and .smc here
-│   └── czt_ge.smc                 # GE NM/CT 870 CZT configuration
-└── docs/
-    └── phantom_preview.png
-```
-
----
-
-## Usage
-
-### 1. Configure Phantom Parameters
-
-On the **Phantom** tab, adjust:
-- Volume matrix size and voxel size
-- Liver geometry jitter (scale, rotation, shift)
-- Tumor count range and tumor-to-liver contrast ratio
-- Activity distribution and PSF blurring
-- Number of cases and output directory
-
-Click **Preview Single Case** to instantly visualize a generated phantom with multi-planar slices and statistics.
-
-### 2. Run Format Conversion
-
-On the **Simulation** tab:
-- Point to the `.npz` output directory
-- Run **Convert All Cases** to produce `.h33`/`.i33` Interfile pairs
-
-### 3. Run SIMIND Simulation
-
-Still on the **Simulation** tab:
-- Configure `simind.exe` path and `.smc` file
-- Set photon histories per projection
-- Click **Generate .bat Script** (to run later) or **Run SIMIND Now**
-
-### 4. Batch Generation & Statistics
-
-On the **Results** tab:
-- Click **Start Batch Generation** to generate all cases
-- Monitor real-time progress, ETA, and per-case statistics
-- View distribution charts (liver volume, left lobe ratio, tumor count/size, perfusion mode)
-- Browse the complete case table
-
----
-
-## Phantom Generation Details
-
-The liver phantom is constructed using analytic geometry:
-
-1. **Right lobe** — Rotated ellipsoid with randomized semi-axes
-2. **Left lobe** — Smaller ellipsoid with independent randomization
-3. **Hepatic dome** — Spherical cap for superior surface
-4. **Gallbladder fossa** — Subtracted ellipsoid on inferior surface
-5. **μ-map** — Layered attenuation map (body shell, lungs, liver, spine)
-6. **Tumors** — Spherical lesions with randomized position, size, and tumor-to-liver contrast ratio
-7. **Perfusion** — Randomly assigned: Whole Liver / Right Only / Left Only / Tumor Only
-
----
-
-## Building Windows Executable
-
-```bash
-pip install pyinstaller
-pyinstaller build_windows.spec
-```
-
-The output `.exe` will be in `dist/PAR-S-Generator/`.
-
----
-
-## Citation
-
-If you use this tool in your research, please cite:
-
-```bibtex
-@software{gong2025pars_generator,
-  author  = {Gong, Kaiyuan},
-  title   = {{PAR-S Generator}: Synthetic Liver SPECT Phantom Generator},
-  year    = {2025},
-  url     = {https://github.com/KaiyuanGONG/PAR-S-Generator}
-}
-```
-
----
 
 ## License
 
-MIT License. See [LICENSE](LICENSE) for details.
-
----
-
-## Acknowledgements
-
-- SIMIND Monte Carlo simulation: M. Ljungberg, Lund University
-- GE Discovery NM/CT 870 CZT scanner parameters from published literature
-- PAR-S deep learning framework: [KaiyuanGONG/PAR-S](https://github.com/KaiyuanGONG/PAR-S)
+MIT License. See [LICENSE](LICENSE).

@@ -1,160 +1,104 @@
-"""
-Settings Page
-=============
-Application settings: SIMIND path, default directories, appearance, etc.
+﻿"""
+Settings and About dialogs.
 """
 
 from __future__ import annotations
-from pathlib import Path
 
+from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QGroupBox,
-    QPushButton, QLabel, QLineEdit, QFileDialog,
-    QFormLayout, QSpinBox, QCheckBox, QComboBox,
-    QFrame, QScrollArea, QMessageBox
+    QCheckBox,
+    QComboBox,
+    QDialog,
+    QFileDialog,
+    QFormLayout,
+    QGroupBox,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QMessageBox,
+    QPushButton,
+    QVBoxLayout,
+    QWidget,
 )
-from PyQt6.QtCore import Qt, QSettings, pyqtSignal
-from PyQt6.QtGui import QFont
 
-from ui.i18n import tr, set_language, current_language
+from ui.app_state import AppSettings, AppState
+from ui.i18n import language_manager, set_language, tr
+from ui.settings_store import SettingsStore
 
 
 class SettingsPage(QWidget):
-    """Page 4: Application settings."""
+    theme_changed = pyqtSignal(str)
 
-    theme_changed = pyqtSignal(str)   # emits "dark" or "light" after Save
-
-    def __init__(self, parent=None):
+    def __init__(self, app_state: AppState, parent=None):
         super().__init__(parent)
-        self._settings = QSettings("PAR-S", "Generator")
+        self._app_state = app_state
         self._build_ui()
         self._load_settings()
+        language_manager().language_changed.connect(lambda _: self.retranslate_ui())
 
     def _build_ui(self):
         root = QVBoxLayout(self)
         root.setContentsMargins(24, 24, 24, 24)
         root.setSpacing(16)
 
-        title = QLabel(tr("Settings"))
-        title.setObjectName("page_title")
-        root.addWidget(title)
+        self.title = QLabel()
+        self.title.setObjectName("page_title")
+        root.addWidget(self.title)
 
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        scroll.setFrameShape(QFrame.Shape.NoFrame)
-
-        content = QWidget()
-        content_layout = QVBoxLayout(content)
-        content_layout.setSpacing(16)
-        content_layout.setContentsMargins(0, 0, 8, 0)
-
-        # -- SIMIND --
-        simind_grp = QGroupBox(tr("SIMIND CONFIGURATION"))
-        simind_form = QFormLayout(simind_grp)
-        simind_form.setSpacing(10)
-
+        self.grp_simind = QGroupBox()
+        simind_form = QFormLayout(self.grp_simind)
+        self.lbl_simind = QLabel()
+        self.lbl_smc = QLabel()
         self.edit_simind = QLineEdit()
-        self.edit_simind.setPlaceholderText("Path to simind.exe...")
-        btn_simind = QPushButton(tr("Browse"))
-        btn_simind.clicked.connect(lambda: self._browse_file(
-            self.edit_simind, "SIMIND Executable (simind.exe);;All Files (*)"
-        ))
-        simind_form.addRow("simind.exe:", self._row(self.edit_simind, btn_simind))
-
         self.edit_default_smc = QLineEdit()
-        self.edit_default_smc.setPlaceholderText("Default .smc configuration file...")
-        btn_smc = QPushButton(tr("Browse"))
-        btn_smc.clicked.connect(lambda: self._browse_file(
-            self.edit_default_smc, "SIMIND Config (*.smc);;All Files (*)"
-        ))
-        simind_form.addRow("Default .smc:", self._row(self.edit_default_smc, btn_smc))
-        content_layout.addWidget(simind_grp)
+        self.btn_simind = QPushButton()
+        self.btn_smc = QPushButton()
+        self.btn_simind.clicked.connect(lambda: self._browse_file(self.edit_simind, "SIMIND Executable (simind.exe);;All Files (*)"))
+        self.btn_smc.clicked.connect(lambda: self._browse_file(self.edit_default_smc, "SIMIND Config (*.smc);;All Files (*)"))
+        simind_form.addRow(self.lbl_simind, self._row(self.edit_simind, self.btn_simind))
+        simind_form.addRow(self.lbl_smc, self._row(self.edit_default_smc, self.btn_smc))
+        root.addWidget(self.grp_simind)
 
-        # -- Paths --
-        paths_grp = QGroupBox(tr("DEFAULT PATHS"))
-        paths_form = QFormLayout(paths_grp)
-        paths_form.setSpacing(10)
-
+        self.grp_paths = QGroupBox()
+        paths_form = QFormLayout(self.grp_paths)
+        self.lbl_output = QLabel()
         self.edit_default_output = QLineEdit()
-        self.edit_default_output.setPlaceholderText("Default output directory...")
-        btn_out = QPushButton(tr("Browse"))
-        btn_out.clicked.connect(lambda: self._browse_dir(self.edit_default_output))
-        paths_form.addRow(tr("Output directory") + ":", self._row(self.edit_default_output, btn_out))
-        content_layout.addWidget(paths_grp)
+        self.btn_output = QPushButton()
+        self.btn_output.clicked.connect(lambda: self._browse_dir(self.edit_default_output))
+        self.chk_autosave = QCheckBox()
+        paths_form.addRow(self.lbl_output, self._row(self.edit_default_output, self.btn_output))
+        paths_form.addRow(QLabel(""), self.chk_autosave)
+        root.addWidget(self.grp_paths)
 
-        # -- Performance --
-        perf_grp = QGroupBox(tr("PERFORMANCE"))
-        perf_form = QFormLayout(perf_grp)
-        perf_form.setSpacing(10)
-
-        self.spin_threads = QSpinBox()
-        self.spin_threads.setRange(1, 32)
-        self.spin_threads.setValue(4)
-        self.spin_threads.setToolTip("Number of parallel threads for batch generation")
-        perf_form.addRow(tr("Batch threads:"), self.spin_threads)
-
-        self.chk_autosave = QCheckBox(tr("Auto-save config on batch start"))
-        self.chk_autosave.setChecked(True)
-        perf_form.addRow("", self.chk_autosave)
-        content_layout.addWidget(perf_grp)
-
-        # -- Appearance --
-        appear_grp = QGroupBox(tr("APPEARANCE"))
-        appear_form = QFormLayout(appear_grp)
-        appear_form.setSpacing(10)
-
+        self.grp_appearance = QGroupBox()
+        appearance_form = QFormLayout(self.grp_appearance)
+        self.lbl_theme = QLabel()
+        self.lbl_lang = QLabel()
         self.combo_theme = QComboBox()
-        self.combo_theme.addItems([tr("Dark"), tr("Light")])
-        self.combo_theme.setToolTip(
-            "Dark: default dark scientific theme.\n"
-            "Light: clean light theme.\n"
-            "Change takes effect immediately on Save."
-        )
-        appear_form.addRow(tr("Theme:"), self.combo_theme)
-
         self.combo_lang = QComboBox()
         self.combo_lang.addItem("English", "en")
-        self.combo_lang.addItem("\u4e2d\u6587", "zh")
-        self.combo_lang.setToolTip(
-            "UI language.\n"
-            "Language change takes effect after restarting the application."
-        )
-        appear_form.addRow(tr("Language:"), self.combo_lang)
+        self.combo_lang.addItem("中文", "zh")
+        self.combo_lang.addItem("Français", "fr")
+        appearance_form.addRow(self.lbl_theme, self.combo_theme)
+        appearance_form.addRow(self.lbl_lang, self.combo_lang)
+        root.addWidget(self.grp_appearance)
 
-        content_layout.addWidget(appear_grp)
+        self.lbl_store = QLabel()
+        self.lbl_store.setStyleSheet("color: #6b7280; font-size: 11px;")
+        self.lbl_store.setWordWrap(True)
+        root.addWidget(self.lbl_store)
 
-        # -- About --
-        about_grp = QGroupBox(tr("ABOUT"))
-        about_layout = QVBoxLayout(about_grp)
-        about_text = QLabel(
-            "<b>PAR-S Generator</b> v0.1.0<br>"
-            "Synthetic liver SPECT phantom generator for PAR-S deep learning research.<br><br>"
-            "Based on PAR-S project by Kaiyuan Gong.<br>"
-            "Uses SIMIND Monte Carlo simulation (Ljungberg, Lund University).<br><br>"
-            "<a href='https://github.com/KaiyuanGONG/PAR-S' style='color:#4fc3f7;'>"
-            "github.com/KaiyuanGONG/PAR-S</a>"
-        )
-        about_text.setOpenExternalLinks(True)
-        about_text.setStyleSheet("color: #8a9099; font-size: 12px; line-height: 1.6;")
-        about_text.setWordWrap(True)
-        about_layout.addWidget(about_text)
-        content_layout.addWidget(about_grp)
-
-        content_layout.addStretch()
-        scroll.setWidget(content)
-        root.addWidget(scroll, stretch=1)
-
-        # Save / Reset buttons
         btn_row = QHBoxLayout()
-        btn_save = QPushButton(tr("Save Settings"))
-        btn_save.setObjectName("primary_btn")
-        btn_save.clicked.connect(self._save_settings)
-        btn_reset = QPushButton(tr("Reset to Defaults"))
-        btn_reset.clicked.connect(self._reset_settings)
         btn_row.addStretch()
-        btn_row.addWidget(btn_reset)
-        btn_row.addWidget(btn_save)
+        self.btn_reset = QPushButton()
+        self.btn_reset.clicked.connect(self._reset_settings)
+        self.btn_save = QPushButton()
+        self.btn_save.setObjectName("primary_btn")
+        self.btn_save.clicked.connect(self._save_settings)
+        btn_row.addWidget(self.btn_reset)
+        btn_row.addWidget(self.btn_save)
         root.addLayout(btn_row)
+        self.retranslate_ui()
 
     def _row(self, edit: QLineEdit, btn: QPushButton) -> QWidget:
         w = QWidget()
@@ -162,61 +106,128 @@ class SettingsPage(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(4)
         layout.addWidget(edit)
-        btn.setFixedWidth(70)
+        btn.setFixedWidth(90)
         layout.addWidget(btn)
         return w
 
     def _browse_file(self, edit: QLineEdit, filter_str: str):
-        path, _ = QFileDialog.getOpenFileName(self, "Select File", "", filter_str)
+        path, _ = QFileDialog.getOpenFileName(self, tr("Select File"), "", filter_str)
         if path:
             edit.setText(path)
 
     def _browse_dir(self, edit: QLineEdit):
-        path = QFileDialog.getExistingDirectory(self, "Select Directory")
+        path = QFileDialog.getExistingDirectory(self, tr("Select Directory"))
         if path:
             edit.setText(path)
 
+    def _to_settings(self) -> AppSettings:
+        return AppSettings(
+            simind_exe=self.edit_simind.text().strip(),
+            default_smc=self.edit_default_smc.text().strip(),
+            default_output=self.edit_default_output.text().strip() or "output/syn3d",
+            theme="light" if self.combo_theme.currentIndex() == 1 else "dark",
+            language=self.combo_lang.currentData(),
+            autosave_config=self.chk_autosave.isChecked(),
+        )
+
     def _save_settings(self):
-        prev_theme = self._settings.value("appearance/theme", "dark")
-        prev_lang  = self._settings.value("appearance/language", "en")
-
-        self._settings.setValue("simind/exe", self.edit_simind.text())
-        self._settings.setValue("simind/default_smc", self.edit_default_smc.text())
-        self._settings.setValue("paths/default_output", self.edit_default_output.text())
-        self._settings.setValue("perf/threads", self.spin_threads.value())
-        self._settings.setValue("perf/autosave", self.chk_autosave.isChecked())
-
-        new_theme = "light" if self.combo_theme.currentIndex() == 1 else "dark"
-        new_lang  = self.combo_lang.currentData()
-        self._settings.setValue("appearance/theme", new_theme)
-        set_language(new_lang)
-
-        # Apply theme immediately
-        if new_theme != prev_theme:
-            self.theme_changed.emit(new_theme)
-
-        msg = tr("Settings saved successfully.")
-        if new_lang != prev_lang:
-            msg += "\n\n" + tr("Language change will apply on next restart.")
-
-        QMessageBox.information(self, tr("Saved"), msg)
+        current = self._app_state.settings
+        new_settings = self._to_settings()
+        self._app_state.save_settings(new_settings)
+        set_language(new_settings.language)
+        if new_settings.theme != current.theme:
+            self.theme_changed.emit(new_settings.theme)
+        QMessageBox.information(self, tr("Saved"), tr("Settings saved successfully."))
 
     def _load_settings(self):
-        self.edit_simind.setText(self._settings.value("simind/exe", ""))
-        self.edit_default_smc.setText(self._settings.value("simind/default_smc", ""))
-        self.edit_default_output.setText(self._settings.value("paths/default_output", ""))
-        self.spin_threads.setValue(int(self._settings.value("perf/threads", 4)))
-        self.chk_autosave.setChecked(bool(self._settings.value("perf/autosave", True)))
-
-        theme = self._settings.value("appearance/theme", "dark")
-        self.combo_theme.setCurrentIndex(1 if theme == "light" else 0)
-
-        saved_lang = self._settings.value("appearance/language", "en")
-        idx = self.combo_lang.findData(saved_lang)
+        settings = self._app_state.settings
+        self.edit_simind.setText(settings.simind_exe)
+        self.edit_default_smc.setText(settings.default_smc)
+        self.edit_default_output.setText(settings.default_output)
+        self.chk_autosave.setChecked(settings.autosave_config)
+        self.combo_theme.setCurrentIndex(1 if settings.theme == "light" else 0)
+        idx = self.combo_lang.findData(settings.language)
         if idx >= 0:
             self.combo_lang.setCurrentIndex(idx)
 
     def _reset_settings(self):
-        self._settings.clear()
+        self._app_state.reset_settings()
         self._load_settings()
+        set_language(self._app_state.settings.language)
+        self.theme_changed.emit(self._app_state.settings.theme)
         QMessageBox.information(self, tr("Reset"), tr("Settings reset to defaults."))
+
+    def retranslate_ui(self):
+        current_theme = self.combo_theme.currentData() if self.combo_theme.count() else None
+        current_lang = self.combo_lang.currentData() if self.combo_lang.count() else None
+        self.title.setText(tr("Settings"))
+        self.grp_simind.setTitle(tr("SIMIND CONFIGURATION"))
+        self.grp_paths.setTitle(tr("DEFAULT PATHS"))
+        self.grp_appearance.setTitle(tr("APPEARANCE"))
+        self.lbl_simind.setText(tr("simind.exe:"))
+        self.lbl_smc.setText(tr("Default .smc:"))
+        self.lbl_output.setText(tr("Output directory") + ":")
+        self.lbl_theme.setText(tr("Theme:") )
+        self.lbl_lang.setText(tr("Language:"))
+        self.btn_simind.setText(tr("Browse"))
+        self.btn_smc.setText(tr("Browse"))
+        self.btn_output.setText(tr("Browse"))
+        self.edit_default_output.setPlaceholderText(tr("Output directory path..."))
+        self.chk_autosave.setText(tr("Auto-save config on batch start"))
+        self.combo_theme.clear()
+        self.combo_theme.addItem(tr("Dark"), "dark")
+        self.combo_theme.addItem(tr("Light"), "light")
+        if current_theme is not None:
+            idx = self.combo_theme.findData(current_theme)
+            self.combo_theme.setCurrentIndex(max(idx, 0))
+        self.combo_lang.setItemText(0, "English")
+        self.combo_lang.setItemText(1, "中文")
+        self.combo_lang.setItemText(2, "Français")
+        if current_lang is not None:
+            idx = self.combo_lang.findData(current_lang)
+            self.combo_lang.setCurrentIndex(max(idx, 0))
+        self.btn_reset.setText(tr("Reset to Defaults"))
+        self.btn_save.setText(tr("Save Settings"))
+        self.lbl_store.setText(f"{tr('Settings file')}: {SettingsStore().path}")
+
+
+class SettingsDialog(QDialog):
+    def __init__(self, app_state: AppState, parent=None):
+        super().__init__(parent)
+        self.page = SettingsPage(app_state, self)
+        self.resize(760, 520)
+        layout = QVBoxLayout(self)
+        layout.addWidget(self.page)
+        language_manager().language_changed.connect(lambda _: self.retranslate_ui())
+        self.retranslate_ui()
+
+    def retranslate_ui(self):
+        self.setWindowTitle(tr("Settings"))
+
+
+class AboutDialog(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.resize(520, 320)
+        layout = QVBoxLayout(self)
+        self.title = QLabel()
+        self.title.setObjectName("page_title")
+        self.body = QLabel()
+        self.body.setWordWrap(True)
+        self.body.setStyleSheet("color: #8a9099; font-size: 12px; line-height: 1.6;")
+        self.btn_close = QPushButton()
+        self.btn_close.clicked.connect(self.accept)
+        layout.addWidget(self.title)
+        layout.addWidget(self.body)
+        layout.addStretch()
+        layout.addWidget(self.btn_close)
+        language_manager().language_changed.connect(lambda _: self.retranslate_ui())
+        self.retranslate_ui()
+
+    def retranslate_ui(self):
+        self.setWindowTitle(tr("About"))
+        self.title.setText(tr("About"))
+        self.body.setText(
+            tr("PAR-S Generator is a research-facing liver SPECT phantom workflow that now groups preview and batch monitoring under Generate, and keeps the .a00 viewer inside Simulate.")
+        )
+        self.btn_close.setText(tr("Close"))

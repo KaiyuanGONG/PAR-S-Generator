@@ -1,119 +1,113 @@
-"""Main application window with sidebar navigation."""
+"""
+Main application window.
+"""
 
 from pathlib import Path
 
+from PyQt6.QtGui import QFont
 from PyQt6.QtWidgets import (
-    QMainWindow, QWidget, QHBoxLayout, QVBoxLayout,
-    QPushButton, QLabel, QStackedWidget, QSizePolicy,
-    QStatusBar, QFrame, QApplication
+    QApplication,
+    QFrame,
+    QHBoxLayout,
+    QLabel,
+    QMainWindow,
+    QPushButton,
+    QSizePolicy,
+    QStackedWidget,
+    QStatusBar,
+    QVBoxLayout,
+    QWidget,
 )
-from PyQt6.QtCore import Qt, QSize, pyqtSignal, QSettings
-from PyQt6.QtGui import QFont, QIcon
 
+from ui.app_state import AppState
+from ui.i18n import language_manager, tr
 from ui.pages.phantom_page import PhantomPage
+from ui.pages.settings_page import AboutDialog, SettingsDialog
 from ui.pages.simulation_page import SimulationPage
-from ui.pages.results_page import ResultsPage
-from ui.pages.settings_page import SettingsPage
-from ui.i18n import tr
 
 
 class NavButton(QPushButton):
-    """Sidebar navigation button."""
-
     def __init__(self, icon_text: str, label: str, parent=None):
         super().__init__(parent)
+        self._icon_text = icon_text
+        self._label = label
         self.setObjectName("nav_btn")
-        self.setText(f"  {icon_text}  {label}")
         self.setCheckable(False)
-        self.setMinimumHeight(40)
+        self.setMinimumHeight(42)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-        self._active = False
+        self.refresh_text()
+
+    def refresh_text(self):
+        self.setText(f"  {self._icon_text}  {tr(self._label)}")
 
     def set_active(self, active: bool):
-        self._active = active
         self.setProperty("active", "true" if active else "false")
         self.style().unpolish(self)
         self.style().polish(self)
 
 
 class Sidebar(QWidget):
-    """Left navigation sidebar."""
-    page_changed = pyqtSignal(int)
-
-    @property
-    def NAV_ITEMS(self):
-        return [
-            ("\u2b21", tr("Phantom")),
-            ("\u25b6", tr("Simulation")),
-            ("\u25c8", tr("Results")),
-            ("\u2699", tr("Settings")),
-        ]
-
-    def __init__(self, parent=None):
+    def __init__(self, app_state: AppState, parent=None):
         super().__init__(parent)
         self.setObjectName("sidebar")
+        self._app_state = app_state
         self._buttons: list[NavButton] = []
         self._current = 0
         self._build_ui()
+        language_manager().language_changed.connect(lambda _: self.retranslate_ui())
 
     def _build_ui(self):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
 
-        # Logo area
-        logo_widget = QWidget()
-        logo_widget.setObjectName("sidebar_logo")
-        logo_layout = QVBoxLayout(logo_widget)
-        logo_layout.setContentsMargins(16, 16, 16, 16)
+        self.brand = QFrame()
+        self.brand.setObjectName("sidebar_logo")
+        brand_layout = QVBoxLayout(self.brand)
+        brand_layout.setContentsMargins(16, 18, 16, 18)
+        self.lbl_title = QLabel("PAR-S")
+        self.lbl_title.setObjectName("sidebar_brand")
+        self.lbl_title.setFont(QFont("Segoe UI", 18, QFont.Weight.Bold))
+        brand_layout.addWidget(self.lbl_title)
+        layout.addWidget(self.brand)
 
-        title = QLabel("PAR-S")
-        title.setObjectName("sidebar_logo")
-        title_font = QFont("Segoe UI", 18, QFont.Weight.Bold)
-        title.setFont(title_font)
-        title.setStyleSheet("color: #4fc3f7; letter-spacing: 2px;")
-
-        subtitle = QLabel("Generator")
-        subtitle.setStyleSheet("color: #6b7280; font-size: 11px; letter-spacing: 1px;")
-
-        logo_layout.addWidget(title)
-        logo_layout.addWidget(subtitle)
-        layout.addWidget(logo_widget)
-
-        # Version label
-        version_label = QLabel("v0.1.0")
-        version_label.setStyleSheet("color: #3a4049; font-size: 10px; padding: 4px 16px;")
-        layout.addWidget(version_label)
-
-        # Separator
-        sep = QFrame()
-        sep.setFrameShape(QFrame.Shape.HLine)
-        sep.setStyleSheet("background-color: #2d3139; margin: 4px 0;")
-        layout.addWidget(sep)
-
-        layout.addSpacing(8)
-
-        # Nav section label
-        nav_label = QLabel(tr("WORKFLOW"))
-        nav_label.setStyleSheet("color: #3a4049; font-size: 10px; padding: 4px 16px; letter-spacing: 1.5px;")
-        layout.addWidget(nav_label)
-
-        # Navigation buttons
-        for i, (icon, label) in enumerate(self.NAV_ITEMS):
+        for icon, label in [("⬡", "Generate"), ("▶", "Simulate")]:
             btn = NavButton(icon, label)
-            btn.clicked.connect(lambda checked, idx=i: self._on_nav_click(idx))
+            btn.clicked.connect(lambda checked=False, idx=len(self._buttons): self._on_nav_click(idx))
             self._buttons.append(btn)
             layout.addWidget(btn)
 
+        self.project_card = QFrame()
+        self.project_card.setObjectName("project_card")
+        card_layout = QVBoxLayout(self.project_card)
+        card_layout.setContentsMargins(16, 16, 16, 16)
+        card_layout.setSpacing(6)
+        self.lbl_version = QLabel("v0.3.0")
+        self.lbl_version.setObjectName("version_label")
+        card_layout.addWidget(self.lbl_version)
         layout.addStretch()
+        layout.addWidget(self.project_card)
 
-        # Bottom info
-        bottom_label = QLabel("© 2025 PAR-S Project")
-        bottom_label.setStyleSheet("color: #2d3139; font-size: 10px; padding: 8px 16px;")
-        layout.addWidget(bottom_label)
+        utility = QHBoxLayout()
+        utility.setContentsMargins(12, 8, 12, 12)
+        self.btn_settings = QPushButton()
+        self.btn_settings.setObjectName("secondary_btn")
+        self.btn_about = QPushButton()
+        self.btn_about.setObjectName("secondary_btn")
+        utility.addWidget(self.btn_settings)
+        utility.addWidget(self.btn_about)
+        utility_wrap = QWidget()
+        utility_wrap.setLayout(utility)
+        layout.addWidget(utility_wrap)
 
-        # Set initial active
         self._buttons[0].set_active(True)
+        self.retranslate_ui()
+
+    def retranslate_ui(self):
+        for btn in self._buttons:
+            btn.refresh_text()
+        self.btn_settings.setText(tr("Settings"))
+        self.btn_about.setText(tr("About"))
 
     def _on_nav_click(self, index: int):
         if index == self._current:
@@ -121,84 +115,89 @@ class Sidebar(QWidget):
         self._buttons[self._current].set_active(False)
         self._current = index
         self._buttons[self._current].set_active(True)
-        self.page_changed.emit(index)
+        if hasattr(self, "page_changed"):
+            self.page_changed(index)
 
-    def set_page(self, index: int):
-        self._on_nav_click(index)
+    def set_page_changed(self, callback):
+        self.page_changed = callback
 
 
 class MainWindow(QMainWindow):
-    """Application main window."""
-
     def __init__(self):
         super().__init__()
+        self.app_state = AppState(self)
         self.setWindowTitle("PAR-S Generator")
-        self.setMinimumSize(1280, 800)
-        self.resize(1440, 900)
+        self.setMinimumSize(1260, 800)
+        self.resize(1420, 900)
+        self._settings_dialog: SettingsDialog | None = None
+        self._about_dialog: AboutDialog | None = None
         self._build_ui()
         self._setup_statusbar()
+        language_manager().language_changed.connect(lambda _: self.retranslate_ui())
+        self.app_state.settings_changed.connect(lambda settings: self._apply_theme(settings.theme))
 
     def _build_ui(self):
         central = QWidget()
         self.setCentralWidget(central)
-
         root_layout = QHBoxLayout(central)
         root_layout.setContentsMargins(0, 0, 0, 0)
         root_layout.setSpacing(0)
 
-        # Sidebar
-        self.sidebar = Sidebar()
-        self.sidebar.page_changed.connect(self._on_page_changed)
+        self.sidebar = Sidebar(self.app_state)
+        self.sidebar.setMinimumWidth(220)
+        self.sidebar.setMaximumWidth(236)
+        self.sidebar.set_page_changed(self._on_page_changed)
+        self.sidebar.btn_settings.clicked.connect(self._open_settings)
+        self.sidebar.btn_about.clicked.connect(self._open_about)
         root_layout.addWidget(self.sidebar)
 
-        # Content stack
         self.stack = QStackedWidget()
         self.stack.setObjectName("content_area")
         root_layout.addWidget(self.stack, stretch=1)
 
-        # Pages
-        self.phantom_page = PhantomPage()
-        self.simulation_page = SimulationPage()
-        self.results_page = ResultsPage()
-        self.settings_page = SettingsPage()
-
-        self.stack.addWidget(self.phantom_page)
+        self.generate_page = PhantomPage(self.app_state)
+        self.simulation_page = SimulationPage(self.app_state)
+        self.stack.addWidget(self.generate_page)
         self.stack.addWidget(self.simulation_page)
-        self.stack.addWidget(self.results_page)
-        self.stack.addWidget(self.settings_page)
-
-        # Connect signals between pages
-        self.phantom_page.phantom_generated.connect(self.simulation_page.on_phantom_ready)
-        # Always read config fresh from phantom_page when batch starts (avoids stale path/n_cases)
-        self.results_page.set_config_getter(self.phantom_page._collect_config)
-        self.simulation_page.simulation_finished.connect(self.results_page.on_results_ready)
-        # Start Batch button on Phantom page -> navigate to Results + start
-        self.phantom_page.start_batch_requested.connect(self._on_start_batch_from_phantom)
-        # Theme toggle from Settings
-        self.settings_page.theme_changed.connect(self._apply_theme)
 
     def _setup_statusbar(self):
         self.status_bar = QStatusBar()
         self.setStatusBar(self.status_bar)
-        self.status_bar.showMessage("Ready  |  PAR-S Generator v0.1.0")
+        self.retranslate_ui()
+
+    def retranslate_ui(self):
+        self.status_bar.showMessage(f"{tr('Ready')}  |  PAR-S Generator v0.3.0")
+        self.sidebar.retranslate_ui()
+        if hasattr(self.generate_page, "retranslate_ui"):
+            self.generate_page.retranslate_ui()
+        if hasattr(self.simulation_page, "retranslate_ui"):
+            self.simulation_page.retranslate_ui()
+        if self._settings_dialog is not None:
+            self._settings_dialog.retranslate_ui()
+        if self._about_dialog is not None:
+            self._about_dialog.retranslate_ui()
 
     def _on_page_changed(self, index: int):
         self.stack.setCurrentIndex(index)
 
-    def show_status(self, message: str):
-        self.status_bar.showMessage(message)
+    def _open_settings(self):
+        if self._settings_dialog is None:
+            self._settings_dialog = SettingsDialog(self.app_state, self)
+            self._settings_dialog.page.theme_changed.connect(self._apply_theme)
+        self._settings_dialog.page._load_settings()
+        self._settings_dialog.show()
+        self._settings_dialog.raise_()
+        self._settings_dialog.activateWindow()
 
-    def _on_start_batch_from_phantom(self):
-        """Navigate to Results page and start batch generation."""
-        self.sidebar.set_page(2)   # Results is index 2
-        self.results_page.start_batch()
+    def _open_about(self):
+        if self._about_dialog is None:
+            self._about_dialog = AboutDialog(self)
+        self._about_dialog.show()
+        self._about_dialog.raise_()
+        self._about_dialog.activateWindow()
 
     def _apply_theme(self, theme: str):
-        """Switch QSS theme immediately without restart."""
-        if theme == "light":
-            qss_path = Path(__file__).parent.parent.parent / "resources" / "styles" / "light_theme.qss"
-        else:
-            qss_path = Path(__file__).parent.parent.parent / "resources" / "styles" / "dark_theme.qss"
+        qss_name = "light_theme.qss" if theme == "light" else "dark_theme.qss"
+        qss_path = Path(__file__).parent.parent.parent / "resources" / "styles" / qss_name
         if qss_path.exists():
-            with open(qss_path, "r", encoding="utf-8") as f:
-                QApplication.instance().setStyleSheet(f.read())
+            QApplication.instance().setStyleSheet(qss_path.read_text(encoding="utf-8"))

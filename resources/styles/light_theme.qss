@@ -9,16 +9,16 @@ QMainWindow, QDialog, QWidget {
 
 /* ── Sidebar Navigation ── */
 #sidebar {
-    background-color: #2d333b;
-    border-right: 1px solid #444c56;
-    min-width: 200px;
-    max-width: 200px;
+    background-color: #f7f9fc;
+    border-right: 1px solid #d0d7de;
+    min-width: 220px;
+    max-width: 236px;
 }
 
 #sidebar_logo {
-    background-color: #2d333b;
+    background-color: #eef3f8;
     padding: 16px 12px 12px 12px;
-    border-bottom: 1px solid #444c56;
+    border-bottom: 1px solid #d0d7de;
 }
 
 #sidebar_logo QLabel {
@@ -40,16 +40,36 @@ QMainWindow, QDialog, QWidget {
 }
 
 #nav_btn:hover {
-    background-color: #373e47;
-    color: #cdd9e5;
+    background-color: #e7edf5;
+    color: #0969da;
 }
 
 #nav_btn[active="true"] {
-    background-color: #1c4a7a;
-    color: #4fc3f7;
-    border-left: 3px solid #4fc3f7;
+    background-color: #dbeafe;
+    color: #0969da;
+    border-left: 3px solid #0969da;
 }
 
+#project_card {
+    background-color: #ffffff;
+    border: 1px solid #d0d7de;
+    border-radius: 10px;
+    margin: 12px;
+}
+
+QPushButton#secondary_btn {
+    background-color: #eef3f8;
+    color: #1f3b57;
+    border: 1px solid #d0d7de;
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 12px;
+}
+
+QPushButton#secondary_btn:hover {
+    background-color: #e3edf8;
+    border-color: #96b8df;
+}
 /* ── Main Content Area ── */
 #content_area {
     background-color: #f0f2f5;
@@ -391,4 +411,108 @@ QTextEdit, QPlainTextEdit {
     font-family: "Consolas", "Courier New", monospace;
     font-size: 12px;
     padding: 8px;
+}
+
+
+/* ── Generate / Preview Specific ── */
+#sidebar_brand {
+    color: #0969da;
+    font-size: 18px;
+    font-weight: bold;
+    letter-spacing: 2px;
+}
+
+#version_label {
+    color: #0969da;
+    font-size: 16px;
+    font-weight: bold;
+}
+
+#page_subtitle {
+    color: #57606a;
+    font-size: 12px;
+}
+
+#field_label {
+    color: #57606a;
+    font-size: 11px;
+    min-height: 16px;
+}
+
+#param_row_label {
+    color: #57606a;
+    font-size: 12px;
+}
+
+#param_group_desc {
+    color: #57606a;
+    font-size: 11px;
+    padding: 0 8px 6px 8px;
+}
+
+QCheckBox#param_advanced_toggle {
+    spacing: 0px;
+}
+
+QCheckBox#param_advanced_toggle::indicator {
+    width: 16px;
+    height: 16px;
+}
+
+#validation_banner {
+    border-radius: 8px;
+    padding: 10px;
+    font-size: 12px;
+    border: 1px solid #d0d7de;
+    background-color: #ffffff;
+    color: #24292f;
+}
+
+#validation_banner[state="error"] {
+    background-color: #fff1f2;
+    border-color: #f0a8b1;
+    color: #b4232c;
+}
+
+#validation_banner[state="warning"] {
+    background-color: #fff8e6;
+    border-color: #f2cc8f;
+    color: #8a5a20;
+}
+
+#validation_banner[state="ok"] {
+    background-color: #eefbf3;
+    border-color: #9ad7af;
+    color: #1d6f42;
+}
+
+#batch_bar {
+    background-color: #ffffff;
+    border: 1px solid #d0d7de;
+    border-radius: 8px;
+}
+
+#metrics_panel {
+    background-color: #ffffff;
+    border: 1px solid #d0d7de;
+    border-radius: 8px;
+}
+
+#metric_card {
+    background-color: #f6f8fa;
+    border: 1px solid #d0d7de;
+    border-radius: 8px;
+}
+
+#metrics_panel_title,
+#plane_index,
+#surface_info {
+    color: #57606a;
+    font-size: 11px;
+}
+
+#plane_label {
+    color: #0969da;
+    font-size: 11px;
+    font-weight: bold;
 }
