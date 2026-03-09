@@ -32,7 +32,7 @@ def main():
     init_language()
     app = QApplication(sys.argv)
     app.setApplicationName("PAR-S Generator")
-    app.setApplicationVersion("0.3.0")
+    app.setApplicationVersion("0.4.0")
     app.setFont(QFont("Segoe UI", 10))
     load_stylesheet(app)
     window = MainWindow()

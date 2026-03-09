@@ -6,13 +6,13 @@
 # ============================================================
 
 # --- 配置 ---
-$MAX_PARALLEL = 16          # 最大并行进程数（24物理核建议16）
+$MAX_PARALLEL = 3          # 最大并行进程数（24物理核建议16）
 $NN = 5                     # 光子乘数
 $SMC = "simind\ge870_czt"   # smc文件（不含.smc后缀）
 $INPUT_DIR = "output\trans_noNoise"  # bin文件所在目录
 $OUTPUT_DIR = "output\SPECT_60Mbq20s" # 输出目录
-$CASE_START = 1
-$CASE_END = 500
+$CASE_START = 383
+$CASE_END = 397
 $LOG_FILE = "output\SPECT_60Mbq20s\batch_log.txt"
 
 # --- 初始化 ---

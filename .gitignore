@@ -21,7 +21,7 @@ data/
 *.i33
 *.h33
 *.bat
-!simind/czt_ge.smc
+!simind/ge870_czt.smc
 
 # SIMIND binary (not redistributable - user must provide)
 simind/simind.exe
@@ -47,14 +47,19 @@ logs/
 *.ini
 
 # Pytest / local temp artifacts
+.pytest_cache/
 .pytest_tmp/
 .test_tmp/
+.test_tmp_manual/
 foo_tmp/
 bar_tmp/
 baz_tmp/
 tests/_tmp_pytest/
 .par-s-generator/
 .tmp_settings.json
+
+# Notebook binary data (large generated files)
+notebook/*.bin
 
 # Keep shared pytest config tracked
 !pytest.ini

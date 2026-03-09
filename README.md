@@ -1,188 +1,162 @@
-﻿# PAR-S Generator
+# PAR-S Generator
 
-PAR-S Generator is a Windows desktop workflow for synthetic liver SPECT phantom generation and downstream SIMIND preparation.
+PAR-S Generator is a Windows desktop application for generating synthetic liver SPECT phantom datasets and preparing them for Monte Carlo simulation with SIMIND.
 
 ![Phantom Preview](docs/phantom_preview.png)
 
-## Current Workflow
+## Overview
 
-The application now has two main workspaces in the left sidebar:
+The workflow is split into two main workspaces:
 
-- `Generate`
-- `Simulate`
+| Workspace | Purpose |
+|-----------|---------|
+| **Generate** | Author phantoms interactively, run batch generation, monitor progress |
+| **Simulate** | Convert phantom data to SIMIND-ready binaries, run simulation, inspect output |
 
-The bottom-left utility area contains:
+Settings and About are accessible from the bottom of the left sidebar.
 
-- `Settings`
-- `About`
+## Requirements
 
-`Review` is no longer a standalone page. Batch monitoring is now part of `Generate`.
+- Windows 10/11 (64-bit)
+- Python 3.10 or later (3.11 recommended)
+- `simind.exe` — user must provide; place in `simind/`
 
-## What Changed in v0.3
+Install Python dependencies:
 
-- Task flow simplified to `Generate -> Simulate`
-- `Generate` now contains two tabs:
-  - `Preview`
-  - `Batch Monitor`
-- `Settings` moved to a dialog and `About` is now separate
-- File-backed settings replaced unreliable `QSettings`
-- UI language now supports `English`, `中文`, and `Français`
-- `.a00` viewing now exists in one place only: `Simulate > SPECT Preview`
-- Preview metrics now live in the fourth preview panel instead of a duplicated info block
-- Left-lobe ratio is displayed as a true percentage, e.g. `0.35 -> 35.0%`
+```bash
+pip install -r requirements.txt
+```
+
+Run the application:
+
+```bash
+python main.py
+```
 
 ## Generate
 
-`Generate` is the full phantom authoring workspace.
-
 ### Preview tab
 
-Use it to:
+Use the Preview tab to tune a single phantom interactively before committing to a batch run.
 
-- tune one phantom interactively
-- inspect the 2D/3D preview
-- validate configuration before long-running work
-- define reproducible batch settings
+**Parameter groups (left panel):**
 
-The left side is organized into four parameter groups:
+- `Volume` — matrix size and voxel spacing
+- `Liver Geometry` — liver size, shape, left/right lobe ratio
+- `Tumors` — count, diameter range, morphology, contrast
+- `Activity` — perfusion mode, background activity
 
-- `Volume`
-- `Liver Geometry`
-- `Tumors`
-- `Activity`
+Each group has a default (slider-limited) mode and an `Advanced` mode that unlocks the full parameter range up to hard safety bounds. All parameters have tooltips.
 
-Each group now follows the same interaction model:
+**Volume presets:**
 
-- default mode uses sliders limited to recommended values
-- `Advanced` unlocks manual control up to hard safety bounds
-- tooltips explain each parameter in one sentence
+| Matrix | Voxel size |
+|--------|-----------|
+| 96 | 5.89 mm |
+| 128 | 4.42 mm |
+| 160 | 3.54 mm |
 
-### Important behavior
+These preserve comparable anatomic coverage at different sampling densities.
 
-- Tumor size stays defined in physical `mm`
-- Changing `matrix` or `voxel size` does not automatically rescale tumor diameter metadata
-- Preview is for one case only and may force an `exact tumor count`
-- Batch generation still uses `min/max tumors`
-- Tumor morphology can be set to `Ellipsoid`, `Spiculated`, or `Random`
-- Perfusion mode can be set to `Whole Liver`, `Tumor Only`, `Left Only`, `Right Only`, or `Random`
+**Tumor options:**
 
-### Recommended volume presets
+- Morphology: `Ellipsoid`, `Spiculated`, `Random`
+- Perfusion mode: `Whole Liver`, `Tumor Only`, `Left Only`, `Right Only`, `Random`
+- Tumor diameter is always defined in physical mm
 
-The default volume presets are:
+**Behavior notes:**
 
-- `96 / 5.89 mm`
-- `128 / 4.42 mm`
-- `160 / 3.54 mm`
+- Preview always uses `case_id = 0` and does not consume the batch sequence
+- Preview forces an exact tumor count; batch uses min/max range
+- Changing matrix or voxel size does not automatically rescale tumor diameter metadata
 
-These preserve roughly similar anatomic coverage while changing sampling density.
+### Batch settings (below preview)
 
-### Batch settings
-
-The batch bar below the preview now contains:
-
-- `Number of cases`
-- `Use fixed seed`
-- `Global seed`
-- `Output directory`
-- `Start Batch`
-
-Reproducibility rule:
-
-- Preview uses `case_id = 0`
-- Batch uses `case_id = 1..N`
-- When fixed seed is enabled, the seed is `global_seed + case_id`
-- Preview does not consume the batch sequence
+| Control | Purpose |
+|---------|---------|
+| Number of cases | Total phantoms to generate |
+| Use fixed seed | Enable reproducible output |
+| Global seed | Base seed; each case uses `global_seed + case_id` |
+| Output directory | Where `.npz` files and metadata are written |
+| Start Batch | Launch background generation |
 
 ### Batch Monitor tab
 
-This tab now owns the old review functionality:
+Live monitoring of an active or completed batch:
 
-- live progress
-- ETA and elapsed time
-- summary cards
-- charts
-- case table
-- log panel
-- load existing `batch_summary.json`
-
-It does not contain the `.a00` viewer anymore.
+- Progress bar, ETA, elapsed time
+- Summary cards and charts
+- Per-case table
+- Log panel
+- Load an existing `batch_summary.json` to review past runs
 
 ## Simulate
 
-`Simulate` is now the only place for SIMIND conversion and output inspection.
+### Step 1 — Raw Binary Export
 
-### Step 1: Raw Binary Export
+Select the source directory containing `case_*.npz` files and an output directory. Each case is exported as:
 
-- choose the source `case_*.npz` directory
-- choose the raw binary output directory
-- export all cases to:
-  - `case_XXXX_act_av.bin`
-  - `case_XXXX_atn_av.bin`
+- `case_XXXX_act_av.bin` — activity map
+- `case_XXXX_atn_av.bin` — attenuation map
 
-### Step 2: SIMIND Configuration
+### Step 2 — SIMIND Configuration
 
-- configure `simind.exe`
-- configure `.smc`
-- configure the SIMIND output directory
+Configure the paths to `simind.exe` and the `.smc` configuration file, and set the SIMIND output directory.
 
-### Step 3: Script or Run
+### Step 3 — Run
 
-- generate a `.bat` script
-- or run SIMIND directly
+- Generate a `.bat` script for manual or scheduled execution, or
+- Launch SIMIND directly from the UI
 
-### Step 4: Visual Check
+### Step 4 — Visual Check
 
-The right-side viewer is now called `SPECT Preview`.
+The `SPECT Preview` panel on the right loads the first `.a00` file automatically after a successful run.
 
-After a successful run, the first `.a00` file is loaded automatically for quick inspection.
+## Batch Parallel Production (CLI)
 
-## Validation Rules
+For large-scale production runs (hundreds of cases), use `run_batch.ps1` instead of the UI:
 
-The UI now blocks or warns before preview, batch, conversion, or SIMIND launch.
+```powershell
+powershell -ExecutionPolicy Bypass -File run_batch.ps1
+```
 
-Blocked cases include:
+Edit the configuration block at the top of the script before running:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `$MAX_PARALLEL` | 16 | Concurrent SIMIND processes |
+| `$NN` | 5 | Photon history multiplier |
+| `$SMC` | `simind\ge870_czt` | SMC file path (no extension) |
+| `$INPUT_DIR` | `output\trans_noNoise` | Directory with `.bin` files |
+| `$OUTPUT_DIR` | `output\SPECT_60Mbq20s` | SIMIND output directory |
+| `$CASE_START` / `$CASE_END` | 1 / 500 | Case range |
+
+The script skips already-completed cases and writes a `batch_log.txt` to the output directory.
+
+## Validation
+
+The UI blocks operations and shows warnings before preview, batch, export, or SIMIND launch.
+
+**Blocked:**
 
 - `Min tumors > Max tumors`
 - `Contrast min > Contrast max`
-- empty output directory
-- invalid `simind.exe` or `.smc` path
-- missing `case_*.npz`
-- non-cubic volume
-- bundled `ge870_czt.smc` used with unsupported geometry
+- Empty output directory
+- Invalid `simind.exe` or `.smc` path
+- Missing `case_*.npz` files
+- Non-cubic volume
+- Bundled `ge870_czt.smc` used with an incompatible geometry
 
-Warnings include:
+**Warned:**
 
-- parameters outside recommended ranges but still within hard safety bounds
-- custom matrix/voxel settings that no longer match the bundled `ge870_czt.smc`
-
-## Settings
-
-Settings are stored in a JSON file instead of `QSettings`.
-
-Default location:
-
-- `%APPDATA%/PAR-S Generator/settings.json`
-
-Stored items:
-
-- default `simind.exe`
-- default `.smc`
-- default phantom output directory
-- theme
-- language
-- auto-save batch config
-
-If `Auto-save config on batch start` is enabled, the app writes:
-
-- `last_batch_config.json`
-
-into the selected batch output folder.
+- Parameters outside recommended range but within hard safety bounds
+- Custom matrix/voxel settings that no longer match the bundled SMC file
 
 ## Output Structure
 
 ### Phantom output
 
-```text
+```
 output/syn3d/
 ├── case_0001.npz
 ├── case_0001_meta.json
@@ -192,17 +166,16 @@ output/syn3d/
 
 ### Raw binary export
 
-```text
+```
 output/interfile/
 ├── case_0001_act_av.bin
 ├── case_0001_atn_av.bin
-├── case_0002_act_av.bin
 └── ...
 ```
 
 ### SIMIND output
 
-```text
+```
 output/simind/
 ├── case_0001.a00
 ├── case_0001.h00
@@ -210,23 +183,82 @@ output/simind/
 └── ...
 ```
 
-## Notes on `.smc`
+## SIMIND Configuration
 
-The bundled `ge870_czt.smc` still assumes:
+The bundled `simind/ge870_czt.smc` targets the GE NM/CT 870 CZT scanner and assumes:
 
-- `128 x 128 x 128`
-- `4.42 mm`
+- Matrix: `128 × 128 × 128`
+- Voxel size: `4.42 mm`
 
-If you change matrix or voxel size, you must use a compatible `.smc` file.
+If you change the matrix or voxel size, you must supply a compatible `.smc` file. Photon histories are controlled by the `.smc` file, not by the UI.
 
-Photon histories are controlled by the selected `.smc` file, not by the UI.
+## Settings
+
+Settings are stored as JSON (not `QSettings`).
+
+Default location: `%APPDATA%\PAR-S Generator\settings.json`
+
+Stored items:
+
+- Default `simind.exe` path
+- Default `.smc` path
+- Default phantom output directory
+- Theme (`dark` / `light`)
+- Language (`English` / `中文` / `Français`)
+- Auto-save batch config on start
+
+When auto-save is enabled, the app writes `last_batch_config.json` into the selected batch output folder.
 
 ## Tests
 
-Core and workflow regression:
-
 ```bash
 python -m pytest tests/test_phantom_anatomy.py tests/test_validation.py tests/test_workflow_state.py tests/test_ui_smoke.py -q
+```
+
+## Project Structure
+
+```
+PAR-S-Generator/
+├── main.py                     # Application entry point
+├── requirements.txt
+├── build_windows.spec          # PyInstaller configuration
+├── run_batch.ps1               # CLI parallel batch production script
+├── src/
+│   ├── core/
+│   │   ├── phantom_generator.py    # 3D liver phantom algorithm
+│   │   ├── batch_runner.py         # Background batch worker (QThread)
+│   │   ├── batch_stats.py          # Batch statistics tracking
+│   │   ├── interfile_writer.py     # NPZ → binary export
+│   │   ├── parameter_specs.py      # Parameter definitions & bounds
+│   │   └── validation.py           # Pre-run validation rules
+│   └── ui/
+│       ├── main_window.py          # Main window & navigation
+│       ├── app_state.py            # Global application state
+│       ├── settings_store.py       # JSON settings persistence
+│       ├── i18n.py                 # Internationalization (EN/中文/FR)
+│       ├── pages/
+│       │   ├── phantom_page.py     # Generate workspace
+│       │   ├── simulation_page.py  # Simulate workspace
+│       │   ├── results_page.py     # Results viewer
+│       │   └── settings_page.py    # Settings dialog
+│       └── widgets/
+│           ├── param_widgets.py    # Parameter input controls
+│           ├── slice_viewer.py     # 3D slice & surface viewer
+│           └── simind_viewer.py    # .a00 projection viewer
+├── resources/styles/
+│   ├── dark_theme.qss
+│   └── light_theme.qss
+├── simind/
+│   ├── ge870_czt.smc           # GE NM/CT 870 CZT configuration
+│   └── simind.exe              # SIMIND binary (user-provided)
+├── tests/
+│   ├── test_phantom_anatomy.py
+│   ├── test_validation.py
+│   ├── test_workflow_state.py
+│   └── test_ui_smoke.py
+├── docs/                       # Technical documentation (Chinese)
+└── notebook/
+    └── pipeline_overview.ipynb # End-to-end pipeline walkthrough
 ```
 
 ## License
