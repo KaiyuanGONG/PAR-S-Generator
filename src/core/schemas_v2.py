@@ -122,6 +122,13 @@ class TumorTargetV2:
     axis_ratios: tuple[float, float]
     lobe: str
     morphology: str
+    orientation_deg_zyx: tuple[float, float, float] = (0.0, 0.0, 0.0)
+    subcapsular: bool = False
+    primitive_count: int = 1
+    target_rank: int = 1
+    count_bin: str = ""
+    dmax_bin: str = ""
+    within_bin_assumption: bool = False
     evidence_types: Mapping[str, str] = field(default_factory=dict)
 
 

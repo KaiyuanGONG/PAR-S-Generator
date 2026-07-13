@@ -1,0 +1,8 @@
+{
+  "schema_version": "pars_task4_visual_manifest_v2",
+  "source": "docs/reports/task4_tumor_v2_examples.npz",
+  "multiplanar": "docs/reports/task4_tumor_v2_multiplanar.png",
+  "surface_3d": "docs/reports/task4_tumor_v2_3d.png",
+  "case_count": 3,
+  "status": "pass"
+}

@@ -99,12 +99,20 @@
       "applies_to": ["population_tare_hcc_nopvi_v2"]
     },
     "within_gt5_count_model": {
-      "value": {"family": "shifted_geometric", "minimum": 6, "maximum": 20},
+      "value": {"family": "shifted_geometric", "minimum": 6, "maximum": 20, "success_probability": 0.25},
       "unit": "model_specification",
       "source_type": "engineering_prior",
       "evidence_ids": ["engineering-tumor-geometry-v2"],
       "applies_to": ["population_tare_hcc_nopvi_v2"],
       "notes": "within_bin_assumption=true must be written per case."
+    },
+    "within_2_5_count_model": {
+      "value": {"family": "discrete_uniform", "minimum": 2, "maximum": 5},
+      "unit": "model_specification",
+      "source_type": "engineering_prior",
+      "evidence_ids": ["engineering-tumor-geometry-v2"],
+      "applies_to": ["population_tare_hcc_nopvi_v2"],
+      "notes": "The source reports only a 2-5 stratum; individual counts are an explicit within-bin assumption."
     },
     "morphology_set": {
       "value": ["smooth_nodular", "lobulated_confluent"],
@@ -112,6 +120,25 @@
       "source_type": "engineering_prior",
       "evidence_ids": ["engineering-tumor-geometry-v2"],
       "applies_to": ["population_tare_hcc_nopvi_v2"]
+    },
+    "tumor_geometry_model": {
+      "value": {
+        "dmax_lognormal_median_mm": 70.0,
+        "dmax_lognormal_sigma": 0.676,
+        "secondary_diameter_beta_shape": [1.3, 3.5],
+        "lobulated_probability_below_threshold": 0.25,
+        "subcapsular_probability": 0.20,
+        "subcapsular_clearance_max_mm": 5.0,
+        "confluent_primitive_count_range": [2, 4],
+        "dmax_tolerance_voxels": 0.75,
+        "placement_attempts_per_lesion": 192,
+        "instance_gap_mm": 0.0
+      },
+      "unit": "model_specification",
+      "source_type": "engineering_prior",
+      "evidence_ids": ["engineering-tumor-geometry-v2"],
+      "applies_to": ["population_tare_hcc_nopvi_v2"],
+      "notes": "Conditional within-bin sizes, morphology mixing, subcapsular coverage, raster tolerance and placement search are engineering QA controls pending local lesion-mask calibration."
     },
     "tnr_mean_reference": {
       "value": 2.11,

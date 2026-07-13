@@ -19,6 +19,7 @@ from scipy.ndimage import gaussian_filter
 if TYPE_CHECKING:
     from .liver_geometry import LiverGeometryV2
     from .schemas_v2 import LiverTargetV2, PatientSampleV2, PopulationProfileV2
+    from .tumor_generator_v2 import TumorCaseTargetV2, TumorGeometryV2
 
 _GRID_CACHE: dict[tuple[int, int, int], tuple[np.ndarray, np.ndarray, np.ndarray]] = {}
 
@@ -197,6 +198,61 @@ class LiverCaseV2:
     target: "LiverTargetV2"
     geometry: "LiverGeometryV2"
     sampling_provenance: LiverSamplingProvenanceV2 | None = None
+
+
+@dataclass(frozen=True)
+class RejectedTumorTargetAttemptV2:
+    attempt_index: int
+    attempt_seed: int
+    reason_code: str
+    lesion_id: str | None
+    details: dict[str, object] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class TumorSamplingProvenanceV2:
+    tumor_seed: int
+    max_target_attempts: int
+    accepted_attempt_index: int
+    accepted_attempt_seed: int
+    rejected_attempts: tuple[RejectedTumorTargetAttemptV2, ...] = ()
+
+
+@dataclass(frozen=True)
+class TumorCaseV2:
+    patient: "PatientSampleV2"
+    liver: "LiverGeometryV2"
+    target: "TumorCaseTargetV2"
+    geometry: "TumorGeometryV2"
+    sampling_provenance: TumorSamplingProvenanceV2
+
+
+class TumorTargetRetryExhaustedError(RuntimeError):
+    def __init__(
+        self,
+        case_id: str,
+        max_target_attempts: int,
+        rejected_attempts: tuple[RejectedTumorTargetAttemptV2, ...],
+    ) -> None:
+        self.case_id = case_id
+        self.max_target_attempts = max_target_attempts
+        self.rejected_attempts = rejected_attempts
+        reasons = [record.reason_code for record in rejected_attempts]
+        super().__init__(
+            f"case {case_id!r} exhausted {max_target_attempts} tumor target attempts; "
+            f"reasons: {reasons}"
+        )
+
+
+def _derive_tumor_target_attempt_seed(
+    tumor_seed: int,
+    case_id: str,
+    attempt_index: int,
+) -> int:
+    payload = (
+        f"pars-syn-v2|{tumor_seed}|{case_id}|tumor-target-attempt|{attempt_index}"
+    ).encode("utf-8")
+    return int.from_bytes(hashlib.sha256(payload).digest()[:8], "big") % (2**63 - 1) + 1
 
 
 # ─────────────────────────────────────────────
@@ -483,6 +539,106 @@ class PhantomGenerator:
         )
         raise exhausted from last_shape_error
 
+    def generate_tumors_v2(
+        self,
+        patient: "PatientSampleV2",
+        liver: "LiverGeometryV2",
+        profile: "PopulationProfileV2",
+        rng: np.random.Generator,
+        *,
+        tumor_seed: int | None = None,
+        max_target_attempts: int = 8,
+    ) -> TumorCaseV2:
+        """Generate V2 tumors while fixing literature strata across geometry retries."""
+        from .liver_geometry import GridSpecV2
+        from .tumor_generator_v2 import (
+            TumorPlacementRejectedError,
+            TumorStrataV2,
+            TumorTargetSamplingRejectedError,
+            place_and_rasterize_tumors,
+            sample_tumor_case_target,
+        )
+
+        if not isinstance(rng, np.random.Generator):
+            raise TypeError("rng must be numpy.random.Generator")
+        if (
+            not isinstance(max_target_attempts, int)
+            or isinstance(max_target_attempts, bool)
+            or not 1 <= max_target_attempts <= 64
+        ):
+            raise ValueError("max_target_attempts must be an integer within [1, 64]")
+        if tumor_seed is not None and (
+            not isinstance(tumor_seed, int)
+            or isinstance(tumor_seed, bool)
+            or not 1 <= tumor_seed <= 2**63 - 1
+        ):
+            raise ValueError("tumor_seed must be an integer within [1, 2^63-1]")
+        if tumor_seed is None:
+            tumor_seed = int(rng.integers(1, 2**63 - 1, dtype=np.int64))
+
+        grid = GridSpecV2(
+            shape=tuple(int(value) for value in self.cfg.volume_shape),
+            voxel_size_mm=self.cfg.voxel_size_mm,
+        )
+        rejected: list[RejectedTumorTargetAttemptV2] = []
+        fixed_strata: TumorStrataV2 | None = None
+        last_error: RuntimeError | None = None
+        for attempt_index in range(1, max_target_attempts + 1):
+            attempt_seed = _derive_tumor_target_attempt_seed(
+                tumor_seed,
+                patient.case_id,
+                attempt_index,
+            )
+            attempt_rng = np.random.default_rng(attempt_seed)
+            try:
+                target = sample_tumor_case_target(
+                    patient,
+                    liver,
+                    profile,
+                    attempt_rng,
+                    fixed_strata=fixed_strata,
+                )
+                if fixed_strata is None:
+                    fixed_strata = target.strata
+                geometry = place_and_rasterize_tumors(target, liver, grid)
+            except (TumorTargetSamplingRejectedError, TumorPlacementRejectedError) as exc:
+                last_error = exc
+                rejection = exc.rejection
+                if fixed_strata is None:
+                    raw_strata = rejection.details.get("strata")
+                    if isinstance(raw_strata, dict):
+                        fixed_strata = TumorStrataV2(**raw_strata)
+                rejected.append(
+                    RejectedTumorTargetAttemptV2(
+                        attempt_index=attempt_index,
+                        attempt_seed=attempt_seed,
+                        reason_code=rejection.reason_code,
+                        lesion_id=rejection.lesion_id,
+                        details=dict(rejection.details),
+                    )
+                )
+                continue
+            provenance = TumorSamplingProvenanceV2(
+                tumor_seed=tumor_seed,
+                max_target_attempts=max_target_attempts,
+                accepted_attempt_index=attempt_index,
+                accepted_attempt_seed=attempt_seed,
+                rejected_attempts=tuple(rejected),
+            )
+            return TumorCaseV2(
+                patient=patient,
+                liver=liver,
+                target=target,
+                geometry=geometry,
+                sampling_provenance=provenance,
+            )
+        exhausted = TumorTargetRetryExhaustedError(
+            patient.case_id,
+            max_target_attempts,
+            tuple(rejected),
+        )
+        raise exhausted from last_error
+
     def _resolve_perfusion_mode(self, rng, overrides: PreviewOverrides | None):
         if overrides and overrides.perfusion_mode in self.PERFUSION_POLICY_MAP.values():
             return overrides.perfusion_mode
@@ -761,4 +917,3 @@ class PhantomGenerator:
             generation_time_s=time.time() - t0,
         )
         return result
-

@@ -1,0 +1,301 @@
+{
+  "schema_version": "pars_task4_tumor_validation_v2",
+  "profile_id": "population_tare_hcc_nopvi_v2",
+  "status": "pass",
+  "target_statistics": {
+    "sample_count": 10000,
+    "seed": 20260713,
+    "status": "pass",
+    "expected": {
+      "count_bins": {
+        "1": 0.324,
+        "2-5": 0.224,
+        ">5": 0.452
+      },
+      "dmax_bins": {
+        "10-<80_mm": 0.603,
+        "80-200_mm": 0.397
+      },
+      "lobe_extents": {
+        "unilobar": 0.587,
+        "bilobar": 0.413
+      }
+    },
+    "observed": {
+      "count_bins": {
+        ">5": 0.447,
+        "2-5": 0.2291,
+        "1": 0.3239
+      },
+      "dmax_bins": {
+        "10-<80_mm": 0.6017,
+        "80-200_mm": 0.3983
+      },
+      "lobe_extents": {
+        "bilobar": 0.4149,
+        "unilobar": 0.5851
+      }
+    },
+    "descriptive": {
+      "lesion_count": {
+        "mean": 5.0476,
+        "sd": 4.08077618107144,
+        "min": 1.0,
+        "p05": 1.0,
+        "median": 5.0,
+        "p95": 13.0,
+        "max": 20.0
+      },
+      "patient_dmax_mm": {
+        "mean": 68.28431257256285,
+        "sd": 29.19325464476824,
+        "min": 10.040439315834654,
+        "p05": 23.055256649088175,
+        "median": 68.12655964098337,
+        "p95": 115.05766384071586,
+        "max": 161.6202515156646
+      },
+      "subcapsular_fraction": 0.20136302401141137,
+      "confluent_fraction": 0.27238687693161107
+    },
+    "gates": {
+      "count_bins.1": true,
+      "count_bins.2-5": true,
+      "count_bins.>5": true,
+      "dmax_bins.10-<80_mm": true,
+      "dmax_bins.80-200_mm": true,
+      "lobe_extents.unilobar": true,
+      "lobe_extents.bilobar": true,
+      "single_count_is_exact": true,
+      "two_to_five_support": true,
+      "greater_than_five_support": true,
+      "dmax_support": true,
+      "dmax_bin_support": true,
+      "lobe_extent_exact": true,
+      "large_is_confluent": true,
+      "analytic_burden_gate": true,
+      "population_vs_within_bin_evidence": true
+    }
+  },
+  "raster_gate": {
+    "status": "pass",
+    "grid": {
+      "shape": [
+        128,
+        128,
+        128
+      ],
+      "voxel_size_mm": 4.42
+    },
+    "cases": [
+      {
+        "target_dmax_mm": 10.0,
+        "actual_recist_mm": 13.259999999999996,
+        "error_mm": 3.2599999999999962,
+        "tolerance_mm": 3.315,
+        "voxel_count": 7,
+        "volume_ml": 0.6044562159999998,
+        "primitive_count": 1,
+        "primitive_overlap_voxels": 0,
+        "status": "pass",
+        "gates": {
+          "dmax": true,
+          "connected": true,
+          "grid_boundary_clear": true,
+          "confluent_overlap": true
+        }
+      },
+      {
+        "target_dmax_mm": 20.0,
+        "actual_recist_mm": 18.752471837067244,
+        "error_mm": 1.2475281629327561,
+        "tolerance_mm": 3.315,
+        "voxel_count": 19,
+        "volume_ml": 1.6406668719999993,
+        "primitive_count": 1,
+        "primitive_overlap_voxels": 0,
+        "status": "pass",
+        "gates": {
+          "dmax": true,
+          "connected": true,
+          "grid_boundary_clear": true,
+          "confluent_overlap": true
+        }
+      },
+      {
+        "target_dmax_mm": 40.0,
+        "actual_recist_mm": 40.16401943459913,
+        "error_mm": 0.16401943459913326,
+        "tolerance_mm": 3.315,
+        "voxel_count": 213,
+        "volume_ml": 18.392739143999993,
+        "primitive_count": 1,
+        "primitive_overlap_voxels": 0,
+        "status": "pass",
+        "gates": {
+          "dmax": true,
+          "connected": true,
+          "grid_boundary_clear": true,
+          "confluent_overlap": true
+        }
+      },
+      {
+        "target_dmax_mm": 60.0,
+        "actual_recist_mm": 60.40666666666666,
+        "error_mm": 0.4066666666666592,
+        "tolerance_mm": 3.315,
+        "voxel_count": 735,
+        "volume_ml": 63.46790267999998,
+        "primitive_count": 1,
+        "primitive_overlap_voxels": 0,
+        "status": "pass",
+        "gates": {
+          "dmax": true,
+          "connected": true,
+          "grid_boundary_clear": true,
+          "confluent_overlap": true
+        }
+      },
+      {
+        "target_dmax_mm": 100.0,
+        "actual_recist_mm": 100.20746834195755,
+        "error_mm": 0.2074683419575507,
+        "tolerance_mm": 3.315,
+        "voxel_count": 3859,
+        "volume_ml": 333.22807679199985,
+        "primitive_count": 1,
+        "primitive_overlap_voxels": 0,
+        "status": "pass",
+        "gates": {
+          "dmax": true,
+          "connected": true,
+          "grid_boundary_clear": true,
+          "confluent_overlap": true
+        }
+      },
+      {
+        "target_dmax_mm": 200.0,
+        "actual_recist_mm": 200.63853496013397,
+        "error_mm": 0.6385349601339669,
+        "tolerance_mm": 6.0,
+        "voxel_count": 32318,
+        "volume_ml": 2790.687998383999,
+        "primitive_count": 3,
+        "primitive_overlap_voxels": 15996,
+        "status": "pass",
+        "gates": {
+          "dmax": true,
+          "connected": true,
+          "grid_boundary_clear": true,
+          "confluent_overlap": true
+        }
+      },
+      {
+        "target_dmax_mm": 215.0,
+        "actual_recist_mm": 214.96245005705998,
+        "error_mm": 0.0375499429400179,
+        "tolerance_mm": 6.45,
+        "voxel_count": 40122,
+        "volume_ml": 3464.5703283359985,
+        "primitive_count": 3,
+        "primitive_overlap_voxels": 19887,
+        "status": "pass",
+        "gates": {
+          "dmax": true,
+          "connected": true,
+          "grid_boundary_clear": true,
+          "confluent_overlap": true
+        }
+      }
+    ]
+  },
+  "end_to_end_gate": {
+    "status": "pass",
+    "case_count": 3,
+    "seed": 20261713,
+    "first_pass_fraction": 1.0,
+    "attempt_histogram": {
+      "1": 3
+    },
+    "rejection_reason_counts": {},
+    "gates": {
+      "all_cases_pass": true,
+      "at_least_one_multifocal": true,
+      "retry_chain_bounded": true
+    },
+    "cases": [
+      {
+        "case_id": "task4_e2e_000",
+        "liver_morphology": "cirrhotic",
+        "strata": {
+          "count_bin": ">5",
+          "dmax_bin": "10-<80_mm",
+          "lobe_extent": "bilobar"
+        },
+        "target_count": 8,
+        "patient_dmax_mm": 67.08588791850862,
+        "actual_dmax_error_max_mm": 1.5276708767236187,
+        "tumor_to_liver_fraction": 0.07471131639722862,
+        "accepted_attempt_index": 1,
+        "rejected_reasons": [],
+        "status": "pass",
+        "gates": {
+          "complete_liver_containment": true,
+          "instance_count": true,
+          "dmax": true,
+          "burden": true,
+          "lobe_extent": true,
+          "positive_instance_ids": true
+        }
+      },
+      {
+        "case_id": "task4_e2e_001",
+        "liver_morphology": "cirrhotic",
+        "strata": {
+          "count_bin": "1",
+          "dmax_bin": "10-<80_mm",
+          "lobe_extent": "unilobar"
+        },
+        "target_count": 1,
+        "patient_dmax_mm": 60.24449106766503,
+        "actual_dmax_error_max_mm": 0.16217559900164247,
+        "tumor_to_liver_fraction": 0.02492168785701124,
+        "accepted_attempt_index": 1,
+        "rejected_reasons": [],
+        "status": "pass",
+        "gates": {
+          "complete_liver_containment": true,
+          "instance_count": true,
+          "dmax": true,
+          "burden": true,
+          "lobe_extent": true,
+          "positive_instance_ids": true
+        }
+      },
+      {
+        "case_id": "task4_e2e_002",
+        "liver_morphology": "cirrhotic",
+        "strata": {
+          "count_bin": "1",
+          "dmax_bin": "80-200_mm",
+          "lobe_extent": "unilobar"
+        },
+        "target_count": 1,
+        "patient_dmax_mm": 84.00934299402944,
+        "actual_dmax_error_max_mm": 0.15411313372487712,
+        "tumor_to_liver_fraction": 0.06918729292535568,
+        "accepted_attempt_index": 1,
+        "rejected_reasons": [],
+        "status": "pass",
+        "gates": {
+          "complete_liver_containment": true,
+          "instance_count": true,
+          "dmax": true,
+          "burden": true,
+          "lobe_extent": true,
+          "positive_instance_ids": true
+        }
+      }
+    ]
+  }
+}
