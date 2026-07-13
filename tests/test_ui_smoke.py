@@ -68,18 +68,21 @@ def test_settings_dialog_retranslates_labels(app, monkeypatch, tmp_path):
     dialog.close()
 
 
-def test_tumor_single_value_maps_to_min_max(app, monkeypatch, tmp_path):
+def test_tumor_single_value_is_preview_override_only(app, monkeypatch, tmp_path):
     monkeypatch.setenv('PAR_S_SETTINGS_PATH', str(tmp_path / 'settings.json'))
     page = PhantomPage(AppState())
 
     page.ctrl_tumor_count.set_value(4)
     page.ctrl_contrast.set_value(6.5)
     cfg = page._collect_config()
+    overrides = page._collect_preview_overrides()
 
-    assert cfg.tumor_count_min == 4
-    assert cfg.tumor_count_max == 4
-    assert cfg.tumor_contrast_min == pytest.approx(6.5)
-    assert cfg.tumor_contrast_max == pytest.approx(6.5)
+    assert cfg.tumor_count_min == 1
+    assert cfg.tumor_count_max == 5
+    assert cfg.tumor_contrast_min == pytest.approx(2.0)
+    assert cfg.tumor_contrast_max == pytest.approx(8.0)
+    assert overrides.exact_tumor_count == 4
+    assert overrides.exact_tumor_contrast == pytest.approx(6.5)
 
 
 def test_volume_discrete_and_advanced_modes(app, monkeypatch, tmp_path):

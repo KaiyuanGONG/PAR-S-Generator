@@ -57,6 +57,51 @@
       "notes": "Directional proxy targets only."
     },
     {
+      "evidence_id": "seppelt-ship-mri-2022-liver-diameters",
+      "title": "Population MRI liver diameters and segmented volume (SHIP healthy subgroup n=886)",
+      "source_type": "literature_population",
+      "verification_status": "verified_original_article",
+      "locator": "https://doi.org/10.1038/s41598-022-04825-8",
+      "supports": ["liver_dimensions", "liver_dimension_intervals", "volume_extent_joint_reference"],
+      "notes": "Healthy mean SI/AP/LR 172/158/197 mm with SD 20/19/23 mm; healthy segmented volume 1469.3 +/- 292.9 mL. Single diameters correlated poorly with volume, so axes and volume must be treated jointly."
+    },
+    {
+      "evidence_id": "thanaj-ukbb-2024-liver-shape",
+      "title": "Population-scale 3D MRI liver shape analysis (UK Biobank n=33,434)",
+      "source_type": "literature_population",
+      "verification_status": "verified_original_article",
+      "locator": "https://doi.org/10.1186/s12880-023-01149-5",
+      "supports": ["population_shape_variation", "anthropometric_shape_conditioning"],
+      "notes": "Regional surface shape varies with age, BMI, waist-to-hip ratio, liver fat, iron and disease; this rejects a single frozen outer contour as a population model."
+    },
+    {
+      "evidence_id": "ozaki-bjr-2016-cirrhosis-morphometry",
+      "title": "MDCT segment volumetry in cirrhosis by aetiology and Child-Pugh stage",
+      "source_type": "literature_population",
+      "verification_status": "verified_original_article",
+      "locator": "https://doi.org/10.1259/bjr.20150896",
+      "supports": ["cirrhotic_lobar_shape_direction", "cirrhotic_stage_variation"],
+      "notes": "250 cirrhotic patients and 54 controls: common right/medial/anterior atrophy with lateral and caudate hypertrophy, modified by aetiology and stage."
+    },
+    {
+      "evidence_id": "rhodes-2021-gallbladder-fossa",
+      "title": "Cadaveric gallbladder fossa morphometry",
+      "source_type": "literature_population",
+      "verification_status": "verified_original_article",
+      "locator": "https://doi.org/10.1371/journal.pone.0257848",
+      "supports": ["gallbladder_fossa_scale", "visceral_surface_localisation"],
+      "notes": "Adult cadaveric gallbladder fossa volume 31.01 +/- 17.82 mL; use as a small open visceral indentation, not a large internal cavity."
+    },
+    {
+      "evidence_id": "saha-2023-porta-hepatis",
+      "title": "Adult cadaveric porta hepatis morphometry",
+      "source_type": "literature_population",
+      "verification_status": "verified_original_article",
+      "locator": "https://doi.org/10.5603/FM.a2022.0047",
+      "supports": ["porta_hepatis_scale", "porta_hepatis_location"],
+      "notes": "Porta hepatis is a small posterior, slightly right-sided transverse oval; mean transverse/AP diameters 2.93/1.82 cm."
+    },
+    {
       "evidence_id": "decision-scope-a-20260713",
       "title": "User decision A: no-PVI TARE-HCC main population",
       "source_type": "engineering_prior",
@@ -175,12 +220,12 @@
     },
     {
       "evidence_id": "engineering-liver-geometry-v2",
-      "title": "V2 constrained double-ellipsoid liver geometry model",
+      "title": "V2 population-anchored constructive liver geometry contract",
       "source_type": "engineering_prior",
       "verification_status": "declared_geometry_contract",
       "locator": "D:/PFE-U/PAR/docs/superpowers/plans/2026-07-13-par-s-liver-simulation-data-v2.md#task-3",
-      "supports": ["liver_volume_conditioning", "liver_dimensions", "centroid", "caudate_presence", "low_frequency_surface"],
-      "notes": "Uses target-conditioned geometry and never treats 14*weight+979 as a generative mean."
+      "supports": ["liver_volume_conditioning", "constructive_shape_family", "centroid", "caudate_presence", "multiscale_surface", "bbox_fullness_calibration", "shape_quality_gates"],
+      "notes": "The old V1 CSG is an engineering regression reference only, never anatomical truth. V2 uses literature-anchored target dimensions plus a continuous asymmetric shape family and never treats 14*weight+979 as a generative mean. Fullness calibration and all shape-quality thresholds are engineering QA contracts pending calibration against real liver masks, not literature-derived physiological cutoffs."
     }
   ]
 }

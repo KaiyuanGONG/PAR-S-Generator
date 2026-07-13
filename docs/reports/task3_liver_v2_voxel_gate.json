@@ -1,5 +1,5 @@
 {
-  "schema_version": "pars_task3_voxel_validation_v1",
+  "schema_version": "pars_task3_voxel_validation_v2",
   "profile_id": "population_tare_hcc_nopvi_v2",
   "selection_role": "coverage_qa_not_population_prevalence",
   "seed": 20260714,
@@ -11,171 +11,180 @@
     ],
     "voxel_size_mm": 4.42
   },
-  "case_count": 6,
+  "case_count": 14,
   "status": "pass",
   "aggregate": {
-    "normal_surface_roughness_mean": 0.2589183223636955,
-    "cirrhotic_surface_roughness_mean": 0.29149705002455567
+    "normal_surface_roughness_mean": 0.24372730064054468,
+    "cirrhotic_surface_roughness_mean": 0.2522962535243907,
+    "minimum_lobe_overlap_fraction": 0.06523327418849807,
+    "maximum_bbox_fill_absolute_error": 0.01496640161927687,
+    "selection_stratum_counts": {
+      "normal_caudate_off": 3,
+      "normal_caudate_on": 3,
+      "cirrhotic_caudate_off": 3,
+      "cirrhotic_caudate_on": 3
+    },
+    "independent_coverage_roughness_difference": 0.008568952883846043,
+    "controlled_morphology_pair": {
+      "normal_case_id": "task3_voxel_candidate_01682",
+      "fixed_target_volume_ml": 1549.6843488021755,
+      "fixed_target_extent_mm_zyx": [
+        179.92939260475865,
+        157.97888166504376,
+        198.40695730210476
+      ],
+      "normal_surface_roughness": 0.24865493834175287,
+      "cirrhotic_surface_roughness": 0.26256133105316937,
+      "roughness_delta": 0.013906392711416499,
+      "gates": {
+        "shape_quality": true,
+        "volume": true,
+        "roughness_delta": true
+      }
+    }
   },
   "gates": {
     "all_cases": true,
-    "cirrhotic_roughness_direction": true
+    "all_shape_quality": true,
+    "selection_case_count": true,
+    "selection_unique_cases": true,
+    "selection_roles_complete": true,
+    "selection_strata_balanced": true,
+    "selection_joint_size_edges": true,
+    "selection_left_and_shape_edges": true,
+    "fixed_production_stress_edges": true,
+    "shape_coordinates_consistent": true,
+    "controlled_cirrhotic_roughness": true
   },
   "cases": [
     {
-      "case_id": "task3_voxel_candidate_00012",
+      "case_id": "task3_voxel_candidate_01173",
+      "selection_role": "centre-normal-caudate-off",
+      "selection_features": {
+        "volume_ml": 1530.125073097898,
+        "si_mm": 170.36175650510648,
+        "ap_mm": 159.24563643529893,
+        "lr_mm": 200.21653379042522,
+        "left_fraction": 0.3003796383544112,
+        "shape_u": -0.0424617153173197,
+        "shape_v": 0.0055336811711013435
+      },
+      "selection_thresholds": {
+        "volume_ml": 1522.562445165818,
+        "si_mm": 172.6995282400801,
+        "ap_mm": 157.88057484824245,
+        "lr_mm": 197.15940621822992,
+        "left_fraction": 0.30693156187520537
+      },
       "morphology": "normal",
       "caudate_enabled": false,
       "target": {
-        "volume_ml": 1891.5321175774868,
+        "volume_ml": 1530.125073097898,
         "extent_mm_zyx": [
-          144.86477054195976,
-          171.07792311953537,
-          300.96162148988026
+          170.36175650510648,
+          159.24563643529893,
+          200.21653379042522
         ],
         "centroid_world_mm": [
-          -46.36431403616445,
-          17.347403471591505,
-          28.54650090676499
+          -39.360188064791146,
+          8.113569828675521,
+          40.92770270871233
         ],
-        "left_fraction": 0.3580643750423538,
-        "s1_3_to_s4_8_ratio": 0.334481098337414,
+        "left_fraction": 0.3003796383544112,
+        "s1_3_to_s4_8_ratio": 0.26624873621587924,
         "caudate_fraction": 0.0,
         "surface_roughness": 0.256
       },
       "actual": {
-        "volume_ml": 1891.6025525279993,
+        "volume_ml": 1502.8508547519996,
         "extent_mm_zyx": [
-          145.85999999999999,
-          172.38,
-          300.56
-        ],
-        "centroid_world_mm": [
-          -46.360364283758216,
-          17.2976435679721,
-          28.551028941842407
-        ],
-        "left_fraction": 0.35807541312882313,
-        "s1_3_to_s4_8_ratio": 0.33451111787998783,
-        "caudate_fraction": 0.0,
-        "surface_roughness": 0.26249412601556144,
-        "sphericity": 0.7067336313568335
-      },
-      "errors": {
-        "volume_relative_pct": 0.0037236983637667365,
-        "maximum_extent_mm": 1.3020768804646252,
-        "maximum_centroid_mm": 0.04975990361940674,
-        "left_fraction": 1.103808646935045e-05
-      },
-      "gates": {
-        "volume": true,
-        "extents": true,
-        "centroid": true,
-        "left_fraction": true,
-        "region_cover": true,
-        "connected": true
-      },
-      "status": "pass"
-    },
-    {
-      "case_id": "task3_voxel_candidate_00003",
-      "morphology": "normal",
-      "caudate_enabled": true,
-      "target": {
-        "volume_ml": 1594.0930864489708,
-        "extent_mm_zyx": [
-          161.6117786910729,
-          140.89258407564,
-          276.06203431522516
-        ],
-        "centroid_world_mm": [
-          -57.285162468387846,
-          7.883015035753686,
-          18.654663851887044
-        ],
-        "left_fraction": 0.29636098734288885,
-        "s1_3_to_s4_8_ratio": 0.2617543316605641,
-        "caudate_fraction": 0.02,
-        "surface_roughness": 0.256
-      },
-      "actual": {
-        "volume_ml": 1594.1237433679994,
-        "extent_mm_zyx": [
-          163.54,
-          141.44,
-          274.04
-        ],
-        "centroid_world_mm": [
-          -57.28653756568113,
-          7.861595254861676,
-          18.65026434104327
-        ],
-        "left_fraction": 0.2963544770055793,
-        "s1_3_to_s4_8_ratio": 0.2617729478504545,
-        "caudate_fraction": 0.01998808298575375,
-        "surface_roughness": 0.2563775130579398,
-        "sphericity": 0.7129489174304102
-      },
-      "errors": {
-        "volume_relative_pct": 0.0019231573920697187,
-        "maximum_extent_mm": 2.0220343152251417,
-        "maximum_centroid_mm": 0.021419780892009577,
-        "left_fraction": -6.510337309528769e-06
-      },
-      "gates": {
-        "volume": true,
-        "extents": true,
-        "centroid": true,
-        "left_fraction": true,
-        "region_cover": true,
-        "connected": true
-      },
-      "status": "pass"
-    },
-    {
-      "case_id": "task3_voxel_candidate_00005",
-      "morphology": "normal",
-      "caudate_enabled": true,
-      "target": {
-        "volume_ml": 1717.0631149016829,
-        "extent_mm_zyx": [
-          139.9186658936198,
-          169.29042483074173,
-          285.8461577671338
-        ],
-        "centroid_world_mm": [
-          -60.46995712599851,
-          7.024486208195073,
-          43.720825475129445
-        ],
-        "left_fraction": 0.19915654480616174,
-        "s1_3_to_s4_8_ratio": 0.16199295082243922,
-        "caudate_fraction": 0.02,
-        "surface_roughness": 0.256
-      },
-      "actual": {
-        "volume_ml": 1717.0010569919996,
-        "extent_mm_zyx": [
-          141.44,
           167.96,
-          287.3
+          159.12,
+          198.9
         ],
         "centroid_world_mm": [
-          -60.50091732045613,
-          7.110589418628018,
-          43.69562562864615
+          -39.03232820041361,
+          8.156073316478887,
+          41.08334635715911
         ],
-        "left_fraction": 0.1991550995775498,
-        "s1_3_to_s4_8_ratio": 0.16199158485273493,
-        "caudate_fraction": 0.020016093341380003,
-        "surface_roughness": 0.2578833280175851,
-        "sphericity": 0.7108499723102968
+        "left_fraction": 0.3003907147782119,
+        "s1_3_to_s4_8_ratio": 0.2662058930520189,
+        "caudate_fraction": 0.0,
+        "surface_roughness": 0.24907562116094845,
+        "sphericity": 0.7480318932153601,
+        "shape_quality": {
+          "status": "pass",
+          "lobe_overlap_fraction": 0.07452629153948051,
+          "dome_removed_fraction": 0.13880464703961182,
+          "fossa_removed_fraction": 0.05710261133383899,
+          "fossa_open_to_surface": true,
+          "internal_background_voxels": 0,
+          "central_waist_ratio": 0.8974776678796359,
+          "left_lateral_to_medial_area_ratio": 0.3545627252058398,
+          "left_rising_step_fraction": 1.0,
+          "left_maximum_rise_fraction": 0.08158231420254948,
+          "left_peak_position_fraction": 0.4411764705882353,
+          "geometric_left_fraction": 0.23901399527731382,
+          "geometric_left_fraction_error": -0.06136564307709741,
+          "caudate_outer_only_voxels": 0,
+          "caudate_outer_fraction": 0.0,
+          "caudate_outer_fraction_upper": 0.0,
+          "caudate_surface_voxels": 0,
+          "caudate_surface_exposure": 0.0,
+          "cut_mouths": {
+            "visceral_removed": {
+              "removed_voxels": 563,
+              "mouth_voxels": 175,
+              "mouth_fraction": 0.3108348134991119,
+              "mouth_area_mm2_proxy": 3418.87
+            },
+            "gallbladder_removed": {
+              "removed_voxels": 344,
+              "mouth_voxels": 90,
+              "mouth_fraction": 0.2616279069767442,
+              "mouth_area_mm2_proxy": 1758.276
+            },
+            "hilum_removed": {
+              "removed_voxels": 147,
+              "mouth_voxels": 48,
+              "mouth_fraction": 0.32653061224489793,
+              "mouth_area_mm2_proxy": 937.7472
+            }
+          },
+          "gallbladder_removed_ml": 29.704705472,
+          "hilum_removed_ml": 12.693580536,
+          "single_component_slice_fraction_zyx": [
+            1.0,
+            0.9444444444444444,
+            1.0
+          ],
+          "bbox_fill_fraction": 0.28271604938271605,
+          "target_bbox_fill_fraction": 0.28170032184411437,
+          "bbox_fill_absolute_error": 0.001015727538601685,
+          "gates": {
+            "connected_3d": true,
+            "natural_lobe_overlap": true,
+            "no_dumbbell_waist": true,
+            "left_lobe_tapers_laterally": true,
+            "geometric_left_fraction_tracks_target": true,
+            "caudate_changes_outer_geometry": true,
+            "dome_arc_present": true,
+            "open_visceral_surface": true,
+            "no_internal_cavity": true,
+            "local_gallbladder_fossa_scale": true,
+            "local_hilum_present": true,
+            "single_component_slices": true,
+            "target_joint_volume_extent_plausibility": true,
+            "caudate_outer_is_s1": true
+          },
+          "caudate_outer_is_s1": true
+        }
       },
       "errors": {
-        "volume_relative_pct": -0.003614189201595064,
-        "maximum_extent_mm": 1.521334106380209,
-        "maximum_centroid_mm": 0.08610321043294444,
-        "left_fraction": -1.44522861195151e-06
+        "volume_relative_pct": -1.7824829372071416,
+        "maximum_extent_mm": 2.4017565051064764,
+        "maximum_centroid_mm": 0.3278598643775368,
+        "left_fraction": 1.1076423800659985e-05
       },
       "gates": {
         "volume": true,
@@ -183,54 +192,1113 @@
         "centroid": true,
         "left_fraction": true,
         "region_cover": true,
-        "connected": true
+        "connected": true,
+        "shape_quality": true,
+        "shape_coordinates": true
       },
       "status": "pass"
     },
     {
-      "case_id": "task3_voxel_candidate_00000",
-      "morphology": "cirrhotic",
+      "case_id": "task3_voxel_candidate_01682",
+      "selection_role": "centre-normal-caudate-on",
+      "selection_features": {
+        "volume_ml": 1549.6843488021755,
+        "si_mm": 179.92939260475865,
+        "ap_mm": 157.97888166504376,
+        "lr_mm": 198.40695730210476,
+        "left_fraction": 0.3292974040352415,
+        "shape_u": -0.1593874540362082,
+        "shape_v": -0.1105582879439535
+      },
+      "selection_thresholds": {
+        "volume_ml": 1555.2821380619025,
+        "si_mm": 173.99072111712516,
+        "ap_mm": 158.15123231392823,
+        "lr_mm": 198.19441738571504,
+        "left_fraction": 0.3112513277151343
+      },
+      "morphology": "normal",
       "caudate_enabled": true,
       "target": {
-        "volume_ml": 1799.8908980259446,
+        "volume_ml": 1549.6843488021755,
         "extent_mm_zyx": [
-          186.75696207380668,
-          153.45362516543364,
-          247.65458782573342
+          179.92939260475865,
+          157.97888166504376,
+          198.40695730210476
         ],
         "centroid_world_mm": [
-          -50.22205440680584,
-          23.02066290230612,
-          28.062479050598682
+          -52.50921465755136,
+          21.572977310491133,
+          27.498914307900304
         ],
-        "left_fraction": 0.5021696172330964,
-        "s1_3_to_s4_8_ratio": 0.6959594982343948,
-        "caudate_fraction": 0.053267269076092555,
+        "left_fraction": 0.3292974040352415,
+        "s1_3_to_s4_8_ratio": 0.29955897863972614,
+        "caudate_fraction": 0.02,
+        "surface_roughness": 0.256
+      },
+      "actual": {
+        "volume_ml": 1522.0207518879995,
+        "extent_mm_zyx": [
+          181.22,
+          154.7,
+          194.48
+        ],
+        "centroid_world_mm": [
+          -52.36543969136582,
+          21.52975831158488,
+          27.288346760467242
+        ],
+        "left_fraction": 0.3292862816294111,
+        "s1_3_to_s4_8_ratio": 0.2995649929956499,
+        "caudate_fraction": 0.020027232497446954,
+        "surface_roughness": 0.24865493834175287,
+        "sphericity": 0.7425191943809788,
+        "shape_quality": {
+          "status": "pass",
+          "lobe_overlap_fraction": 0.07869781427084538,
+          "dome_removed_fraction": 0.12891137343076634,
+          "fossa_removed_fraction": 0.05216175521617552,
+          "fossa_open_to_surface": true,
+          "internal_background_voxels": 0,
+          "central_waist_ratio": 0.925139012842825,
+          "left_lateral_to_medial_area_ratio": 0.34211494185205693,
+          "left_rising_step_fraction": 1.0,
+          "left_maximum_rise_fraction": 0.0807840313883302,
+          "left_peak_position_fraction": 0.4411764705882353,
+          "geometric_left_fraction": 0.2563605874869897,
+          "geometric_left_fraction_error": -0.07293681654825179,
+          "caudate_outer_only_voxels": 271,
+          "caudate_outer_fraction": 0.01537501418359242,
+          "caudate_outer_fraction_upper": 0.020056734369681153,
+          "caudate_surface_voxels": 124,
+          "caudate_surface_exposure": 0.4575645756457565,
+          "cut_mouths": {
+            "visceral_removed": {
+              "removed_voxels": 506,
+              "mouth_voxels": 165,
+              "mouth_fraction": 0.32608695652173914,
+              "mouth_area_mm2_proxy": 3223.506
+            },
+            "gallbladder_removed": {
+              "removed_voxels": 321,
+              "mouth_voxels": 88,
+              "mouth_fraction": 0.27414330218068533,
+              "mouth_area_mm2_proxy": 1719.2032
+            },
+            "hilum_removed": {
+              "removed_voxels": 143,
+              "mouth_voxels": 49,
+              "mouth_fraction": 0.34265734265734266,
+              "mouth_area_mm2_proxy": 957.2836
+            }
+          },
+          "gallbladder_removed_ml": 27.718635048,
+          "hilum_removed_ml": 12.348176984,
+          "single_component_slice_fraction_zyx": [
+            1.0,
+            0.9428571428571428,
+            1.0
+          ],
+          "bbox_fill_fraction": 0.27915742793791576,
+          "target_bbox_fill_fraction": 0.27478005167305936,
+          "bbox_fill_absolute_error": 0.004377376264856403,
+          "gates": {
+            "connected_3d": true,
+            "natural_lobe_overlap": true,
+            "no_dumbbell_waist": true,
+            "left_lobe_tapers_laterally": true,
+            "geometric_left_fraction_tracks_target": true,
+            "caudate_changes_outer_geometry": true,
+            "dome_arc_present": true,
+            "open_visceral_surface": true,
+            "no_internal_cavity": true,
+            "local_gallbladder_fossa_scale": true,
+            "local_hilum_present": true,
+            "single_component_slices": true,
+            "target_joint_volume_extent_plausibility": true,
+            "caudate_outer_is_s1": true
+          },
+          "caudate_outer_is_s1": true
+        }
+      },
+      "errors": {
+        "volume_relative_pct": -1.7851117187547616,
+        "maximum_extent_mm": 3.9269573021047677,
+        "maximum_centroid_mm": 0.21056754743306172,
+        "left_fraction": -1.1122405830399362e-05
+      },
+      "gates": {
+        "volume": true,
+        "extents": true,
+        "centroid": true,
+        "left_fraction": true,
+        "region_cover": true,
+        "connected": true,
+        "shape_quality": true,
+        "shape_coordinates": true
+      },
+      "status": "pass"
+    },
+    {
+      "case_id": "task3_voxel_candidate_04305",
+      "selection_role": "centre-cirrhotic-caudate-off",
+      "selection_features": {
+        "volume_ml": 1438.3144394151468,
+        "si_mm": 172.3904856461038,
+        "ap_mm": 158.73937384878704,
+        "lr_mm": 191.79807581494956,
+        "left_fraction": 0.47034579442888025,
+        "shape_u": 0.0460793493066438,
+        "shape_v": 0.14757735254494192
+      },
+      "selection_thresholds": {
+        "volume_ml": 1500.0169762550602,
+        "si_mm": 171.68590089914366,
+        "ap_mm": 157.29590769168652,
+        "lr_mm": 198.16268096692744,
+        "left_fraction": 0.42337475509542727
+      },
+      "morphology": "cirrhotic",
+      "caudate_enabled": false,
+      "target": {
+        "volume_ml": 1438.3144394151468,
+        "extent_mm_zyx": [
+          172.3904856461038,
+          158.73937384878704,
+          191.79807581494956
+        ],
+        "centroid_world_mm": [
+          -28.339569328883215,
+          12.014272247038939,
+          43.29444103553156
+        ],
+        "left_fraction": 0.47034579442888025,
+        "s1_3_to_s4_8_ratio": 0.624319219966464,
+        "caudate_fraction": 0.0,
         "surface_roughness": 0.273
       },
       "actual": {
-        "volume_ml": 1799.8979094719994,
+        "volume_ml": 1438.2603905279996,
+        "extent_mm_zyx": [
+          172.38,
+          159.12,
+          190.06
+        ],
+        "centroid_world_mm": [
+          -27.93389048991358,
+          12.02417267050918,
+          43.43891930835751
+        ],
+        "left_fraction": 0.47034101825168106,
+        "s1_3_to_s4_8_ratio": 0.6243417203042715,
+        "caudate_fraction": 0.0,
+        "surface_roughness": 0.25154098387609547,
+        "sphericity": 0.7189745977152674,
+        "shape_quality": {
+          "status": "pass",
+          "lobe_overlap_fraction": 0.17333093179634967,
+          "dome_removed_fraction": 0.16927640536860533,
+          "fossa_removed_fraction": 0.024995609670432593,
+          "fossa_open_to_surface": true,
+          "internal_background_voxels": 0,
+          "central_waist_ratio": 0.8676346449896802,
+          "left_lateral_to_medial_area_ratio": 0.255477461391988,
+          "left_rising_step_fraction": 1.0,
+          "left_maximum_rise_fraction": 0.07752991261401967,
+          "left_peak_position_fraction": 0.40476190476190477,
+          "geometric_left_fraction": 0.48682156580211333,
+          "geometric_left_fraction_error": 0.016475771373233083,
+          "caudate_outer_only_voxels": 0,
+          "caudate_outer_fraction": 0.0,
+          "caudate_outer_fraction_upper": 0.0,
+          "caudate_surface_voxels": 0,
+          "caudate_surface_exposure": 0.0,
+          "cut_mouths": {
+            "visceral_removed": {
+              "removed_voxels": 143,
+              "mouth_voxels": 66,
+              "mouth_fraction": 0.46153846153846156,
+              "mouth_area_mm2_proxy": 1289.4024
+            },
+            "gallbladder_removed": {
+              "removed_voxels": 189,
+              "mouth_voxels": 67,
+              "mouth_fraction": 0.3544973544973545,
+              "mouth_area_mm2_proxy": 1308.9388000000001
+            },
+            "hilum_removed": {
+              "removed_voxels": 95,
+              "mouth_voxels": 30,
+              "mouth_fraction": 0.3157894736842105,
+              "mouth_area_mm2_proxy": 586.092
+            }
+          },
+          "gallbladder_removed_ml": 16.320317832,
+          "hilum_removed_ml": 8.20333436,
+          "single_component_slice_fraction_zyx": [
+            0.9487179487179487,
+            0.9166666666666666,
+            0.9767441860465116
+          ],
+          "bbox_fill_fraction": 0.2758894851918108,
+          "target_bbox_fill_fraction": 0.27403853588353705,
+          "bbox_fill_absolute_error": 0.0018509493082737305,
+          "gates": {
+            "connected_3d": true,
+            "natural_lobe_overlap": true,
+            "no_dumbbell_waist": true,
+            "left_lobe_tapers_laterally": true,
+            "geometric_left_fraction_tracks_target": true,
+            "caudate_changes_outer_geometry": true,
+            "dome_arc_present": true,
+            "open_visceral_surface": true,
+            "no_internal_cavity": true,
+            "local_gallbladder_fossa_scale": true,
+            "local_hilum_present": true,
+            "single_component_slices": true,
+            "target_joint_volume_extent_plausibility": true,
+            "caudate_outer_is_s1": true
+          },
+          "caudate_outer_is_s1": true
+        }
+      },
+      "errors": {
+        "volume_relative_pct": -0.0037577935440347154,
+        "maximum_extent_mm": 1.7380758149495534,
+        "maximum_centroid_mm": 0.4056788389696351,
+        "left_fraction": -4.776177199183884e-06
+      },
+      "gates": {
+        "volume": true,
+        "extents": true,
+        "centroid": true,
+        "left_fraction": true,
+        "region_cover": true,
+        "connected": true,
+        "shape_quality": true,
+        "shape_coordinates": true
+      },
+      "status": "pass"
+    },
+    {
+      "case_id": "task3_voxel_candidate_07531",
+      "selection_role": "centre-cirrhotic-caudate-on",
+      "selection_features": {
+        "volume_ml": 1519.5060297042207,
+        "si_mm": 176.11705887272143,
+        "ap_mm": 161.2378625237731,
+        "lr_mm": 198.3046329988413,
+        "left_fraction": 0.4439483725926702,
+        "shape_u": -0.07470180779957339,
+        "shape_v": -0.03128191861454124
+      },
+      "selection_thresholds": {
+        "volume_ml": 1537.6012485542929,
+        "si_mm": 172.90185606786685,
+        "ap_mm": 158.59467344830375,
+        "lr_mm": 197.94923203981637,
+        "left_fraction": 0.42369642597535695
+      },
+      "morphology": "cirrhotic",
+      "caudate_enabled": true,
+      "target": {
+        "volume_ml": 1519.5060297042207,
+        "extent_mm_zyx": [
+          176.11705887272143,
+          161.2378625237731,
+          198.3046329988413
+        ],
+        "centroid_world_mm": [
+          -57.69727125683167,
+          8.633049551647634,
+          33.99320862559971
+        ],
+        "left_fraction": 0.4439483725926702,
+        "s1_3_to_s4_8_ratio": 0.5693315082764837,
+        "caudate_fraction": 0.0547742251985373,
+        "surface_roughness": 0.273
+      },
+      "actual": {
+        "volume_ml": 1519.2575234719995,
+        "extent_mm_zyx": [
+          172.38,
+          159.12,
+          194.48
+        ],
+        "centroid_world_mm": [
+          -57.77955439354392,
+          8.534514038876996,
+          34.03781857451415
+        ],
+        "left_fraction": 0.44395816755712175,
+        "s1_3_to_s4_8_ratio": 0.5693515297475693,
+        "caudate_fraction": 0.05479140616119132,
+        "surface_roughness": 0.25251178501374544,
+        "sphericity": 0.7194155447423527,
+        "shape_quality": {
+          "status": "pass",
+          "lobe_overlap_fraction": 0.18412773787617973,
+          "dome_removed_fraction": 0.137038266394803,
+          "fossa_removed_fraction": 0.033243584812352324,
+          "fossa_open_to_surface": true,
+          "internal_background_voxels": 0,
+          "central_waist_ratio": 0.9868615358234716,
+          "left_lateral_to_medial_area_ratio": 0.25336917553047045,
+          "left_rising_step_fraction": 1.0,
+          "left_maximum_rise_fraction": 0.08115356812095013,
+          "left_peak_position_fraction": 0.38095238095238093,
+          "geometric_left_fraction": 0.46785777883302665,
+          "geometric_left_fraction_error": 0.023909406240356423,
+          "caudate_outer_only_voxels": 745,
+          "caudate_outer_fraction": 0.04234398090258042,
+          "caudate_outer_fraction_upper": 0.0548310627567958,
+          "caudate_surface_voxels": 282,
+          "caudate_surface_exposure": 0.3785234899328859,
+          "cut_mouths": {
+            "visceral_removed": {
+              "removed_voxels": 158,
+              "mouth_voxels": 77,
+              "mouth_fraction": 0.4873417721518987,
+              "mouth_area_mm2_proxy": 1504.3028
+            },
+            "gallbladder_removed": {
+              "removed_voxels": 217,
+              "mouth_voxels": 75,
+              "mouth_fraction": 0.3456221198156682,
+              "mouth_area_mm2_proxy": 1465.23
+            },
+            "hilum_removed": {
+              "removed_voxels": 230,
+              "mouth_voxels": 39,
+              "mouth_fraction": 0.16956521739130434,
+              "mouth_area_mm2_proxy": 761.9196000000001
+            }
+          },
+          "gallbladder_removed_ml": 18.738142696,
+          "hilum_removed_ml": 19.86070424,
+          "single_component_slice_fraction_zyx": [
+            0.8717948717948718,
+            0.8611111111111112,
+            0.9545454545454546
+          ],
+          "bbox_fill_fraction": 0.2848031598031598,
+          "target_bbox_fill_fraction": 0.2698367581838829,
+          "bbox_fill_absolute_error": 0.01496640161927687,
+          "gates": {
+            "connected_3d": true,
+            "natural_lobe_overlap": true,
+            "no_dumbbell_waist": true,
+            "left_lobe_tapers_laterally": true,
+            "geometric_left_fraction_tracks_target": true,
+            "caudate_changes_outer_geometry": true,
+            "dome_arc_present": true,
+            "open_visceral_surface": true,
+            "no_internal_cavity": true,
+            "local_gallbladder_fossa_scale": true,
+            "local_hilum_present": true,
+            "single_component_slices": true,
+            "target_joint_volume_extent_plausibility": true,
+            "caudate_outer_is_s1": true
+          },
+          "caudate_outer_is_s1": true
+        }
+      },
+      "errors": {
+        "volume_relative_pct": -0.016354409088426003,
+        "maximum_extent_mm": 3.8246329988413095,
+        "maximum_centroid_mm": 0.09853551277063843,
+        "left_fraction": 9.794964451526056e-06
+      },
+      "gates": {
+        "volume": true,
+        "extents": true,
+        "centroid": true,
+        "left_fraction": true,
+        "region_cover": true,
+        "connected": true,
+        "shape_quality": true,
+        "shape_coordinates": true
+      },
+      "status": "pass"
+    },
+    {
+      "case_id": "task3_voxel_candidate_07287",
+      "selection_role": "joint-size-p10",
+      "selection_features": {
+        "volume_ml": 971.6098903505997,
+        "si_mm": 148.55976314293832,
+        "ap_mm": 136.0606677364867,
+        "lr_mm": 169.89862890906122,
+        "left_fraction": 0.3324950159412099,
+        "shape_u": 0.14725514677782595,
+        "shape_v": -0.8551139601280558
+      },
+      "selection_thresholds": {
+        "volume_ml": 1070.9772685252492,
+        "si_mm": 150.94915290706052,
+        "ap_mm": 138.94914219881372,
+        "lr_mm": 173.08757509255005
+      },
+      "morphology": "normal",
+      "caudate_enabled": true,
+      "target": {
+        "volume_ml": 971.6098903505997,
+        "extent_mm_zyx": [
+          148.55976314293832,
+          136.0606677364867,
+          169.89862890906122
+        ],
+        "centroid_world_mm": [
+          -32.427732056050154,
+          26.07527579486515,
+          21.897384026989748
+        ],
+        "left_fraction": 0.3324950159412099,
+        "s1_3_to_s4_8_ratio": 0.3033502154684019,
+        "caudate_fraction": 0.02,
+        "surface_roughness": 0.256
+      },
+      "actual": {
+        "volume_ml": 946.2330307039997,
+        "extent_mm_zyx": [
+          150.28,
+          137.02,
+          167.96
+        ],
+        "centroid_world_mm": [
+          -32.13434385836769,
+          25.962962219383122,
+          22.079025369593186
+        ],
+        "left_fraction": 0.3324511772221208,
+        "s1_3_to_s4_8_ratio": 0.3032825880114177,
+        "caudate_fraction": 0.019985398795400622,
+        "surface_roughness": 0.24004762961081938,
+        "sphericity": 0.7571988661000855,
+        "shape_quality": {
+          "status": "pass",
+          "lobe_overlap_fraction": 0.08208402739218952,
+          "dome_removed_fraction": 0.12494358357153604,
+          "fossa_removed_fraction": 0.05802458523166853,
+          "fossa_open_to_surface": true,
+          "internal_background_voxels": 0,
+          "central_waist_ratio": 0.9571538459961259,
+          "left_lateral_to_medial_area_ratio": 0.3226788223903213,
+          "left_rising_step_fraction": 1.0,
+          "left_maximum_rise_fraction": 0.09133994708410897,
+          "left_peak_position_fraction": 0.4642857142857143,
+          "geometric_left_fraction": 0.23121414029243012,
+          "geometric_left_fraction_error": -0.10128087564877977,
+          "caudate_outer_only_voxels": 114,
+          "caudate_outer_fraction": 0.010403358277057857,
+          "caudate_outer_fraction_upper": 0.02009125752874612,
+          "caudate_surface_voxels": 67,
+          "caudate_surface_exposure": 0.5877192982456141,
+          "cut_mouths": {
+            "visceral_removed": {
+              "removed_voxels": 359,
+              "mouth_voxels": 136,
+              "mouth_fraction": 0.3788300835654596,
+              "mouth_area_mm2_proxy": 2656.9504
+            },
+            "gallbladder_removed": {
+              "removed_voxels": 209,
+              "mouth_voxels": 70,
+              "mouth_fraction": 0.3349282296650718,
+              "mouth_area_mm2_proxy": 1367.548
+            },
+            "hilum_removed": {
+              "removed_voxels": 107,
+              "mouth_voxels": 38,
+              "mouth_fraction": 0.35514018691588783,
+              "mouth_area_mm2_proxy": 742.3832
+            }
+          },
+          "gallbladder_removed_ml": 18.047335592,
+          "hilum_removed_ml": 9.239545016,
+          "single_component_slice_fraction_zyx": [
+            0.9705882352941176,
+            0.967741935483871,
+            1.0
+          ],
+          "bbox_fill_fraction": 0.27359432737441325,
+          "target_bbox_fill_fraction": 0.28292300134585624,
+          "bbox_fill_absolute_error": 0.009328673971442991,
+          "gates": {
+            "connected_3d": true,
+            "natural_lobe_overlap": true,
+            "no_dumbbell_waist": true,
+            "left_lobe_tapers_laterally": true,
+            "geometric_left_fraction_tracks_target": true,
+            "caudate_changes_outer_geometry": true,
+            "dome_arc_present": true,
+            "open_visceral_surface": true,
+            "no_internal_cavity": true,
+            "local_gallbladder_fossa_scale": true,
+            "local_hilum_present": true,
+            "single_component_slices": true,
+            "target_joint_volume_extent_plausibility": true,
+            "caudate_outer_is_s1": true
+          },
+          "caudate_outer_is_s1": true
+        }
+      },
+      "errors": {
+        "volume_relative_pct": -2.6118362831241804,
+        "maximum_extent_mm": 1.938628909061208,
+        "maximum_centroid_mm": 0.2933881976824608,
+        "left_fraction": -4.383871908908432e-05
+      },
+      "gates": {
+        "volume": true,
+        "extents": true,
+        "centroid": true,
+        "left_fraction": true,
+        "region_cover": true,
+        "connected": true,
+        "shape_quality": true,
+        "shape_coordinates": true
+      },
+      "status": "pass"
+    },
+    {
+      "case_id": "task3_voxel_candidate_07217",
+      "selection_role": "joint-size-p90",
+      "selection_features": {
+        "volume_ml": 2057.339756800624,
+        "si_mm": 193.88814647970494,
+        "ap_mm": 178.045570616229,
+        "lr_mm": 221.655338841628,
+        "left_fraction": 0.3955125631002552,
+        "shape_u": 0.12294550470074453,
+        "shape_v": 0.7244467930029688
+      },
+      "selection_thresholds": {
+        "volume_ml": 2001.3203290448143,
+        "si_mm": 192.9021678269046,
+        "ap_mm": 176.34736183852053,
+        "lr_mm": 220.78934609371632
+      },
+      "morphology": "cirrhotic",
+      "caudate_enabled": true,
+      "target": {
+        "volume_ml": 2057.339756800624,
+        "extent_mm_zyx": [
+          193.88814647970494,
+          178.045570616229,
+          221.655338841628
+        ],
+        "centroid_world_mm": [
+          -47.64637603183935,
+          -0.5937292801494642,
+          34.68233451308574
+        ],
+        "left_fraction": 0.3955125631002552,
+        "s1_3_to_s4_8_ratio": 0.47755272404372917,
+        "caudate_fraction": 0.056027902273133534,
+        "surface_roughness": 0.273
+      },
+      "actual": {
+        "volume_ml": 2057.309906599999,
+        "extent_mm_zyx": [
+          194.48,
+          176.8,
+          221.0
+        ],
+        "centroid_world_mm": [
+          -47.60660020986105,
+          -0.5842933892969566,
+          34.83544386148985
+        ],
+        "left_fraction": 0.39550891920251835,
+        "s1_3_to_s4_8_ratio": 0.47751937984496123,
+        "caudate_fraction": 0.05603357817418678,
+        "surface_roughness": 0.2703046747811324,
+        "sphericity": 0.6910165614503921,
+        "shape_quality": {
+          "status": "pass",
+          "lobe_overlap_fraction": 0.14503850579799946,
+          "dome_removed_fraction": 0.1620337372297458,
+          "fossa_removed_fraction": 0.034995342055166266,
+          "fossa_open_to_surface": true,
+          "internal_background_voxels": 0,
+          "central_waist_ratio": 0.9745425309525374,
+          "left_lateral_to_medial_area_ratio": 0.24095767709718757,
+          "left_rising_step_fraction": 1.0,
+          "left_maximum_rise_fraction": 0.07081675724247825,
+          "left_peak_position_fraction": 0.3958333333333333,
+          "geometric_left_fraction": 0.4327476321147207,
+          "geometric_left_fraction_error": 0.03723506901446555,
+          "caudate_outer_only_voxels": 1228,
+          "caudate_outer_fraction": 0.05154249737670514,
+          "caudate_outer_fraction_upper": 0.056069874990867005,
+          "caudate_surface_voxels": 409,
+          "caudate_surface_exposure": 0.3330618892508143,
+          "cut_mouths": {
+            "visceral_removed": {
+              "removed_voxels": 260,
+              "mouth_voxels": 110,
+              "mouth_fraction": 0.4230769230769231,
+              "mouth_area_mm2_proxy": 2149.004
+            },
+            "gallbladder_removed": {
+              "removed_voxels": 281,
+              "mouth_voxels": 81,
+              "mouth_fraction": 0.28825622775800713,
+              "mouth_area_mm2_proxy": 1582.4484
+            },
+            "hilum_removed": {
+              "removed_voxels": 323,
+              "mouth_voxels": 34,
+              "mouth_fraction": 0.10526315789473684,
+              "mouth_area_mm2_proxy": 664.2376
+            }
+          },
+          "gallbladder_removed_ml": 24.264599528,
+          "hilum_removed_ml": 27.891336824,
+          "single_component_slice_fraction_zyx": [
+            0.8636363636363636,
+            0.875,
+            0.92
+          ],
+          "bbox_fill_fraction": 0.2707386363636364,
+          "target_bbox_fill_fraction": 0.2688718835503215,
+          "bbox_fill_absolute_error": 0.001866752813314887,
+          "gates": {
+            "connected_3d": true,
+            "natural_lobe_overlap": true,
+            "no_dumbbell_waist": true,
+            "left_lobe_tapers_laterally": true,
+            "geometric_left_fraction_tracks_target": true,
+            "caudate_changes_outer_geometry": true,
+            "dome_arc_present": true,
+            "open_visceral_surface": true,
+            "no_internal_cavity": true,
+            "local_gallbladder_fossa_scale": true,
+            "local_hilum_present": true,
+            "single_component_slices": true,
+            "target_joint_volume_extent_plausibility": true,
+            "caudate_outer_is_s1": true
+          },
+          "caudate_outer_is_s1": true
+        }
+      },
+      "errors": {
+        "volume_relative_pct": -0.0014509125450090643,
+        "maximum_extent_mm": 1.2455706162290028,
+        "maximum_centroid_mm": 0.15310934840410795,
+        "left_fraction": -3.64389773682694e-06
+      },
+      "gates": {
+        "volume": true,
+        "extents": true,
+        "centroid": true,
+        "left_fraction": true,
+        "region_cover": true,
+        "connected": true,
+        "shape_quality": true,
+        "shape_coordinates": true
+      },
+      "status": "pass"
+    },
+    {
+      "case_id": "task3_voxel_candidate_03130",
+      "selection_role": "left-p05",
+      "selection_features": {
+        "volume_ml": 1788.850861088475,
+        "si_mm": 179.6152518772391,
+        "ap_mm": 166.30451357010568,
+        "lr_mm": 187.77316726448674,
+        "left_fraction": 0.260332627275626,
+        "shape_u": -0.09479297423508357,
+        "shape_v": -0.6616381374930577
+      },
+      "selection_thresholds": {
+        "left_fraction_p05": 0.2605503869251437
+      },
+      "morphology": "normal",
+      "caudate_enabled": false,
+      "target": {
+        "volume_ml": 1788.850861088475,
+        "extent_mm_zyx": [
+          179.6152518772391,
+          166.30451357010568,
+          187.77316726448674
+        ],
+        "centroid_world_mm": [
+          -58.89521516317768,
+          30.161154494579,
+          16.836672776285834
+        ],
+        "left_fraction": 0.260332627275626,
+        "s1_3_to_s4_8_ratio": 0.2228419626080445,
+        "caudate_fraction": 0.0,
+        "surface_roughness": 0.256
+      },
+      "actual": {
+        "volume_ml": 1761.6444660879993,
+        "extent_mm_zyx": [
+          181.22,
+          163.54,
+          185.64
+        ],
+        "centroid_world_mm": [
+          -58.64955002205304,
+          30.205211019067757,
+          16.468351061222386
+        ],
+        "left_fraction": 0.2603303759619626,
+        "s1_3_to_s4_8_ratio": 0.22286159563627644,
+        "caudate_fraction": 0.0,
+        "surface_roughness": 0.24130000913568145,
+        "sphericity": 0.749034533375885,
+        "shape_quality": {
+          "status": "pass",
+          "lobe_overlap_fraction": 0.08681766815702845,
+          "dome_removed_fraction": 0.18278466163208446,
+          "fossa_removed_fraction": 0.08482863807643998,
+          "fossa_open_to_surface": true,
+          "internal_background_voxels": 0,
+          "central_waist_ratio": 0.9988595616970781,
+          "left_lateral_to_medial_area_ratio": 0.36332199980685936,
+          "left_rising_step_fraction": 1.0,
+          "left_maximum_rise_fraction": 0.09186074903054421,
+          "left_peak_position_fraction": 0.5,
+          "geometric_left_fraction": 0.21601238146710558,
+          "geometric_left_fraction_error": -0.044320245808520425,
+          "caudate_outer_only_voxels": 0,
+          "caudate_outer_fraction": 0.0,
+          "caudate_outer_fraction_upper": 0.0,
+          "caudate_surface_voxels": 0,
+          "caudate_surface_exposure": 0.0,
+          "cut_mouths": {
+            "visceral_removed": {
+              "removed_voxels": 1161,
+              "mouth_voxels": 286,
+              "mouth_fraction": 0.2463393626184324,
+              "mouth_area_mm2_proxy": 5587.4104
+            },
+            "gallbladder_removed": {
+              "removed_voxels": 515,
+              "mouth_voxels": 106,
+              "mouth_fraction": 0.2058252427184466,
+              "mouth_area_mm2_proxy": 2070.8584
+            },
+            "hilum_removed": {
+              "removed_voxels": 215,
+              "mouth_voxels": 50,
+              "mouth_fraction": 0.23255813953488372,
+              "mouth_area_mm2_proxy": 976.82
+            }
+          },
+          "gallbladder_removed_ml": 44.47070732,
+          "hilum_removed_ml": 18.56544092,
+          "single_component_slice_fraction_zyx": [
+            1.0,
+            0.972972972972973,
+            1.0
+          ],
+          "bbox_fill_fraction": 0.32019650312333237,
+          "target_bbox_fill_fraction": 0.3189285178686468,
+          "bbox_fill_absolute_error": 0.0012679852546855774,
+          "gates": {
+            "connected_3d": true,
+            "natural_lobe_overlap": true,
+            "no_dumbbell_waist": true,
+            "left_lobe_tapers_laterally": true,
+            "geometric_left_fraction_tracks_target": true,
+            "caudate_changes_outer_geometry": true,
+            "dome_arc_present": true,
+            "open_visceral_surface": true,
+            "no_internal_cavity": true,
+            "local_gallbladder_fossa_scale": true,
+            "local_hilum_present": true,
+            "single_component_slices": true,
+            "target_joint_volume_extent_plausibility": true,
+            "caudate_outer_is_s1": true
+          },
+          "caudate_outer_is_s1": true
+        }
+      },
+      "errors": {
+        "volume_relative_pct": -1.5208867095785394,
+        "maximum_extent_mm": 2.7645135701056915,
+        "maximum_centroid_mm": 0.36832171506344835,
+        "left_fraction": -2.2513136633817155e-06
+      },
+      "gates": {
+        "volume": true,
+        "extents": true,
+        "centroid": true,
+        "left_fraction": true,
+        "region_cover": true,
+        "connected": true,
+        "shape_quality": true,
+        "shape_coordinates": true
+      },
+      "status": "pass"
+    },
+    {
+      "case_id": "task3_voxel_candidate_01183",
+      "selection_role": "left-p95",
+      "selection_features": {
+        "volume_ml": 1774.4180294852883,
+        "si_mm": 178.40954332571974,
+        "ap_mm": 169.40492108314325,
+        "lr_mm": 206.2294192293248,
+        "left_fraction": 0.5216549445637773,
+        "shape_u": 0.09811030609598723,
+        "shape_v": -0.947581078675918
+      },
+      "selection_thresholds": {
+        "left_fraction_p95": 0.5204084259065369
+      },
+      "morphology": "cirrhotic",
+      "caudate_enabled": false,
+      "target": {
+        "volume_ml": 1774.4180294852883,
+        "extent_mm_zyx": [
+          178.40954332571974,
+          169.40492108314325,
+          206.2294192293248
+        ],
+        "centroid_world_mm": [
+          -62.704284147998294,
+          11.651946771994039,
+          60.4000817084267
+        ],
+        "left_fraction": 0.5216549445637773,
+        "s1_3_to_s4_8_ratio": 0.7430296962618458,
+        "caudate_fraction": 0.0,
+        "surface_roughness": 0.273
+      },
+      "actual": {
+        "volume_ml": 1774.5107483999996,
+        "extent_mm_zyx": [
+          176.8,
+          172.38,
+          203.32
+        ],
+        "centroid_world_mm": [
+          -62.638175182473866,
+          11.652453527980573,
+          60.349454014598635
+        ],
+        "left_fraction": 0.521654501216545,
+        "s1_3_to_s4_8_ratio": 0.7430025445292621,
+        "caudate_fraction": 0.0,
+        "surface_roughness": 0.2529158740836166,
+        "sphericity": 0.7164716262696661,
+        "shape_quality": {
+          "status": "pass",
+          "lobe_overlap_fraction": 0.12599153243466835,
+          "dome_removed_fraction": 0.12947773685972547,
+          "fossa_removed_fraction": 0.012114219786558985,
+          "fossa_open_to_surface": true,
+          "internal_background_voxels": 0,
+          "central_waist_ratio": 0.7958639391292757,
+          "left_lateral_to_medial_area_ratio": 0.2507825326721325,
+          "left_rising_step_fraction": 1.0,
+          "left_maximum_rise_fraction": 0.0680819024951911,
+          "left_peak_position_fraction": 0.4634146341463415,
+          "geometric_left_fraction": 0.4965935081999124,
+          "geometric_left_fraction_error": -0.025061436363864875,
+          "caudate_outer_only_voxels": 0,
+          "caudate_outer_fraction": 0.0,
+          "caudate_outer_fraction_upper": 0.0,
+          "caudate_surface_voxels": 0,
+          "caudate_surface_exposure": 0.0,
+          "cut_mouths": {
+            "visceral_removed": {
+              "removed_voxels": 101,
+              "mouth_voxels": 58,
+              "mouth_fraction": 0.5742574257425742,
+              "mouth_area_mm2_proxy": 1133.1112
+            },
+            "gallbladder_removed": {
+              "removed_voxels": 118,
+              "mouth_voxels": 58,
+              "mouth_fraction": 0.4915254237288136,
+              "mouth_area_mm2_proxy": 1133.1112
+            },
+            "hilum_removed": {
+              "removed_voxels": 33,
+              "mouth_voxels": 23,
+              "mouth_fraction": 0.696969696969697,
+              "mouth_area_mm2_proxy": 449.3372
+            }
+          },
+          "gallbladder_removed_ml": 10.189404784,
+          "hilum_removed_ml": 2.849579304,
+          "single_component_slice_fraction_zyx": [
+            0.875,
+            0.8717948717948718,
+            1.0
+          ],
+          "bbox_fill_fraction": 0.286371237458194,
+          "target_bbox_fill_fraction": 0.2846827937837342,
+          "bbox_fill_absolute_error": 0.0016884436744598053,
+          "gates": {
+            "connected_3d": true,
+            "natural_lobe_overlap": true,
+            "no_dumbbell_waist": true,
+            "left_lobe_tapers_laterally": true,
+            "geometric_left_fraction_tracks_target": true,
+            "caudate_changes_outer_geometry": true,
+            "dome_arc_present": true,
+            "open_visceral_surface": true,
+            "no_internal_cavity": true,
+            "local_gallbladder_fossa_scale": true,
+            "local_hilum_present": true,
+            "single_component_slices": true,
+            "target_joint_volume_extent_plausibility": true,
+            "caudate_outer_is_s1": true
+          },
+          "caudate_outer_is_s1": true
+        }
+      },
+      "errors": {
+        "volume_relative_pct": 0.005225314056245267,
+        "maximum_extent_mm": 2.975078916856745,
+        "maximum_centroid_mm": 0.06610896552442824,
+        "left_fraction": -4.433472322595833e-07
+      },
+      "gates": {
+        "volume": true,
+        "extents": true,
+        "centroid": true,
+        "left_fraction": true,
+        "region_cover": true,
+        "connected": true,
+        "shape_quality": true,
+        "shape_coordinates": true
+      },
+      "status": "pass"
+    },
+    {
+      "case_id": "task3_voxel_candidate_07362",
+      "selection_role": "shape-u-p05",
+      "selection_features": {
+        "volume_ml": 1699.7965333447985,
+        "si_mm": 186.3992980965737,
+        "ap_mm": 158.37829663416107,
+        "lr_mm": 190.09842048071286,
+        "left_fraction": 0.2256275359648765,
+        "shape_u": -0.6752063335270551,
+        "shape_v": -0.40749303044547497
+      },
+      "selection_thresholds": {
+        "shape_u_p05": -0.670669119147997
+      },
+      "morphology": "normal",
+      "caudate_enabled": true,
+      "target": {
+        "volume_ml": 1699.7965333447985,
+        "extent_mm_zyx": [
+          186.3992980965737,
+          158.37829663416107,
+          190.09842048071286
+        ],
+        "centroid_world_mm": [
+          -59.114119489007535,
+          16.43542650823063,
+          32.678886966056
+        ],
+        "left_fraction": 0.2256275359648765,
+        "s1_3_to_s4_8_ratio": 0.18756280933101896,
+        "caudate_fraction": 0.02,
+        "surface_roughness": 0.256
+      },
+      "actual": {
+        "volume_ml": 1673.7392621039994,
         "extent_mm_zyx": [
           190.06,
           154.7,
-          247.51999999999998
+          190.06
         ],
         "centroid_world_mm": [
-          -50.14952696219484,
-          23.05910861638845,
-          27.955376127422657
+          -58.82353454056869,
+          16.282488262910835,
+          32.504889336016205
         ],
-        "left_fraction": 0.5021588946459413,
-        "s1_3_to_s4_8_ratio": 0.6960130187144019,
-        "caudate_fraction": 0.05325273459988486,
-        "surface_roughness": 0.3088191595674104,
-        "sphericity": 0.6403298989842362
+        "left_fraction": 0.2256100706804932,
+        "s1_3_to_s4_8_ratio": 0.18753829187599558,
+        "caudate_fraction": 0.02001754114430171,
+        "surface_roughness": 0.24118241897953527,
+        "sphericity": 0.7448591075331871,
+        "shape_quality": {
+          "status": "pass",
+          "lobe_overlap_fraction": 0.06523327418849807,
+          "dome_removed_fraction": 0.1530637254901961,
+          "fossa_removed_fraction": 0.06511358703516133,
+          "fossa_open_to_surface": true,
+          "internal_background_voxels": 0,
+          "central_waist_ratio": 0.9539533532771924,
+          "left_lateral_to_medial_area_ratio": 0.33278619579355484,
+          "left_rising_step_fraction": 1.0,
+          "left_maximum_rise_fraction": 0.08677038124632436,
+          "left_peak_position_fraction": 0.5,
+          "geometric_left_fraction": 0.20540653376474272,
+          "geometric_left_fraction_error": -0.020221002200133786,
+          "caudate_outer_only_voxels": 165,
+          "caudate_outer_fraction": 0.008512614146416964,
+          "caudate_outer_fraction_upper": 0.020051591600887375,
+          "caudate_surface_voxels": 101,
+          "caudate_surface_exposure": 0.6121212121212121,
+          "cut_mouths": {
+            "visceral_removed": {
+              "removed_voxels": 742,
+              "mouth_voxels": 215,
+              "mouth_fraction": 0.28975741239892183,
+              "mouth_area_mm2_proxy": 4200.326
+            },
+            "gallbladder_removed": {
+              "removed_voxels": 420,
+              "mouth_voxels": 98,
+              "mouth_fraction": 0.23333333333333334,
+              "mouth_area_mm2_proxy": 1914.5672
+            },
+            "hilum_removed": {
+              "removed_voxels": 188,
+              "mouth_voxels": 59,
+              "mouth_fraction": 0.31382978723404253,
+              "mouth_area_mm2_proxy": 1152.6476
+            }
+          },
+          "gallbladder_removed_ml": 36.26737296,
+          "hilum_removed_ml": 16.233966944,
+          "single_component_slice_fraction_zyx": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "bbox_fill_fraction": 0.29951325040562465,
+          "target_bbox_fill_fraction": 0.30288550522142166,
+          "bbox_fill_absolute_error": 0.0033722548157970045,
+          "gates": {
+            "connected_3d": true,
+            "natural_lobe_overlap": true,
+            "no_dumbbell_waist": true,
+            "left_lobe_tapers_laterally": true,
+            "geometric_left_fraction_tracks_target": true,
+            "caudate_changes_outer_geometry": true,
+            "dome_arc_present": true,
+            "open_visceral_surface": true,
+            "no_internal_cavity": true,
+            "local_gallbladder_fossa_scale": true,
+            "local_hilum_present": true,
+            "single_component_slices": true,
+            "target_joint_volume_extent_plausibility": true,
+            "caudate_outer_is_s1": true
+          },
+          "caudate_outer_is_s1": true
+        }
       },
       "errors": {
-        "volume_relative_pct": 0.00038954839221005955,
-        "maximum_extent_mm": 3.3030379261933263,
-        "maximum_centroid_mm": 0.10710292317602566,
-        "left_fraction": -1.0722587155065355e-05
+        "volume_relative_pct": -1.532964135979531,
+        "maximum_extent_mm": 3.678296634161086,
+        "maximum_centroid_mm": 0.2905849484388483,
+        "left_fraction": -1.746528438328898e-05
       },
       "gates": {
         "volume": true,
@@ -238,54 +1306,273 @@
         "centroid": true,
         "left_fraction": true,
         "region_cover": true,
-        "connected": true
+        "connected": true,
+        "shape_quality": true,
+        "shape_coordinates": true
       },
       "status": "pass"
     },
     {
-      "case_id": "task3_voxel_candidate_00001",
+      "case_id": "task3_voxel_candidate_06408",
+      "selection_role": "shape-u-p95",
+      "selection_features": {
+        "volume_ml": 1795.2912362996676,
+        "si_mm": 174.42046817505943,
+        "ap_mm": 168.65380543437263,
+        "lr_mm": 190.74485988235855,
+        "left_fraction": 0.5252532384421851,
+        "shape_u": 0.677517622438813,
+        "shape_v": -0.01578249012960781
+      },
+      "selection_thresholds": {
+        "shape_u_p95": 0.6768675372816781
+      },
       "morphology": "cirrhotic",
       "caudate_enabled": true,
       "target": {
-        "volume_ml": 1492.0047175656425,
+        "volume_ml": 1795.2912362996676,
         "extent_mm_zyx": [
-          153.79560922521904,
-          159.6212783824075,
-          239.6567277479458
+          174.42046817505943,
+          168.65380543437263,
+          190.74485988235855
         ],
         "centroid_world_mm": [
-          -40.30970371697279,
-          4.0020819765711035,
-          45.17681966062852
+          -52.79363496697918,
+          25.993239852231532,
+          50.18081155705637
         ],
-        "left_fraction": 0.48761836999160246,
-        "s1_3_to_s4_8_ratio": 0.6624337786758258,
-        "caudate_fraction": 0.05364390291920609,
+        "left_fraction": 0.5252532384421851,
+        "s1_3_to_s4_8_ratio": 0.7520092731516593,
+        "caudate_fraction": 0.052669789504433295,
         "surface_roughness": 0.273
       },
       "actual": {
-        "volume_ml": 1491.8842919759995,
+        "volume_ml": 1795.4076632959993,
         "extent_mm_zyx": [
-          159.12,
+          172.38,
+          167.96,
+          190.06
+        ],
+        "centroid_world_mm": [
+          -52.55297518275823,
+          25.8845931127358,
+          50.20012023855302
+        ],
+        "left_fraction": 0.5252500961908426,
+        "s1_3_to_s4_8_ratio": 0.751937984496124,
+        "caudate_fraction": 0.052664486340900346,
+        "surface_roughness": 0.23417474102719107,
+        "sphericity": 0.7396598106844573,
+        "shape_quality": {
+          "status": "pass",
+          "lobe_overlap_fraction": 0.27561299199056555,
+          "dome_removed_fraction": 0.1834560610025044,
+          "fossa_removed_fraction": 0.048203250171664,
+          "fossa_open_to_surface": true,
+          "internal_background_voxels": 0,
+          "central_waist_ratio": 1.0,
+          "left_lateral_to_medial_area_ratio": 0.32433234916059694,
+          "left_rising_step_fraction": 1.0,
+          "left_maximum_rise_fraction": 0.08207012423410275,
+          "left_peak_position_fraction": 0.4523809523809524,
+          "geometric_left_fraction": 0.5424549162203331,
+          "geometric_left_fraction_error": 0.017201677778148072,
+          "caudate_outer_only_voxels": 439,
+          "caudate_outer_fraction": 0.02111388995767603,
+          "caudate_outer_fraction_upper": 0.052717884925749185,
+          "caudate_surface_voxels": 174,
+          "caudate_surface_exposure": 0.39635535307517084,
+          "cut_mouths": {
+            "visceral_removed": {
+              "removed_voxels": 543,
+              "mouth_voxels": 178,
+              "mouth_fraction": 0.3278084714548803,
+              "mouth_area_mm2_proxy": 3477.4792
+            },
+            "gallbladder_removed": {
+              "removed_voxels": 294,
+              "mouth_voxels": 98,
+              "mouth_fraction": 0.3333333333333333,
+              "mouth_area_mm2_proxy": 1914.5672
+            },
+            "hilum_removed": {
+              "removed_voxels": 216,
+              "mouth_voxels": 24,
+              "mouth_fraction": 0.1111111111111111,
+              "mouth_area_mm2_proxy": 468.8736
+            }
+          },
+          "gallbladder_removed_ml": 25.387161072,
+          "hilum_removed_ml": 18.651791808,
+          "single_component_slice_fraction_zyx": [
+            0.8974358974358975,
+            0.9210526315789473,
+            0.9069767441860465
+          ],
+          "bbox_fill_fraction": 0.3262718513636506,
+          "target_bbox_fill_fraction": 0.3199546855520465,
+          "bbox_fill_absolute_error": 0.006317165811604131,
+          "gates": {
+            "connected_3d": true,
+            "natural_lobe_overlap": true,
+            "no_dumbbell_waist": true,
+            "left_lobe_tapers_laterally": true,
+            "geometric_left_fraction_tracks_target": true,
+            "caudate_changes_outer_geometry": true,
+            "dome_arc_present": true,
+            "open_visceral_surface": true,
+            "no_internal_cavity": true,
+            "local_gallbladder_fossa_scale": true,
+            "local_hilum_present": true,
+            "single_component_slices": true,
+            "target_joint_volume_extent_plausibility": true,
+            "caudate_outer_is_s1": true
+          },
+          "caudate_outer_is_s1": true
+        }
+      },
+      "errors": {
+        "volume_relative_pct": 0.0064851314359293255,
+        "maximum_extent_mm": 2.0404681750594307,
+        "maximum_centroid_mm": 0.24065978422094503,
+        "left_fraction": -3.1422513424583798e-06
+      },
+      "gates": {
+        "volume": true,
+        "extents": true,
+        "centroid": true,
+        "left_fraction": true,
+        "region_cover": true,
+        "connected": true,
+        "shape_quality": true,
+        "shape_coordinates": true
+      },
+      "status": "pass"
+    },
+    {
+      "case_id": "task3_voxel_candidate_00854",
+      "selection_role": "shape-v-p05",
+      "selection_features": {
+        "volume_ml": 1452.7879297475824,
+        "si_mm": 165.38998748726732,
+        "ap_mm": 158.30611449563474,
+        "lr_mm": 191.392910870568,
+        "left_fraction": 0.3449627004639081,
+        "shape_u": 0.10663376298407294,
+        "shape_v": -0.6746884135051037
+      },
+      "selection_thresholds": {
+        "shape_v_p05": -0.6733816615267146
+      },
+      "morphology": "normal",
+      "caudate_enabled": false,
+      "target": {
+        "volume_ml": 1452.7879297475824,
+        "extent_mm_zyx": [
+          165.38998748726732,
+          158.30611449563474,
+          191.392910870568
+        ],
+        "centroid_world_mm": [
+          -37.57192695127613,
+          35.0,
+          58.32733377294352
+        ],
+        "left_fraction": 0.3449627004639081,
+        "s1_3_to_s4_8_ratio": 0.31834618115929325,
+        "caudate_fraction": 0.0,
+        "surface_roughness": 0.256
+      },
+      "actual": {
+        "volume_ml": 1426.8620733119994,
+        "extent_mm_zyx": [
           163.54,
-          243.1
+          159.12,
+          190.06
         ],
         "centroid_world_mm": [
-          -40.10452219714233,
-          4.121828442437889,
-          45.70109104589895
+          -37.31936213992035,
+          34.98524691358024,
+          58.359567901233994
         ],
-        "left_fraction": 0.487642530531921,
-        "s1_3_to_s4_8_ratio": 0.662368902145675,
-        "caudate_fraction": 0.053655148463274877,
-        "surface_roughness": 0.29222334668258887,
-        "sphericity": 0.6481452662723961
+        "left_fraction": 0.3449527959331881,
+        "s1_3_to_s4_8_ratio": 0.318334131163236,
+        "caudate_fraction": 0.0,
+        "surface_roughness": 0.24210318661453065,
+        "sphericity": 0.7548088467812029,
+        "shape_quality": {
+          "status": "pass",
+          "lobe_overlap_fraction": 0.09058916327892724,
+          "dome_removed_fraction": 0.1479870475085786,
+          "fossa_removed_fraction": 0.0626808100289296,
+          "fossa_open_to_surface": true,
+          "internal_background_voxels": 0,
+          "central_waist_ratio": 0.9554955445559256,
+          "left_lateral_to_medial_area_ratio": 0.3598292180918472,
+          "left_rising_step_fraction": 1.0,
+          "left_maximum_rise_fraction": 0.08424477640078289,
+          "left_peak_position_fraction": 0.46875,
+          "geometric_left_fraction": 0.2510466597900613,
+          "geometric_left_fraction_error": -0.09391604067384679,
+          "caudate_outer_only_voxels": 0,
+          "caudate_outer_fraction": 0.0,
+          "caudate_outer_fraction_upper": 0.0,
+          "caudate_surface_voxels": 0,
+          "caudate_surface_exposure": 0.0,
+          "cut_mouths": {
+            "visceral_removed": {
+              "removed_voxels": 621,
+              "mouth_voxels": 186,
+              "mouth_fraction": 0.2995169082125604,
+              "mouth_area_mm2_proxy": 3633.7704
+            },
+            "gallbladder_removed": {
+              "removed_voxels": 338,
+              "mouth_voxels": 84,
+              "mouth_fraction": 0.2485207100591716,
+              "mouth_area_mm2_proxy": 1641.0576
+            },
+            "hilum_removed": {
+              "removed_voxels": 146,
+              "mouth_voxels": 47,
+              "mouth_fraction": 0.3219178082191781,
+              "mouth_area_mm2_proxy": 918.2108000000001
+            }
+          },
+          "gallbladder_removed_ml": 29.186600144,
+          "hilum_removed_ml": 12.607229648,
+          "single_component_slice_fraction_zyx": [
+            1.0,
+            0.9722222222222222,
+            1.0
+          ],
+          "bbox_fill_fraction": 0.2884978001257071,
+          "target_bbox_fill_fraction": 0.28991418915133244,
+          "bbox_fill_absolute_error": 0.001416389025625353,
+          "gates": {
+            "connected_3d": true,
+            "natural_lobe_overlap": true,
+            "no_dumbbell_waist": true,
+            "left_lobe_tapers_laterally": true,
+            "geometric_left_fraction_tracks_target": true,
+            "caudate_changes_outer_geometry": true,
+            "dome_arc_present": true,
+            "open_visceral_surface": true,
+            "no_internal_cavity": true,
+            "local_gallbladder_fossa_scale": true,
+            "local_hilum_present": true,
+            "single_component_slices": true,
+            "target_joint_volume_extent_plausibility": true,
+            "caudate_outer_is_s1": true
+          },
+          "caudate_outer_is_s1": true
+        }
       },
       "errors": {
-        "volume_relative_pct": -0.008071394696351764,
-        "maximum_extent_mm": 5.324390774780966,
-        "maximum_centroid_mm": 0.5242713852704313,
-        "left_fraction": 2.4160540318562962e-05
+        "volume_relative_pct": -1.784558909440248,
+        "maximum_extent_mm": 1.8499874872673274,
+        "maximum_centroid_mm": 0.2525648113557821,
+        "left_fraction": -9.904530719972993e-06
       },
       "gates": {
         "volume": true,
@@ -293,54 +1580,136 @@
         "centroid": true,
         "left_fraction": true,
         "region_cover": true,
-        "connected": true
+        "connected": true,
+        "shape_quality": true,
+        "shape_coordinates": true
       },
       "status": "pass"
     },
     {
-      "case_id": "task3_voxel_candidate_00002",
+      "case_id": "task3_voxel_candidate_02019",
+      "selection_role": "shape-v-p95",
+      "selection_features": {
+        "volume_ml": 1334.2237886682167,
+        "si_mm": 173.24969561767313,
+        "ap_mm": 155.07598043035162,
+        "lr_mm": 186.60983522950426,
+        "left_fraction": 0.48150711376993566,
+        "shape_u": -0.34543529376437065,
+        "shape_v": 0.6614473685643759
+      },
+      "selection_thresholds": {
+        "shape_v_p95": 0.6599305842470493
+      },
       "morphology": "cirrhotic",
-      "caudate_enabled": true,
+      "caudate_enabled": false,
       "target": {
-        "volume_ml": 855.5386822526617,
+        "volume_ml": 1334.2237886682167,
         "extent_mm_zyx": [
-          123.70538151322461,
-          127.00525515210633,
-          214.72544749110685
+          173.24969561767313,
+          155.07598043035162,
+          186.60983522950426
         ],
         "centroid_world_mm": [
-          -27.214117038300532,
-          23.910412106573325,
-          29.702649756345586
+          -50.66044931956013,
+          17.310374122568586,
+          6.4650662309684535
         ],
-        "left_fraction": 0.34143535124951974,
-        "s1_3_to_s4_8_ratio": 0.3869901589074349,
-        "caudate_fraction": 0.05742759728114136,
+        "left_fraction": 0.48150711376993566,
+        "s1_3_to_s4_8_ratio": 0.6487455722474821,
+        "caudate_fraction": 0.0,
         "surface_roughness": 0.273
       },
       "actual": {
-        "volume_ml": 855.5645983039998,
+        "volume_ml": 1334.1212195999994,
         "extent_mm_zyx": [
-          128.18,
-          123.75999999999999,
-          216.57999999999998
+          172.38,
+          154.7,
+          190.06
         ],
         "centroid_world_mm": [
-          -27.131608800968255,
-          23.518611223254098,
-          29.67484860718614
+          -50.76706148867305,
+          17.265750161812363,
+          6.554759870550219
         ],
-        "left_fraction": 0.34144125958821153,
-        "s1_3_to_s4_8_ratio": 0.38689809630459127,
-        "caudate_fraction": 0.05742834073475979,
-        "surface_roughness": 0.2734486438236676,
-        "sphericity": 0.6622548241737936
+        "left_fraction": 0.48148867313915855,
+        "s1_3_to_s4_8_ratio": 0.6487034468039697,
+        "caudate_fraction": 0.0,
+        "surface_roughness": 0.24805978417378177,
+        "sphericity": 0.713328922272536,
+        "shape_quality": {
+          "status": "pass",
+          "lobe_overlap_fraction": 0.18925566343042072,
+          "dome_removed_fraction": 0.18289528145695363,
+          "fossa_removed_fraction": 0.02171848287215855,
+          "fossa_open_to_surface": true,
+          "internal_background_voxels": 0,
+          "central_waist_ratio": 0.8749203826977259,
+          "left_lateral_to_medial_area_ratio": 0.24470761111938885,
+          "left_rising_step_fraction": 1.0,
+          "left_maximum_rise_fraction": 0.0811991321936394,
+          "left_peak_position_fraction": 0.38095238095238093,
+          "geometric_left_fraction": 0.5296440129449839,
+          "geometric_left_fraction_error": 0.04813689917504821,
+          "caudate_outer_only_voxels": 0,
+          "caudate_outer_fraction": 0.0,
+          "caudate_outer_fraction_upper": 0.0,
+          "caudate_surface_voxels": 0,
+          "caudate_surface_exposure": 0.0,
+          "cut_mouths": {
+            "visceral_removed": {
+              "removed_voxels": 108,
+              "mouth_voxels": 54,
+              "mouth_fraction": 0.5,
+              "mouth_area_mm2_proxy": 1054.9656
+            },
+            "gallbladder_removed": {
+              "removed_voxels": 157,
+              "mouth_voxels": 61,
+              "mouth_fraction": 0.3885350318471338,
+              "mouth_area_mm2_proxy": 1191.7204
+            },
+            "hilum_removed": {
+              "removed_voxels": 78,
+              "mouth_voxels": 30,
+              "mouth_fraction": 0.38461538461538464,
+              "mouth_area_mm2_proxy": 586.092
+            }
+          },
+          "gallbladder_removed_ml": 13.557089416,
+          "hilum_removed_ml": 6.735369264,
+          "single_component_slice_fraction_zyx": [
+            0.8974358974358975,
+            0.9142857142857143,
+            1.0
+          ],
+          "bbox_fill_fraction": 0.2632251469460772,
+          "target_bbox_fill_fraction": 0.26611976694068484,
+          "bbox_fill_absolute_error": 0.002894619994607661,
+          "gates": {
+            "connected_3d": true,
+            "natural_lobe_overlap": true,
+            "no_dumbbell_waist": true,
+            "left_lobe_tapers_laterally": true,
+            "geometric_left_fraction_tracks_target": true,
+            "caudate_changes_outer_geometry": true,
+            "dome_arc_present": true,
+            "open_visceral_surface": true,
+            "no_internal_cavity": true,
+            "local_gallbladder_fossa_scale": true,
+            "local_hilum_present": true,
+            "single_component_slices": true,
+            "target_joint_volume_extent_plausibility": true,
+            "caudate_outer_is_s1": true
+          },
+          "caudate_outer_is_s1": true
+        }
       },
       "errors": {
-        "volume_relative_pct": 0.0030292085998695484,
-        "maximum_extent_mm": 4.474618486775398,
-        "maximum_centroid_mm": 0.39180088331922747,
-        "left_fraction": 5.908338691795745e-06
+        "volume_relative_pct": -0.0076875460539915785,
+        "maximum_extent_mm": 3.4501647704957463,
+        "maximum_centroid_mm": 0.10661216911292115,
+        "left_fraction": -1.844063077710567e-05
       },
       "gates": {
         "volume": true,
@@ -348,7 +1717,285 @@
         "centroid": true,
         "left_fraction": true,
         "region_cover": true,
-        "connected": true
+        "connected": true,
+        "shape_quality": true,
+        "shape_coordinates": true
+      },
+      "status": "pass"
+    },
+    {
+      "case_id": "task3_stress_seed987654_00008",
+      "selection_role": "stress-cirrhotic-caudate-upper",
+      "selection_features": {
+        "volume_ml": 1173.4535771738801,
+        "si_mm": 166.63897637164297,
+        "ap_mm": 147.17454442573907,
+        "lr_mm": 180.37061327828596,
+        "left_fraction": 0.4544002507973401,
+        "shape_u": -0.19699126512537551,
+        "shape_v": -0.4616066737614702
+      },
+      "selection_thresholds": {
+        "stress_seed": 987654.0,
+        "sequence_index": 8.0
+      },
+      "morphology": "cirrhotic",
+      "caudate_enabled": true,
+      "target": {
+        "volume_ml": 1173.4535771738801,
+        "extent_mm_zyx": [
+          166.63897637164297,
+          147.17454442573907,
+          180.37061327828596
+        ],
+        "centroid_world_mm": [
+          -34.36653082295925,
+          10.205920755278424,
+          44.94874443859551
+        ],
+        "left_fraction": 0.4544002507973401,
+        "s1_3_to_s4_8_ratio": 0.5906522513101231,
+        "caudate_fraction": 0.0545036964259415,
+        "surface_roughness": 0.273
+      },
+      "actual": {
+        "volume_ml": 1173.6812696959996,
+        "extent_mm_zyx": [
+          167.96,
+          145.85999999999999,
+          181.22
+        ],
+        "centroid_world_mm": [
+          -34.39645821071191,
+          10.461403766921817,
+          44.94598881695142
+        ],
+        "left_fraction": 0.4543849323131254,
+        "s1_3_to_s4_8_ratio": 0.5906377998829725,
+        "caudate_fraction": 0.05451736315479694,
+        "surface_roughness": 0.2600992341112475,
+        "sphericity": 0.7029614111724973,
+        "shape_quality": {
+          "status": "pass",
+          "lobe_overlap_fraction": 0.11551898144553994,
+          "dome_removed_fraction": 0.08925499536853249,
+          "fossa_removed_fraction": 0.012568107519070105,
+          "fossa_open_to_surface": true,
+          "internal_background_voxels": 0,
+          "central_waist_ratio": 0.9413986269960445,
+          "left_lateral_to_medial_area_ratio": 0.20233919913250162,
+          "left_rising_step_fraction": 1.0,
+          "left_maximum_rise_fraction": 0.07435842828553932,
+          "left_peak_position_fraction": 0.4594594594594595,
+          "geometric_left_fraction": 0.47263411225836505,
+          "geometric_left_fraction_error": 0.01823386146102496,
+          "caudate_outer_only_voxels": 706,
+          "caudate_outer_fraction": 0.05194231901118305,
+          "caudate_outer_fraction_upper": 0.05457726911575904,
+          "caudate_surface_voxels": 236,
+          "caudate_surface_exposure": 0.3342776203966006,
+          "cut_mouths": {
+            "visceral_removed": {
+              "removed_voxels": 41,
+              "mouth_voxels": 29,
+              "mouth_fraction": 0.7073170731707317,
+              "mouth_area_mm2_proxy": 566.5556
+            },
+            "gallbladder_removed": {
+              "removed_voxels": 44,
+              "mouth_voxels": 33,
+              "mouth_fraction": 0.75,
+              "mouth_area_mm2_proxy": 644.7012
+            },
+            "hilum_removed": {
+              "removed_voxels": 88,
+              "mouth_voxels": 46,
+              "mouth_fraction": 0.5227272727272727,
+              "mouth_area_mm2_proxy": 898.6744
+            }
+          },
+          "gallbladder_removed_ml": 3.799439072,
+          "hilum_removed_ml": 7.598878144,
+          "single_component_slice_fraction_zyx": [
+            0.8947368421052632,
+            0.8484848484848485,
+            1.0
+          ],
+          "bbox_fill_fraction": 0.26436379196327847,
+          "target_bbox_fill_fraction": 0.2652716519864576,
+          "bbox_fill_absolute_error": 0.0009078600231791079,
+          "gates": {
+            "connected_3d": true,
+            "natural_lobe_overlap": true,
+            "no_dumbbell_waist": true,
+            "left_lobe_tapers_laterally": true,
+            "geometric_left_fraction_tracks_target": true,
+            "caudate_changes_outer_geometry": true,
+            "dome_arc_present": true,
+            "open_visceral_surface": true,
+            "no_internal_cavity": true,
+            "local_gallbladder_fossa_scale": true,
+            "local_hilum_present": true,
+            "single_component_slices": true,
+            "target_joint_volume_extent_plausibility": true,
+            "caudate_outer_is_s1": true
+          },
+          "caudate_outer_is_s1": true
+        }
+      },
+      "errors": {
+        "volume_relative_pct": 0.019403624186642432,
+        "maximum_extent_mm": 1.3210236283570396,
+        "maximum_centroid_mm": 0.2554830116433937,
+        "left_fraction": -1.531848421471027e-05
+      },
+      "gates": {
+        "volume": true,
+        "extents": true,
+        "centroid": true,
+        "left_fraction": true,
+        "region_cover": true,
+        "connected": true,
+        "shape_quality": true,
+        "shape_coordinates": true
+      },
+      "status": "pass"
+    },
+    {
+      "case_id": "task3_stress_seed987654_00011",
+      "selection_role": "stress-cirrhotic-left-upper",
+      "selection_features": {
+        "volume_ml": 1341.2491543251872,
+        "si_mm": 161.97908661342535,
+        "ap_mm": 147.27839515787238,
+        "lr_mm": 191.07109284855636,
+        "left_fraction": 0.55,
+        "shape_u": 0.7137478453931059,
+        "shape_v": -0.761962153072379
+      },
+      "selection_thresholds": {
+        "stress_seed": 987654.0,
+        "sequence_index": 11.0
+      },
+      "morphology": "cirrhotic",
+      "caudate_enabled": true,
+      "target": {
+        "volume_ml": 1341.2491543251872,
+        "extent_mm_zyx": [
+          161.97908661342535,
+          147.27839515787238,
+          191.07109284855636
+        ],
+        "centroid_world_mm": [
+          -54.412586130136944,
+          24.12221171681027,
+          31.487267924184014
+        ],
+        "left_fraction": 0.55,
+        "s1_3_to_s4_8_ratio": 0.8438326707136352,
+        "caudate_fraction": 0.05176947029445458,
+        "surface_roughness": 0.273
+      },
+      "actual": {
+        "volume_ml": 1340.9429397519993,
+        "extent_mm_zyx": [
+          163.54,
+          145.85999999999999,
+          190.06
+        ],
+        "centroid_world_mm": [
+          -54.7481994977166,
+          24.178786142056765,
+          31.44507373301563
+        ],
+        "left_fraction": 0.5500032197823427,
+        "s1_3_to_s4_8_ratio": 0.8438613156019947,
+        "caudate_fraction": 0.05177410007083521,
+        "surface_roughness": 0.24876295112831565,
+        "sphericity": 0.7174678582041834,
+        "shape_quality": {
+          "status": "pass",
+          "lobe_overlap_fraction": 0.1786791820315119,
+          "dome_removed_fraction": 0.1613881049440786,
+          "fossa_removed_fraction": 0.032219867879845446,
+          "fossa_open_to_surface": true,
+          "internal_background_voxels": 0,
+          "central_waist_ratio": 0.9961755820874384,
+          "left_lateral_to_medial_area_ratio": 0.27131751362260426,
+          "left_rising_step_fraction": 1.0,
+          "left_maximum_rise_fraction": 0.07232294340340484,
+          "left_peak_position_fraction": 0.43902439024390244,
+          "geometric_left_fraction": 0.5052296345960442,
+          "geometric_left_fraction_error": -0.04477036540395585,
+          "caudate_outer_only_voxels": 613,
+          "caudate_outer_fraction": 0.03947453152166913,
+          "caudate_outer_fraction_upper": 0.05183386594130885,
+          "caudate_surface_voxels": 238,
+          "caudate_surface_exposure": 0.38825448613376834,
+          "cut_mouths": {
+            "visceral_removed": {
+              "removed_voxels": 148,
+              "mouth_voxels": 69,
+              "mouth_fraction": 0.46621621621621623,
+              "mouth_area_mm2_proxy": 1348.0116
+            },
+            "gallbladder_removed": {
+              "removed_voxels": 178,
+              "mouth_voxels": 61,
+              "mouth_fraction": 0.34269662921348315,
+              "mouth_area_mm2_proxy": 1191.7204
+            },
+            "hilum_removed": {
+              "removed_voxels": 191,
+              "mouth_voxels": 41,
+              "mouth_fraction": 0.21465968586387435,
+              "mouth_area_mm2_proxy": 800.9924
+            }
+          },
+          "gallbladder_removed_ml": 15.370458064,
+          "hilum_removed_ml": 16.493019608,
+          "single_component_slice_fraction_zyx": [
+            0.8378378378378378,
+            0.9090909090909091,
+            0.9767441860465116
+          ],
+          "bbox_fill_fraction": 0.29577357484334227,
+          "target_bbox_fill_fraction": 0.29425000893039965,
+          "bbox_fill_absolute_error": 0.001523565912942615,
+          "gates": {
+            "connected_3d": true,
+            "natural_lobe_overlap": true,
+            "no_dumbbell_waist": true,
+            "left_lobe_tapers_laterally": true,
+            "geometric_left_fraction_tracks_target": true,
+            "caudate_changes_outer_geometry": true,
+            "dome_arc_present": true,
+            "open_visceral_surface": true,
+            "no_internal_cavity": true,
+            "local_gallbladder_fossa_scale": true,
+            "local_hilum_present": true,
+            "single_component_slices": true,
+            "target_joint_volume_extent_plausibility": true,
+            "caudate_outer_is_s1": true
+          },
+          "caudate_outer_is_s1": true
+        }
+      },
+      "errors": {
+        "volume_relative_pct": -0.022830551072516858,
+        "maximum_extent_mm": 1.56091338657464,
+        "maximum_centroid_mm": 0.3356133675796542,
+        "left_fraction": 3.21978234263387e-06
+      },
+      "gates": {
+        "volume": true,
+        "extents": true,
+        "centroid": true,
+        "left_fraction": true,
+        "region_cover": true,
+        "connected": true,
+        "shape_quality": true,
+        "shape_coordinates": true
       },
       "status": "pass"
     }

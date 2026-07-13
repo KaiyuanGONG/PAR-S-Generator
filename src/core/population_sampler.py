@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import math
-
 import numpy as np
 
 from .schemas_v2 import LiverTargetV2, PatientSampleV2, PopulationProfileV2
@@ -122,12 +120,22 @@ def sample_liver_target(
     volume = float(np.clip(mean_volume + sd_volume * volume_z, *map(float, model["volume_range_ml"])))
 
     scale = (volume / mean_volume) ** (1.0 / 3.0)
-    reference_si, reference_ap, reference_lr = map(float, model["reference_extent_mm_zyx"])
-    lr_shape = float(model["lr_log_shape_sd"]) * float(np.clip(rng.normal(), -2.5, 2.5))
-    ap_shape = float(model["ap_log_shape_sd"]) * float(np.clip(rng.normal(), -2.5, 2.5))
-    lr_mm = reference_lr * scale * math.exp(lr_shape)
-    ap_mm = reference_ap * scale * math.exp(ap_shape)
-    si_mm = reference_si * scale * math.exp(-lr_shape - ap_shape)
+    extent_reference = profile.value("liver_extent_reference_mm_zyx")
+    reference_si, reference_ap, reference_lr = map(
+        float, extent_reference["mean_at_profile_volume"]
+    )
+    residual_sd = np.asarray(model["extent_log_residual_sd_zyx"], dtype=np.float64)
+    fill_lower, fill_upper = map(float, model["bbox_fill_fraction_range"])
+    extents = np.array((reference_si, reference_ap, reference_lr), dtype=np.float64) * scale
+    for _ in range(64):
+        proposal = extents * np.exp(
+            residual_sd * np.clip(rng.normal(size=3), -2.5, 2.5)
+        )
+        bbox_fill = volume * 1000.0 / float(np.prod(proposal))
+        if fill_lower <= bbox_fill <= fill_upper:
+            extents = proposal
+            break
+    si_mm, ap_mm, lr_mm = (float(value) for value in extents)
 
     left_reference = profile.value("left_liver_fraction_reference")
     left_fraction = _truncated_normal(
@@ -183,7 +191,12 @@ def sample_liver_target(
         evidence_types={
             "volume_reference": profile.parameters["liver_volume_reference_ml"].source_type,
             "volume_model": profile.parameters["liver_geometry_model"].source_type,
-            "dimensions": profile.parameters["liver_geometry_model"].source_type,
+            "dimensions_reference": profile.parameters[
+                "liver_extent_reference_mm_zyx"
+            ].source_type,
+            "dimensions_conditional_model": profile.parameters[
+                "liver_geometry_model"
+            ].source_type,
             "left_fraction": profile.parameters["left_liver_fraction_reference"].source_type,
             "morphology": profile.parameters["cirrhosis_prevalence"].source_type,
             "segment_proxy": profile.parameters["cirrhotic_segment_proxy_changes"].source_type,

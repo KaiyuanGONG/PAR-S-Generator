@@ -21,7 +21,11 @@ sys.path.insert(0, str(REPO_ROOT / "scripts"))
 
 from core.liver_geometry import GridSpecV2, fit_liver_geometry  # noqa: E402
 from core.liver_regions import REGION_LABELS_V2  # noqa: E402
-from validate_task3_liver_v2 import load_main_profile, select_representative_targets  # noqa: E402
+from validate_task3_liver_v2 import (  # noqa: E402
+    load_main_profile,
+    make_controlled_cirrhotic_target,
+    select_representative_targets,
+)
 
 
 REGION_COLORS = ["#000000", "#E69F00", "#56B4E9", "#009E73", "#CC79A7", "#0072B2"]
@@ -30,19 +34,25 @@ REGION_COLORS = ["#000000", "#E69F00", "#56B4E9", "#009E73", "#CC79A7", "#0072B2
 def _representative_geometries():
     profile = load_main_profile(REPO_ROOT)
     selected = select_representative_targets(profile, seed=20_260_714)
-    normal_patient, normal_target = next(
-        (patient, target)
-        for patient, target in selected
-        if target.morphology == "normal" and target.caudate_enabled
+    normal = next(
+        representative
+        for representative in selected
+        if representative.selection_role == "centre-normal-caudate-on"
     )
-    cirrhotic_patient, cirrhotic_target = next(
-        (patient, target) for patient, target in selected if target.morphology == "cirrhotic"
+    cirrhotic = next(
+        representative
+        for representative in selected
+        if representative.selection_role == "centre-cirrhotic-caudate-on"
+    )
+    controlled_cirrhotic = make_controlled_cirrhotic_target(
+        normal.target,
+        cirrhotic.target,
     )
     grid = GridSpecV2()
     return grid, [
-        (normal_patient, normal_target, fit_liver_geometry(normal_target, grid)),
-        (cirrhotic_patient, cirrhotic_target, fit_liver_geometry(cirrhotic_target, grid)),
-    ]
+        (normal.patient, normal.target, fit_liver_geometry(normal.target, grid)),
+        (cirrhotic.patient, controlled_cirrhotic, fit_liver_geometry(controlled_cirrhotic, grid)),
+    ], selected
 
 
 def _best_slice_index(mask: np.ndarray, axis: int) -> int:
@@ -63,6 +73,15 @@ def _best_slice_index(mask: np.ndarray, axis: int) -> int:
     return min(fallback)[2]
 
 
+def _crop_to_content(image: np.ndarray, pad: int = 4) -> np.ndarray:
+    indices = np.argwhere(image > 0)
+    if len(indices) == 0:
+        return image
+    lower = np.maximum(indices.min(axis=0) - pad, 0)
+    upper = np.minimum(indices.max(axis=0) + pad + 1, image.shape)
+    return image[lower[0] : upper[0], lower[1] : upper[1]]
+
+
 def render_multiplanar(cases, output_path: Path) -> None:
     cmap = ListedColormap(REGION_COLORS)
     norm = BoundaryNorm(np.arange(-0.5, 6.5, 1.0), cmap.N)
@@ -77,6 +96,7 @@ def render_multiplanar(cases, output_path: Path) -> None:
             (geometry.region_labels[:, :, x], "Sagittal", "P–A", "I–S"),
         ]
         for column, (image, view, xlabel, ylabel) in enumerate(slices):
+            image = _crop_to_content(image)
             axis = axes[row, column]
             masked = np.ma.masked_where(image == 0, image)
             axis.imshow(masked, origin="lower", interpolation="nearest", cmap=cmap, norm=norm)
@@ -131,26 +151,79 @@ def _surface(axis, mask: np.ndarray, affine: np.ndarray, color: str, alpha: floa
 
 
 def render_3d(cases, output_path: Path) -> None:
-    figure = plt.figure(figsize=(12.5, 6.2), constrained_layout=True)
-    for index, (_, target, geometry) in enumerate(cases, start=1):
-        axis = figure.add_subplot(1, 2, index, projection="3d")
-        surface_color = "#4C78A8" if target.morphology == "normal" else "#E45756"
-        vertices = _surface(axis, geometry.mask, geometry.affine_4x4, surface_color, 0.52)
-        caudate = geometry.region_labels == 1
-        if caudate.any():
-            _surface(axis, caudate, geometry.affine_4x4, "#F2CF5B", 0.95)
-        _set_equal_3d(axis, vertices)
+    views = (
+        ("Anterior-oblique", 15, -55),
+        ("Superior", 72, -90),
+        ("Visceral-inferior", -22, 125),
+    )
+    figure = plt.figure(figsize=(15.5, 9.2), constrained_layout=True)
+    for row, (_, target, geometry) in enumerate(cases):
+        for column, (view_name, elevation, azimuth) in enumerate(views):
+            axis = figure.add_subplot(2, 3, row * 3 + column + 1, projection="3d")
+            surface_color = "#4C78A8" if target.morphology == "normal" else "#E45756"
+            vertices = _surface(axis, geometry.mask, geometry.affine_4x4, surface_color, 0.68)
+            caudate = geometry.region_labels == 1
+            if caudate.any():
+                _surface(axis, caudate, geometry.affine_4x4, "#F2CF5B", 0.92)
+            _set_equal_3d(axis, vertices)
+            actual = geometry.actual_metrics
+            title = f"{target.morphology.capitalize()} · {view_name}"
+            if column == 0:
+                title += (
+                    f"\nV={actual['volume_ml']:.0f} mL · rough={actual['surface_roughness']:.3f}"
+                )
+            axis.set_title(title)
+            axis.set_xlabel("LR")
+            axis.set_ylabel("AP")
+            axis.set_zlabel("SI")
+            axis.set_xticks([])
+            axis.set_yticks([])
+            axis.set_zticks([])
+            axis.view_init(elev=elevation, azim=azimuth)
+            axis.grid(False)
+    figure.suptitle(
+        "Task 3 population-anchored asymmetric liver family · caudate highlighted",
+        fontsize=14,
+    )
+    figure.savefig(output_path, dpi=180, bbox_inches="tight", facecolor="white")
+    plt.close(figure)
+
+
+def render_shape_family(selected, cases, grid: GridSpecV2, output_path: Path) -> None:
+    roles = (
+        "centre-normal-caudate-on",
+        "centre-cirrhotic-caudate-on",
+        "joint-size-p10",
+        "joint-size-p90",
+        "shape-u-p05",
+        "shape-u-p95",
+    )
+    cached = {cases[0][0].case_id: cases[0][2]}
+    figure, axes = plt.subplots(2, 3, figsize=(13.5, 8.4), constrained_layout=True)
+    by_role = {representative.selection_role: representative for representative in selected}
+    for axis, role in zip(axes.flat, roles):
+        representative = by_role[role]
+        geometry = cached.get(representative.patient.case_id)
+        if geometry is None:
+            geometry = fit_liver_geometry(representative.target, grid)
+        y = _best_slice_index(geometry.mask, axis=1)
+        image = _crop_to_content(geometry.mask[:, y, :])
+        color = "Blues" if representative.target.morphology == "normal" else "Reds"
+        axis.imshow(image, origin="lower", interpolation="nearest", cmap=color)
+        axis.contour(image, levels=[0.5], colors=["#303030"], linewidths=0.9)
         actual = geometry.actual_metrics
         axis.set_title(
-            f"{target.morphology.capitalize()}\n"
-            f"rough={actual['surface_roughness']:.3f}, caudate={actual['caudate_fraction']:.3f}"
+            f"{role}\nV={actual['volume_ml']:.0f} mL · "
+            f"u={representative.features['shape_u']:+.2f} · "
+            f"left={actual['left_fraction']:.2f}",
+            fontsize=10,
         )
-        axis.set_xlabel("LR (mm)")
-        axis.set_ylabel("AP (mm)")
-        axis.set_zlabel("SI (mm)")
-        axis.view_init(elev=24, azim=132)
-        axis.grid(False)
-    figure.suptitle("Task 3 constrained double-ellipsoid liver surfaces · caudate highlighted", fontsize=14)
+        axis.set_xlabel("L–R")
+        axis.set_ylabel("I–S")
+        axis.set_xticks([])
+        axis.set_yticks([])
+        axis.set_aspect("equal")
+    figure.suptitle("Task 3 fixed shape-family coverage cases · coronal silhouettes", fontsize=14)
     figure.savefig(output_path, dpi=180, bbox_inches="tight", facecolor="white")
     plt.close(figure)
 
@@ -158,17 +231,34 @@ def render_3d(cases, output_path: Path) -> None:
 def main() -> int:
     output_dir = REPO_ROOT / "docs" / "reports"
     output_dir.mkdir(parents=True, exist_ok=True)
-    grid, cases = _representative_geometries()
+    grid, cases, selected = _representative_geometries()
     multiplanar = output_dir / "task3_liver_v2_multiplanar.png"
     surface = output_dir / "task3_liver_v2_3d.png"
+    shape_family = output_dir / "task3_liver_v2_shape_family.png"
     manifest = output_dir / "task3_liver_v2_visual_manifest.json"
     render_multiplanar(cases, multiplanar)
     render_3d(cases, surface)
+    render_shape_family(selected, cases, grid, shape_family)
     records = []
-    for patient, target, geometry in cases:
+    baseline_patient = cases[0][0]
+    morphology_reference_patient = cases[1][0]
+    for index, (patient, target, geometry) in enumerate(cases):
+        if index == 0:
+            case_id = patient.case_id
+            provenance = {
+                "baseline_geometry_case_id": patient.case_id,
+                "morphology_reference_case_id": None,
+            }
+        else:
+            case_id = f"controlled-cirrhotic-from-{baseline_patient.case_id}"
+            provenance = {
+                "baseline_geometry_case_id": baseline_patient.case_id,
+                "morphology_reference_case_id": morphology_reference_patient.case_id,
+            }
         records.append(
             {
-                "case_id": patient.case_id,
+                "case_id": case_id,
+                "provenance": provenance,
                 "morphology": target.morphology,
                 "caudate_enabled": bool(target.caudate_enabled),
                 "target_metrics": dict(geometry.target_metrics),
@@ -183,6 +273,7 @@ def main() -> int:
                         "caudate_fraction",
                         "surface_roughness",
                         "sphericity",
+                        "shape_quality",
                     )
                 },
             }
@@ -190,10 +281,12 @@ def main() -> int:
     manifest.write_text(
         json.dumps(
             {
-                "schema_version": "pars_task3_visual_confirmation_v1",
+                "schema_version": "pars_task3_visual_confirmation_v2",
                 "seed": 20_260_714,
                 "grid": {"shape": list(grid.shape), "voxel_size_mm": grid.voxel_size_mm},
-                "files": [multiplanar.name, surface.name],
+                "visual_role": "anatomy_and_gate_confirmation_not_legacy_shape_matching",
+                "morphology_visual_pair": "fixed_global_size_centroid_and_baseline_shape",
+                "files": [multiplanar.name, surface.name, shape_family.name],
                 "cases": records,
             },
             indent=2,
@@ -201,8 +294,18 @@ def main() -> int:
         )
         + "\n",
         encoding="utf-8",
+        newline="\n",
     )
-    print(json.dumps({"multiplanar": str(multiplanar), "surface_3d": str(surface), "manifest": str(manifest)}))
+    print(
+        json.dumps(
+            {
+                "multiplanar": str(multiplanar),
+                "surface_3d": str(surface),
+                "shape_family": str(shape_family),
+                "manifest": str(manifest),
+            }
+        )
+    )
     return 0
 
 

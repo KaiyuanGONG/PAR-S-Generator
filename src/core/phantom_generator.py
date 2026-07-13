@@ -6,6 +6,7 @@ Ported and enhanced from PAR-S/notebooks/DataCreation_SYN.ipynb
 """
 
 from __future__ import annotations
+import hashlib
 import json
 import time
 from dataclasses import dataclass, field, asdict
@@ -147,10 +148,55 @@ class PreviewOverrides:
 
 
 @dataclass(frozen=True)
+class RejectedLiverShapeAttemptV2:
+    attempt_index: int
+    shape_seed: int
+    failed_gates: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class LiverSamplingProvenanceV2:
+    liver_seed: int
+    max_shape_attempts: int
+    accepted_attempt_index: int
+    accepted_shape_seed: int
+    rejected_attempts: tuple[RejectedLiverShapeAttemptV2, ...] = ()
+
+
+class LiverShapeRetryExhaustedError(RuntimeError):
+    def __init__(
+        self,
+        case_id: str,
+        max_shape_attempts: int,
+        rejected_attempts: tuple[RejectedLiverShapeAttemptV2, ...],
+    ) -> None:
+        self.case_id = case_id
+        self.max_shape_attempts = max_shape_attempts
+        self.rejected_attempts = rejected_attempts
+        gates = [record.failed_gates for record in rejected_attempts]
+        super().__init__(
+            f"case {case_id!r} exhausted {max_shape_attempts} liver shape attempts; "
+            f"failed gates by attempt: {gates}"
+        )
+
+
+def _derive_liver_shape_attempt_seed(
+    liver_seed: int,
+    case_id: str,
+    attempt_index: int,
+) -> int:
+    payload = (
+        f"pars-syn-v2|{liver_seed}|{case_id}|liver-shape-attempt|{attempt_index}"
+    ).encode("utf-8")
+    return int.from_bytes(hashlib.sha256(payload).digest()[:8], "big") % (2**63 - 1) + 1
+
+
+@dataclass(frozen=True)
 class LiverCaseV2:
     patient: "PatientSampleV2"
     target: "LiverTargetV2"
     geometry: "LiverGeometryV2"
+    sampling_provenance: LiverSamplingProvenanceV2 | None = None
 
 
 # ─────────────────────────────────────────────
@@ -368,16 +414,74 @@ class PhantomGenerator:
         rng: np.random.Generator,
         *,
         case_id: str = "unassigned",
+        liver_seed: int | None = None,
+        max_shape_attempts: int = 8,
     ) -> LiverCaseV2:
         """Generate only the V2 patient-conditioned liver layer; V1 generation remains unchanged."""
-        from .liver_geometry import GridSpecV2, fit_liver_geometry
+        from .liver_geometry import (
+            GridSpecV2,
+            LiverShapeRejectedError,
+            fit_liver_geometry,
+        )
         from .population_sampler import sample_liver_target, sample_patient
+
+        if (
+            not isinstance(max_shape_attempts, int)
+            or isinstance(max_shape_attempts, bool)
+            or not 1 <= max_shape_attempts <= 32
+        ):
+            raise ValueError("max_shape_attempts must be an integer within [1, 32]")
+        if liver_seed is not None and (
+            not isinstance(liver_seed, int)
+            or isinstance(liver_seed, bool)
+            or not 1 <= liver_seed <= 2**63 - 1
+        ):
+            raise ValueError("liver_seed must be an integer within [1, 2^63-1]")
 
         patient = sample_patient(profile, rng, case_id=case_id)
         target = sample_liver_target(patient, profile, rng)
+        if liver_seed is None:
+            liver_seed = int(rng.integers(1, 2**63 - 1, dtype=np.int64))
         grid = GridSpecV2(shape=tuple(int(value) for value in self.cfg.volume_shape), voxel_size_mm=self.cfg.voxel_size_mm)
-        geometry = fit_liver_geometry(target, grid)
-        return LiverCaseV2(patient=patient, target=target, geometry=geometry)
+        rejected: list[RejectedLiverShapeAttemptV2] = []
+        last_shape_error: LiverShapeRejectedError | None = None
+        for attempt_index in range(1, max_shape_attempts + 1):
+            shape_seed = _derive_liver_shape_attempt_seed(
+                liver_seed,
+                patient.case_id,
+                attempt_index,
+            )
+            try:
+                geometry = fit_liver_geometry(target, grid, shape_seed=shape_seed)
+            except LiverShapeRejectedError as exc:
+                last_shape_error = exc
+                rejected.append(
+                    RejectedLiverShapeAttemptV2(
+                        attempt_index=attempt_index,
+                        shape_seed=shape_seed,
+                        failed_gates=exc.failed_gates,
+                    )
+                )
+                continue
+            provenance = LiverSamplingProvenanceV2(
+                liver_seed=liver_seed,
+                max_shape_attempts=max_shape_attempts,
+                accepted_attempt_index=attempt_index,
+                accepted_shape_seed=shape_seed,
+                rejected_attempts=tuple(rejected),
+            )
+            return LiverCaseV2(
+                patient=patient,
+                target=target,
+                geometry=geometry,
+                sampling_provenance=provenance,
+            )
+        exhausted = LiverShapeRetryExhaustedError(
+            patient.case_id,
+            max_shape_attempts,
+            tuple(rejected),
+        )
+        raise exhausted from last_shape_error
 
     def _resolve_perfusion_mode(self, rng, overrides: PreviewOverrides | None):
         if overrides and overrides.perfusion_mode in self.PERFUSION_POLICY_MAP.values():
@@ -657,5 +761,4 @@ class PhantomGenerator:
             generation_time_s=time.time() - t0,
         )
         return result
-
 

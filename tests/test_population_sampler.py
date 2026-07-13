@@ -111,4 +111,5 @@ def test_volume_model_is_not_the_banned_upper_limit_equation_and_keeps_evidence_
         "liver_volume_reference_ml"
     ].source_type
     assert targets[0].evidence_types["volume_model"] == "engineering_prior"
-
+    assert targets[0].evidence_types["dimensions_reference"] == "literature_population"
+    assert targets[0].evidence_types["dimensions_conditional_model"] == "engineering_prior"
