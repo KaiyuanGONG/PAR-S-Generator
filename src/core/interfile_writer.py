@@ -11,9 +11,92 @@ SIMIND XcatBinMap convention (Index-14 = -7, Index-15 = -7):
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
+
+
+@dataclass(frozen=True)
+class VoxelSourceWriteResult:
+    path: Path
+    shape: tuple[int, int, int]
+    dtype: str
+    base_histories: int
+    source_sum: float
+    nn_multiplier: None = None
+    activity_time_product_mbq_s: None = None
+
+
+@dataclass(frozen=True)
+class AttenuationMapWriteResult:
+    path: Path
+    shape: tuple[int, int, int]
+    dtype: str
+    semantic_key: str
+    unit: str = "cm^-1"
+
+
+def write_voxel_source(
+    activity_probability: np.ndarray,
+    output_stem: Path,
+    *,
+    base_histories: int,
+) -> VoxelSourceWriteResult:
+    """Normalize a probability field to the SIMIND voxel-source history sum.
+
+    In SIMIND voxel-source mode the sum of source voxels is the base number of
+    histories.  It is deliberately independent of both ``/NN`` and Index 25.
+    """
+    values = np.asarray(activity_probability)
+    if values.ndim != 3:
+        raise ValueError("activity_probability must be a 3D array")
+    if not np.isfinite(values).all():
+        raise ValueError("activity_probability must be finite")
+    if np.any(values < 0.0):
+        raise ValueError("activity_probability must be non-negative")
+    total = float(values.sum(dtype=np.float64))
+    if total <= 0.0:
+        raise ValueError("activity_probability must have a positive sum")
+    if not isinstance(base_histories, int) or isinstance(base_histories, bool):
+        raise TypeError("base_histories must be an integer")
+    if base_histories <= 0:
+        raise ValueError("base_histories must be positive")
+
+    source = (values.astype(np.float64, copy=False) / total * base_histories).astype(
+        np.float32
+    )
+    output_stem = Path(output_stem)
+    output_stem.parent.mkdir(parents=True, exist_ok=True)
+    path = write_bin(source, output_stem, "_act_av")
+    return VoxelSourceWriteResult(
+        path=path,
+        shape=tuple(int(item) for item in source.shape),
+        dtype="float32_le",
+        base_histories=base_histories,
+        source_sum=float(source.sum(dtype=np.float64)),
+    )
+
+
+def write_attenuation_map_v2(
+    mu_map: np.ndarray,
+    output_stem: Path,
+    *,
+    semantic_key: str,
+) -> AttenuationMapWriteResult:
+    """Write the physical attenuation map accepted by the V2 SIMIND chain."""
+    from .attenuation_model_v2 import select_simind_attenuation_map
+
+    values = select_simind_attenuation_map(semantic_key, np.asarray(mu_map))
+    output_stem = Path(output_stem)
+    output_stem.parent.mkdir(parents=True, exist_ok=True)
+    path = write_bin(values, output_stem, "_atn_av")
+    return AttenuationMapWriteResult(
+        path=path,
+        shape=tuple(int(item) for item in values.shape),
+        dtype="float32_le",
+        semantic_key=semantic_key,
+    )
 
 
 def write_bin(
@@ -109,12 +192,15 @@ def generate_simind_bat(
     output_dir: Path,
     bat_path: Path,
     photons_per_proj: int = 5_000_000,
+    global_seed: int = 20_260_714,
+    nn_multiplier: int = 10,
 ) -> Path:
     """
     Generate a Windows .bat script to run SIMIND on all binary pairs.
 
     `photons_per_proj` is retained for backward compatibility but is informational only.
-    Actual photon histories are configured inside the selected `.smc` file.
+    In voxel-source mode, base histories are the source voxel sum; `/NN` only
+    changes Monte Carlo statistics.  Every case receives a stable `/RR` seed.
     """
     interfile_dir = Path(interfile_dir).resolve()
     output_dir = Path(output_dir).resolve()
@@ -145,7 +231,8 @@ def generate_simind_bat(
         "echo ========================================",
         f"echo Total cases: {len(act_bins)}",
         f"echo SMC: {smc_stem}.smc",
-        "echo Photon histories are controlled by Index-26 in the selected .smc file.",
+        "echo Voxel-source base histories are the source voxel sum; Index-26 is ignored.",
+        f"echo NN multiplier: {nn_multiplier}; global seed: {global_seed}",
         "echo.",
         "",
         f'set "SIMIND={simind_exe}"',
@@ -167,11 +254,14 @@ def generate_simind_bat(
     ]
 
     for i, act_bin in enumerate(act_bins):
+        from .seeds import SeedBundle
+
         stem = act_bin.name.replace("_act_av.bin", "")
         out_stem = output_dir / stem
+        rr_seed = SeedBundle.from_case(global_seed, stem).simind
         lines += [
             f'echo [{i + 1}/{len(act_bins)}] Processing {stem}...',
-            f'"%SIMIND%" {smc_stem} "{out_stem}" /FS:{stem} /FD:{stem}',
+            f'"%SIMIND%" {smc_stem} "{out_stem}" /FS:{stem} /FD:{stem} /NN:{nn_multiplier} /RR:{rr_seed}',
             "if errorlevel 1 (",
             f"    echo ERROR: Failed on {stem}",
             "    popd",

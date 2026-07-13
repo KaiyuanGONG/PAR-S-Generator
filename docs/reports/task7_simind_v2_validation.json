@@ -1,0 +1,64 @@
+{
+  "schema_version": "pars_task7_simind_validation_v2",
+  "status": "pass_with_runtime_blocker",
+  "protocol_name": "SPECT_60MBq_28p4s_v2",
+  "smc": {
+    "sha256": "f3dac9777401701d57591eb78b432089ebb8781bd3852dc8d016eb351eea311c",
+    "flag8_random_sequence": true,
+    "index25_mbq_s": 1704.0,
+    "index26_raw_value": 10.0,
+    "index26_semantics": "ignored_for_voxel_source"
+  },
+  "rr_seed_audit": {
+    "global_seed": 20260714,
+    "case_count": 550,
+    "unique_count": 550,
+    "minimum": 3703217,
+    "maximum": 2146575400
+  },
+  "legacy_real_quartet_audit": {
+    "case_id": "case_0001",
+    "complete": true,
+    "expected_shape": [
+      60,
+      128,
+      128
+    ],
+    "view_count": 60,
+    "expected_bytes": 3932160,
+    "actual_bytes": 3932160,
+    "finite": true,
+    "nonnegative": true,
+    "projection_sum": 3057.2965151972408,
+    "projection_mean": 0.003110042841794068,
+    "projection_sd": 0.01767845906084697,
+    "sha256": {
+      "a00": "ce0bb1f5ca31af1b21c1e728f3b3524c69458345205c958055ac3d4cea67ae7d",
+      "mhd": "7a325181efb4be88c2bd3139a5eaec909a9042bfd46379ec83a989b7a0e086f0",
+      "res": "d604e727146dce386cf5853104ee66878da6b60a29d858e9994a7c86cec1ed44",
+      "spe": "6ca7ec939c320a58ace096bfb1aced75bbf280f52e7113f00782269068613b31"
+    }
+  },
+  "local_runtime": {
+    "simind_exe_found": true,
+    "simind_exe_sha256": "f984b8753f54b9f671f9fc1bcb2b45461e7cae8d027376b446dd1ed55a9a8319",
+    "simind_ini_found": false,
+    "real_one_case_seed_pilot": "blocked_missing_complete_official_runtime",
+    "notes": "The local bundle contains simind.exe but no auditable simind.ini/SMC_DIR runtime. No physics configuration was fabricated."
+  },
+  "implementation_evidence": {
+    "fake_executable_seed_reproduction_test": "tests/test_simind_seed_v2.py",
+    "completion_gate_test": "tests/test_simind_completion_v2.py",
+    "interfile_semantics_test": "tests/test_interfile_semantics_v2.py"
+  },
+  "gates": {
+    "smc_flag8_random_sequence_true": true,
+    "smc_index25_is_1704_mbq_s": true,
+    "index26_explicitly_ignored_for_voxel_source": true,
+    "activity_time_product_is_60_x_28p4": true,
+    "base_histories_separate_from_index25": true,
+    "rr_seed_collision_free": true,
+    "protocol_name_is_frozen_28p4s": true,
+    "legacy_real_quartet_passes_strict_audit": true
+  }
+}
