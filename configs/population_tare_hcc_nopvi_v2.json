@@ -175,6 +175,41 @@
       "evidence_ids": ["ilhan-jnm-2015-hcc-table3"],
       "applies_to": ["population_tare_hcc_nopvi_v2"]
     },
+    "injection_territories": {
+      "value": {"whole_liver": 0.25, "right_lobar": 0.25, "left_lobar": 0.25, "sector_proxy": 0.25},
+      "unit": "probability_distribution",
+      "source_type": "coverage_sampling",
+      "evidence_ids": ["coverage-broad-hcc-v2-design"],
+      "applies_to": ["population_tare_hcc_nopvi_v2"],
+      "notes": "Coverage sampling only; not a TARE population prevalence. Infeasible non-mismatch territories are conditionally renormalized after tumor placement."
+    },
+    "activity_patterns": {
+      "value": ["physiologic_heterogeneous"],
+      "unit": "categorical_set",
+      "source_type": "engineering_prior",
+      "evidence_ids": ["engineering-activity-field-v2"],
+      "applies_to": ["population_tare_hcc_nopvi_v2"]
+    },
+    "activity_model_v2": {
+      "value": {
+        "residual_outside_territory_fraction": 0.05,
+        "background_log_sd": 0.06,
+        "background_correlation_length_mm": 18.0,
+        "tumor_log_sd": 0.28,
+        "tumor_correlation_length_mm": 10.0,
+        "necrosis_probability_midpoint_mm": 70.0,
+        "necrosis_probability_scale_mm": 18.0,
+        "necrosis_fraction_range": [0.08, 0.45],
+        "necrotic_core_uptake_fraction_range": [0.10, 0.35],
+        "within_patient_shared_variance_fraction": 0.50,
+        "tnr_mean_relative_tolerance": 0.02
+      },
+      "unit": "model_specification",
+      "source_type": "engineering_prior",
+      "evidence_ids": ["engineering-activity-field-v2"],
+      "applies_to": ["population_tare_hcc_nopvi_v2"],
+      "notes": "Low-frequency field, within-patient dependence and size-to-necrosis mapping are explicit engineering assumptions pending local lesion-mask and CT calibration."
+    },
     "age_median_auxiliary_years": {
       "value": 66,
       "unit": "years",

@@ -17,8 +17,14 @@ import numpy as np
 from scipy.ndimage import gaussian_filter
 
 if TYPE_CHECKING:
+    from .activity_model_v2 import ActivityFieldV2
     from .liver_geometry import LiverGeometryV2
-    from .schemas_v2 import LiverTargetV2, PatientSampleV2, PopulationProfileV2
+    from .schemas_v2 import (
+        ActivityTargetV2,
+        LiverTargetV2,
+        PatientSampleV2,
+        PopulationProfileV2,
+    )
     from .tumor_generator_v2 import TumorCaseTargetV2, TumorGeometryV2
 
 _GRID_CACHE: dict[tuple[int, int, int], tuple[np.ndarray, np.ndarray, np.ndarray]] = {}
@@ -94,8 +100,8 @@ class PhantomConfig:
     tumor_count_max: int = 5
     tumor_size_bins_mm: list = field(default_factory=lambda: [[10, 20], [20, 40], [40, 60]])
     tumor_probs: list = field(default_factory=lambda: [0.45, 0.40, 0.15])
-    # Tumor-to-normal liver ratio (TNR) for Tc-99m MAA hepatic arterial scintigraphy:
-    # Ho et al. (1997) J Nucl Med: median TNR 3.4, range 1.5–12; practical range 2–8.
+    # Legacy V1 UI preview range only; it is not a population model or literature claim.
+    # V2 uses activity_model_v2 with lesion-level targets and actual-mask measurements.
     tumor_contrast_min: float = 2.0
     tumor_contrast_max: float = 8.0
     min_edge_dist_px: int = 4
@@ -225,6 +231,15 @@ class TumorCaseV2:
     target: "TumorCaseTargetV2"
     geometry: "TumorGeometryV2"
     sampling_provenance: TumorSamplingProvenanceV2
+
+
+@dataclass(frozen=True)
+class ActivityCaseV2:
+    patient: "PatientSampleV2"
+    liver: "LiverGeometryV2"
+    tumors: "TumorGeometryV2"
+    target: "ActivityTargetV2"
+    field: "ActivityFieldV2"
 
 
 class TumorTargetRetryExhaustedError(RuntimeError):
@@ -639,6 +654,32 @@ class PhantomGenerator:
         )
         raise exhausted from last_error
 
+    def generate_activity_v2(
+        self,
+        patient: "PatientSampleV2",
+        liver: "LiverGeometryV2",
+        tumors: "TumorGeometryV2",
+        profile: "PopulationProfileV2",
+        rng: np.random.Generator,
+        *,
+        target: "ActivityTargetV2 | None" = None,
+    ) -> ActivityCaseV2:
+        """Generate only the clean V2 uptake layer; V1 preview remains unchanged."""
+        from .activity_model_v2 import generate_activity_field, sample_activity_target
+
+        if not isinstance(rng, np.random.Generator):
+            raise TypeError("rng must be numpy.random.Generator")
+        if target is None:
+            target = sample_activity_target(patient, liver, tumors, profile, rng)
+        field = generate_activity_field(patient, liver, tumors, target, profile, rng)
+        return ActivityCaseV2(
+            patient=patient,
+            liver=liver,
+            tumors=tumors,
+            target=target,
+            field=field,
+        )
+
     def _resolve_perfusion_mode(self, rng, overrides: PreviewOverrides | None):
         if overrides and overrides.perfusion_mode in self.PERFUSION_POLICY_MAP.values():
             return overrides.perfusion_mode
@@ -868,7 +909,7 @@ class PhantomGenerator:
             if tmask.sum() == 0:
                 continue
 
-            # Per-tumor contrast: TNR range 2–8 based on Tc-99m MAA hepatic arterial
+            # Legacy V1 preview contrast; V2 never uses this uniform range.
             # scintigraphy (Ho et al. 1997, J Nucl Med: median 3.4, range 1.5–12)
             if overrides and overrides.exact_tumor_contrast is not None:
                 contrast = overrides.exact_tumor_contrast

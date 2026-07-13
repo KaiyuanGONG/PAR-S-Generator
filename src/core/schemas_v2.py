@@ -139,6 +139,11 @@ class ActivityTargetV2:
     tnr_mean: float
     heterogeneous: bool
     mismatch_challenge: bool = False
+    sector_proxy_label: int | None = None
+    lesion_tnr_means: Mapping[int, float] = field(default_factory=dict)
+    lesion_heterogeneous: Mapping[int, bool] = field(default_factory=dict)
+    within_patient_correlation_assumption: str = "unknown_not_assumed_independent"
+    evidence_types: Mapping[str, str] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)

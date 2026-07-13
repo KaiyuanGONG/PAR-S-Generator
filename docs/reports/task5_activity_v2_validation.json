@@ -1,0 +1,59 @@
+{
+  "schema_version": "pars_task5_activity_validation_v2",
+  "profile_id": "population_tare_hcc_nopvi_v2",
+  "seed": 20260714,
+  "lesion_count": 10000,
+  "synthetic_patient_groups_for_dependence_audit": 2500,
+  "status": "pass",
+  "expected": {
+    "tnr_mean": 2.11,
+    "tnr_sd": 1.24,
+    "tnr_range": [
+      0.29,
+      6.32
+    ],
+    "heterogeneous_fraction": 0.75,
+    "evidence_scope": "HCC lesion-level marginal; 59 patients, 77 lesions",
+    "within_patient_correlation": "not_reported"
+  },
+  "observed": {
+    "tnr_mean": {
+      "mean": 2.057641052344306,
+      "sd": 1.0871173757544226,
+      "min": 0.3239514294527362,
+      "p05": 0.7423481522091101,
+      "median": 1.8056302753311086,
+      "p95": 4.2739063284984775,
+      "max": 6.31812404977946
+    },
+    "heterogeneous_fraction": 0.7508,
+    "engineering_within_patient_correlation": 0.44895844053288997,
+    "necrosis_probability_by_dmax_mm": {
+      "20": 0.0585369028743679,
+      "40": 0.15886910488091516,
+      "60": 0.3645764407416393,
+      "80": 0.6354235592583607,
+      "100": 0.8411308951190849,
+      "120": 0.941463097125632,
+      "160": 0.9933071490757153
+    }
+  },
+  "challenge_separation": {
+    "population_activity_pattern": "physiologic_heterogeneous",
+    "stress_activity_patterns": [
+      "tumor_dominant_low_background",
+      "extreme_low_uptake"
+    ],
+    "mismatch_challenge_population_weight": 0
+  },
+  "gates": {
+    "tnr_support": true,
+    "tnr_mean": true,
+    "tnr_sd": true,
+    "heterogeneous_fraction": true,
+    "necrosis_probability_increases_with_size": true,
+    "tnr_evidence_is_hcc_lesion_level": true,
+    "injection_territory_is_not_population": true,
+    "within_patient_model_is_engineering": true
+  }
+}

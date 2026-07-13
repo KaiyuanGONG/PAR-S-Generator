@@ -147,6 +147,15 @@
       "notes": "Actual-mask gates supersede metadata targets. Count within a reported stratum, conditional diameters, morphology mixing, subcapsular coverage and placement search are explicit engineering assumptions pending calibration against local lesion masks."
     },
     {
+      "evidence_id": "engineering-activity-field-v2",
+      "title": "V2 activity-field and necrosis engineering contract",
+      "source_type": "engineering_prior",
+      "verification_status": "declared_assumption",
+      "locator": "D:/PFE-U/PAR/docs/superpowers/plans/2026-07-13-par-s-liver-simulation-data-v2.md#task-5",
+      "supports": ["activity_patterns", "activity_model_v2"],
+      "notes": "Low-frequency fields, within-patient dependence and the size-to-necrosis function remain engineering assumptions; HCC lesion-level TNR and overall heterogeneity retain separate literature evidence."
+    },
+    {
       "evidence_id": "coverage-broad-hcc-v2-design",
       "title": "Broad-HCC sensitivity and coverage sampling design",
       "source_type": "coverage_sampling",
