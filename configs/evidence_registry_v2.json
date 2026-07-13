@@ -163,6 +163,24 @@
       "locator": "D:/PFE-U/PAR/docs/superpowers/plans/2026-07-13-par-s-liver-simulation-data-v2.md#task-7",
       "supports": ["base_histories", "alignment_validation_required"],
       "notes": "Thresholds are frozen empirically after high-history asymmetric baselines."
+    },
+    {
+      "evidence_id": "engineering-patient-joint-model-v2",
+      "title": "V2 patient joint-sampling model",
+      "source_type": "engineering_prior",
+      "verification_status": "declared_model_contract",
+      "locator": "D:/PFE-U/PAR/docs/superpowers/plans/2026-07-13-par-s-liver-simulation-data-v2.md#task-3",
+      "supports": ["age_distribution_shape", "sex_conditioned_height", "bmi_model", "patient_correlations"],
+      "notes": "The verified age median and male fraction remain literature_population; distribution shape and within-stratum correlations are explicit engineering priors."
+    },
+    {
+      "evidence_id": "engineering-liver-geometry-v2",
+      "title": "V2 constrained double-ellipsoid liver geometry model",
+      "source_type": "engineering_prior",
+      "verification_status": "declared_geometry_contract",
+      "locator": "D:/PFE-U/PAR/docs/superpowers/plans/2026-07-13-par-s-liver-simulation-data-v2.md#task-3",
+      "supports": ["liver_volume_conditioning", "liver_dimensions", "centroid", "caudate_presence", "low_frequency_surface"],
+      "notes": "Uses target-conditioned geometry and never treats 14*weight+979 as a generative mean."
     }
   ]
 }

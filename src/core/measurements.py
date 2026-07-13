@@ -170,7 +170,8 @@ def _surface_metrics(mask: np.ndarray, affine: np.ndarray, volume_mm3: float) ->
     surface_area = float(0.5 * np.linalg.norm(cross_products, axis=1).sum())
     sphere_area_term = math.pi ** (1.0 / 3.0) * (6.0 * volume_mm3) ** (2.0 / 3.0)
     sphericity = float(np.clip(sphere_area_term / surface_area, 0.0, 1.0))
-    roughness = _ellipsoidal_radial_roughness(world_vertices)
+    radial_residual = _ellipsoidal_radial_roughness(world_vertices)
+    roughness = radial_residual + 0.25 * (1.0 - sphericity)
     return surface_area, sphericity, roughness
 
 

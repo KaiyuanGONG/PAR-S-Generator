@@ -186,6 +186,61 @@
       "evidence_ids": ["hunt-cirrhosis-lsvr"],
       "applies_to": ["population_tare_hcc_nopvi_v2"],
       "notes": "Directional simplified-region targets, not exact Couinaud reconstruction."
+    },
+    "patient_joint_model": {
+      "value": {
+        "age_range_years": [40.0, 85.0],
+        "age_sd_years": 10.0,
+        "male_height_mean_cm": 174.0,
+        "male_height_sd_cm": 7.0,
+        "female_height_mean_cm": 162.0,
+        "female_height_sd_cm": 6.0,
+        "height_range_cm": [145.0, 195.0],
+        "bmi_mean": 26.5,
+        "bmi_sd": 4.2,
+        "bmi_range": [18.5, 38.0],
+        "bmi_age_slope_per_year": 0.035
+      },
+      "unit": "model_specification",
+      "source_type": "engineering_prior",
+      "evidence_ids": ["engineering-patient-joint-model-v2"],
+      "applies_to": ["population_tare_hcc_nopvi_v2"],
+      "notes": "Joint structure only; age median and male fraction retain their separate literature evidence."
+    },
+    "liver_geometry_model": {
+      "value": {
+        "volume_range_ml": [775.0, 2300.0],
+        "weight_center_kg": 79.0,
+        "weight_scale_kg": 17.0,
+        "height_center_cm": 172.0,
+        "height_scale_cm": 8.0,
+        "age_center_years": 66.0,
+        "age_scale_years": 10.0,
+        "volume_weight_z_coefficient": 0.45,
+        "volume_height_z_coefficient": 0.10,
+        "volume_age_z_coefficient": -0.08,
+        "volume_residual_z_sd": 0.88,
+        "reference_extent_mm_zyx": [155.0, 150.0, 260.0],
+        "lr_log_shape_sd": 0.05,
+        "ap_log_shape_sd": 0.04,
+        "centroid_mean_mm_zyx": [-45.0, 15.0, 35.0],
+        "centroid_sd_mm_zyx": [10.0, 8.0, 12.0],
+        "left_fraction_sd": 0.06,
+        "left_lateral_share": 0.70,
+        "cirrhotic_left_fraction_max": 0.55,
+        "caudate_presence_probability_normal": 0.75,
+        "caudate_presence_probability_cirrhotic": 0.95,
+        "caudate_fraction_normal": 0.02,
+        "surface_roughness_target_normal": 0.256,
+        "surface_roughness_target_cirrhotic": 0.273,
+        "surface_field_amplitude_normal": 0.06,
+        "surface_field_amplitude_cirrhotic": 0.40
+      },
+      "unit": "model_specification",
+      "source_type": "engineering_prior",
+      "evidence_ids": ["engineering-liver-geometry-v2"],
+      "applies_to": ["population_tare_hcc_nopvi_v2"],
+      "notes": "All values define the conditional generator, not additional population prevalence."
     }
   }
 }

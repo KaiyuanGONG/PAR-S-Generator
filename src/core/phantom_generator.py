@@ -10,10 +10,14 @@ import json
 import time
 from dataclasses import dataclass, field, asdict
 from pathlib import Path
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 import numpy as np
 from scipy.ndimage import gaussian_filter
+
+if TYPE_CHECKING:
+    from .liver_geometry import LiverGeometryV2
+    from .schemas_v2 import LiverTargetV2, PatientSampleV2, PopulationProfileV2
 
 _GRID_CACHE: dict[tuple[int, int, int], tuple[np.ndarray, np.ndarray, np.ndarray]] = {}
 
@@ -140,6 +144,13 @@ class PreviewOverrides:
     exact_tumor_contrast: float | None = None   # overrides the per-tumor contrast range
     tumor_mode: str | None = None
     perfusion_mode: str | None = None
+
+
+@dataclass(frozen=True)
+class LiverCaseV2:
+    patient: "PatientSampleV2"
+    target: "LiverTargetV2"
+    geometry: "LiverGeometryV2"
 
 
 # ─────────────────────────────────────────────
@@ -350,6 +361,23 @@ class PhantomGenerator:
 
     def __init__(self, config: PhantomConfig):
         self.cfg = config
+
+    def generate_liver_v2(
+        self,
+        profile: "PopulationProfileV2",
+        rng: np.random.Generator,
+        *,
+        case_id: str = "unassigned",
+    ) -> LiverCaseV2:
+        """Generate only the V2 patient-conditioned liver layer; V1 generation remains unchanged."""
+        from .liver_geometry import GridSpecV2, fit_liver_geometry
+        from .population_sampler import sample_liver_target, sample_patient
+
+        patient = sample_patient(profile, rng, case_id=case_id)
+        target = sample_liver_target(patient, profile, rng)
+        grid = GridSpecV2(shape=tuple(int(value) for value in self.cfg.volume_shape), voxel_size_mm=self.cfg.voxel_size_mm)
+        geometry = fit_liver_geometry(target, grid)
+        return LiverCaseV2(patient=patient, target=target, geometry=geometry)
 
     def _resolve_perfusion_mode(self, rng, overrides: PreviewOverrides | None):
         if overrides and overrides.perfusion_mode in self.PERFUSION_POLICY_MAP.values():
@@ -629,6 +657,5 @@ class PhantomGenerator:
             generation_time_s=time.time() - t0,
         )
         return result
-
 
 

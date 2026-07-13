@@ -1,0 +1,100 @@
+{
+  "schema_version": "pars_task3_visual_confirmation_v1",
+  "seed": 20260714,
+  "grid": {
+    "shape": [
+      128,
+      128,
+      128
+    ],
+    "voxel_size_mm": 4.42
+  },
+  "files": [
+    "task3_liver_v2_multiplanar.png",
+    "task3_liver_v2_3d.png"
+  ],
+  "cases": [
+    {
+      "case_id": "task3_voxel_candidate_00003",
+      "morphology": "normal",
+      "caudate_enabled": true,
+      "target_metrics": {
+        "volume_ml": 1594.0930864489708,
+        "extent_mm_zyx": [
+          161.6117786910729,
+          140.89258407564,
+          276.06203431522516
+        ],
+        "centroid_world_mm": [
+          -57.285162468387846,
+          7.883015035753686,
+          18.654663851887044
+        ],
+        "left_fraction": 0.29636098734288885,
+        "s1_3_to_s4_8_ratio": 0.2617543316605641,
+        "caudate_fraction": 0.02,
+        "surface_roughness": 0.256,
+        "surface_field_amplitude": 0.06
+      },
+      "actual_metrics": {
+        "volume_ml": 1594.1237433679994,
+        "extent_mm_zyx": [
+          163.54,
+          141.44,
+          274.04
+        ],
+        "centroid_world_mm": [
+          -57.28653756568113,
+          7.861595254861676,
+          18.65026434104327
+        ],
+        "left_fraction": 0.2963544770055793,
+        "s1_3_to_s4_8_ratio": 0.2617729478504545,
+        "caudate_fraction": 0.01998808298575375,
+        "surface_roughness": 0.2563775130579398,
+        "sphericity": 0.7129489174304102
+      }
+    },
+    {
+      "case_id": "task3_voxel_candidate_00000",
+      "morphology": "cirrhotic",
+      "caudate_enabled": true,
+      "target_metrics": {
+        "volume_ml": 1799.8908980259446,
+        "extent_mm_zyx": [
+          186.75696207380668,
+          153.45362516543364,
+          247.65458782573342
+        ],
+        "centroid_world_mm": [
+          -50.22205440680584,
+          23.02066290230612,
+          28.062479050598682
+        ],
+        "left_fraction": 0.5021696172330964,
+        "s1_3_to_s4_8_ratio": 0.6959594982343948,
+        "caudate_fraction": 0.053267269076092555,
+        "surface_roughness": 0.273,
+        "surface_field_amplitude": 0.4
+      },
+      "actual_metrics": {
+        "volume_ml": 1799.8979094719994,
+        "extent_mm_zyx": [
+          190.06,
+          154.7,
+          247.51999999999998
+        ],
+        "centroid_world_mm": [
+          -50.14952696219484,
+          23.05910861638845,
+          27.955376127422657
+        ],
+        "left_fraction": 0.5021588946459413,
+        "s1_3_to_s4_8_ratio": 0.6960130187144019,
+        "caudate_fraction": 0.05325273459988486,
+        "surface_roughness": 0.3088191595674104,
+        "sphericity": 0.6403298989842362
+      }
+    }
+  ]
+}

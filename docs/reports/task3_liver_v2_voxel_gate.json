@@ -1,0 +1,356 @@
+{
+  "schema_version": "pars_task3_voxel_validation_v1",
+  "profile_id": "population_tare_hcc_nopvi_v2",
+  "selection_role": "coverage_qa_not_population_prevalence",
+  "seed": 20260714,
+  "grid": {
+    "shape": [
+      128,
+      128,
+      128
+    ],
+    "voxel_size_mm": 4.42
+  },
+  "case_count": 6,
+  "status": "pass",
+  "aggregate": {
+    "normal_surface_roughness_mean": 0.2589183223636955,
+    "cirrhotic_surface_roughness_mean": 0.29149705002455567
+  },
+  "gates": {
+    "all_cases": true,
+    "cirrhotic_roughness_direction": true
+  },
+  "cases": [
+    {
+      "case_id": "task3_voxel_candidate_00012",
+      "morphology": "normal",
+      "caudate_enabled": false,
+      "target": {
+        "volume_ml": 1891.5321175774868,
+        "extent_mm_zyx": [
+          144.86477054195976,
+          171.07792311953537,
+          300.96162148988026
+        ],
+        "centroid_world_mm": [
+          -46.36431403616445,
+          17.347403471591505,
+          28.54650090676499
+        ],
+        "left_fraction": 0.3580643750423538,
+        "s1_3_to_s4_8_ratio": 0.334481098337414,
+        "caudate_fraction": 0.0,
+        "surface_roughness": 0.256
+      },
+      "actual": {
+        "volume_ml": 1891.6025525279993,
+        "extent_mm_zyx": [
+          145.85999999999999,
+          172.38,
+          300.56
+        ],
+        "centroid_world_mm": [
+          -46.360364283758216,
+          17.2976435679721,
+          28.551028941842407
+        ],
+        "left_fraction": 0.35807541312882313,
+        "s1_3_to_s4_8_ratio": 0.33451111787998783,
+        "caudate_fraction": 0.0,
+        "surface_roughness": 0.26249412601556144,
+        "sphericity": 0.7067336313568335
+      },
+      "errors": {
+        "volume_relative_pct": 0.0037236983637667365,
+        "maximum_extent_mm": 1.3020768804646252,
+        "maximum_centroid_mm": 0.04975990361940674,
+        "left_fraction": 1.103808646935045e-05
+      },
+      "gates": {
+        "volume": true,
+        "extents": true,
+        "centroid": true,
+        "left_fraction": true,
+        "region_cover": true,
+        "connected": true
+      },
+      "status": "pass"
+    },
+    {
+      "case_id": "task3_voxel_candidate_00003",
+      "morphology": "normal",
+      "caudate_enabled": true,
+      "target": {
+        "volume_ml": 1594.0930864489708,
+        "extent_mm_zyx": [
+          161.6117786910729,
+          140.89258407564,
+          276.06203431522516
+        ],
+        "centroid_world_mm": [
+          -57.285162468387846,
+          7.883015035753686,
+          18.654663851887044
+        ],
+        "left_fraction": 0.29636098734288885,
+        "s1_3_to_s4_8_ratio": 0.2617543316605641,
+        "caudate_fraction": 0.02,
+        "surface_roughness": 0.256
+      },
+      "actual": {
+        "volume_ml": 1594.1237433679994,
+        "extent_mm_zyx": [
+          163.54,
+          141.44,
+          274.04
+        ],
+        "centroid_world_mm": [
+          -57.28653756568113,
+          7.861595254861676,
+          18.65026434104327
+        ],
+        "left_fraction": 0.2963544770055793,
+        "s1_3_to_s4_8_ratio": 0.2617729478504545,
+        "caudate_fraction": 0.01998808298575375,
+        "surface_roughness": 0.2563775130579398,
+        "sphericity": 0.7129489174304102
+      },
+      "errors": {
+        "volume_relative_pct": 0.0019231573920697187,
+        "maximum_extent_mm": 2.0220343152251417,
+        "maximum_centroid_mm": 0.021419780892009577,
+        "left_fraction": -6.510337309528769e-06
+      },
+      "gates": {
+        "volume": true,
+        "extents": true,
+        "centroid": true,
+        "left_fraction": true,
+        "region_cover": true,
+        "connected": true
+      },
+      "status": "pass"
+    },
+    {
+      "case_id": "task3_voxel_candidate_00005",
+      "morphology": "normal",
+      "caudate_enabled": true,
+      "target": {
+        "volume_ml": 1717.0631149016829,
+        "extent_mm_zyx": [
+          139.9186658936198,
+          169.29042483074173,
+          285.8461577671338
+        ],
+        "centroid_world_mm": [
+          -60.46995712599851,
+          7.024486208195073,
+          43.720825475129445
+        ],
+        "left_fraction": 0.19915654480616174,
+        "s1_3_to_s4_8_ratio": 0.16199295082243922,
+        "caudate_fraction": 0.02,
+        "surface_roughness": 0.256
+      },
+      "actual": {
+        "volume_ml": 1717.0010569919996,
+        "extent_mm_zyx": [
+          141.44,
+          167.96,
+          287.3
+        ],
+        "centroid_world_mm": [
+          -60.50091732045613,
+          7.110589418628018,
+          43.69562562864615
+        ],
+        "left_fraction": 0.1991550995775498,
+        "s1_3_to_s4_8_ratio": 0.16199158485273493,
+        "caudate_fraction": 0.020016093341380003,
+        "surface_roughness": 0.2578833280175851,
+        "sphericity": 0.7108499723102968
+      },
+      "errors": {
+        "volume_relative_pct": -0.003614189201595064,
+        "maximum_extent_mm": 1.521334106380209,
+        "maximum_centroid_mm": 0.08610321043294444,
+        "left_fraction": -1.44522861195151e-06
+      },
+      "gates": {
+        "volume": true,
+        "extents": true,
+        "centroid": true,
+        "left_fraction": true,
+        "region_cover": true,
+        "connected": true
+      },
+      "status": "pass"
+    },
+    {
+      "case_id": "task3_voxel_candidate_00000",
+      "morphology": "cirrhotic",
+      "caudate_enabled": true,
+      "target": {
+        "volume_ml": 1799.8908980259446,
+        "extent_mm_zyx": [
+          186.75696207380668,
+          153.45362516543364,
+          247.65458782573342
+        ],
+        "centroid_world_mm": [
+          -50.22205440680584,
+          23.02066290230612,
+          28.062479050598682
+        ],
+        "left_fraction": 0.5021696172330964,
+        "s1_3_to_s4_8_ratio": 0.6959594982343948,
+        "caudate_fraction": 0.053267269076092555,
+        "surface_roughness": 0.273
+      },
+      "actual": {
+        "volume_ml": 1799.8979094719994,
+        "extent_mm_zyx": [
+          190.06,
+          154.7,
+          247.51999999999998
+        ],
+        "centroid_world_mm": [
+          -50.14952696219484,
+          23.05910861638845,
+          27.955376127422657
+        ],
+        "left_fraction": 0.5021588946459413,
+        "s1_3_to_s4_8_ratio": 0.6960130187144019,
+        "caudate_fraction": 0.05325273459988486,
+        "surface_roughness": 0.3088191595674104,
+        "sphericity": 0.6403298989842362
+      },
+      "errors": {
+        "volume_relative_pct": 0.00038954839221005955,
+        "maximum_extent_mm": 3.3030379261933263,
+        "maximum_centroid_mm": 0.10710292317602566,
+        "left_fraction": -1.0722587155065355e-05
+      },
+      "gates": {
+        "volume": true,
+        "extents": true,
+        "centroid": true,
+        "left_fraction": true,
+        "region_cover": true,
+        "connected": true
+      },
+      "status": "pass"
+    },
+    {
+      "case_id": "task3_voxel_candidate_00001",
+      "morphology": "cirrhotic",
+      "caudate_enabled": true,
+      "target": {
+        "volume_ml": 1492.0047175656425,
+        "extent_mm_zyx": [
+          153.79560922521904,
+          159.6212783824075,
+          239.6567277479458
+        ],
+        "centroid_world_mm": [
+          -40.30970371697279,
+          4.0020819765711035,
+          45.17681966062852
+        ],
+        "left_fraction": 0.48761836999160246,
+        "s1_3_to_s4_8_ratio": 0.6624337786758258,
+        "caudate_fraction": 0.05364390291920609,
+        "surface_roughness": 0.273
+      },
+      "actual": {
+        "volume_ml": 1491.8842919759995,
+        "extent_mm_zyx": [
+          159.12,
+          163.54,
+          243.1
+        ],
+        "centroid_world_mm": [
+          -40.10452219714233,
+          4.121828442437889,
+          45.70109104589895
+        ],
+        "left_fraction": 0.487642530531921,
+        "s1_3_to_s4_8_ratio": 0.662368902145675,
+        "caudate_fraction": 0.053655148463274877,
+        "surface_roughness": 0.29222334668258887,
+        "sphericity": 0.6481452662723961
+      },
+      "errors": {
+        "volume_relative_pct": -0.008071394696351764,
+        "maximum_extent_mm": 5.324390774780966,
+        "maximum_centroid_mm": 0.5242713852704313,
+        "left_fraction": 2.4160540318562962e-05
+      },
+      "gates": {
+        "volume": true,
+        "extents": true,
+        "centroid": true,
+        "left_fraction": true,
+        "region_cover": true,
+        "connected": true
+      },
+      "status": "pass"
+    },
+    {
+      "case_id": "task3_voxel_candidate_00002",
+      "morphology": "cirrhotic",
+      "caudate_enabled": true,
+      "target": {
+        "volume_ml": 855.5386822526617,
+        "extent_mm_zyx": [
+          123.70538151322461,
+          127.00525515210633,
+          214.72544749110685
+        ],
+        "centroid_world_mm": [
+          -27.214117038300532,
+          23.910412106573325,
+          29.702649756345586
+        ],
+        "left_fraction": 0.34143535124951974,
+        "s1_3_to_s4_8_ratio": 0.3869901589074349,
+        "caudate_fraction": 0.05742759728114136,
+        "surface_roughness": 0.273
+      },
+      "actual": {
+        "volume_ml": 855.5645983039998,
+        "extent_mm_zyx": [
+          128.18,
+          123.75999999999999,
+          216.57999999999998
+        ],
+        "centroid_world_mm": [
+          -27.131608800968255,
+          23.518611223254098,
+          29.67484860718614
+        ],
+        "left_fraction": 0.34144125958821153,
+        "s1_3_to_s4_8_ratio": 0.38689809630459127,
+        "caudate_fraction": 0.05742834073475979,
+        "surface_roughness": 0.2734486438236676,
+        "sphericity": 0.6622548241737936
+      },
+      "errors": {
+        "volume_relative_pct": 0.0030292085998695484,
+        "maximum_extent_mm": 4.474618486775398,
+        "maximum_centroid_mm": 0.39180088331922747,
+        "left_fraction": 5.908338691795745e-06
+      },
+      "gates": {
+        "volume": true,
+        "extents": true,
+        "centroid": true,
+        "left_fraction": true,
+        "region_cover": true,
+        "connected": true
+      },
+      "status": "pass"
+    }
+  ]
+}

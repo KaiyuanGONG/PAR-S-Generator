@@ -107,6 +107,11 @@ class LiverTargetV2:
     left_fraction: float
     centroid_mm: tuple[float, float, float]
     morphology: str
+    s1_3_to_s4_8_ratio: float
+    caudate_fraction: float
+    surface_roughness_target: float
+    surface_field_amplitude: float
+    caudate_enabled: bool
     evidence_types: Mapping[str, str] = field(default_factory=dict)
 
 
