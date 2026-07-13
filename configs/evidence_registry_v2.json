@@ -156,6 +156,24 @@
       "notes": "Low-frequency fields, within-patient dependence and the size-to-necrosis function remain engineering assumptions; HCC lesion-level TNR and overall heterogeneity retain separate literature evidence."
     },
     {
+      "evidence_id": "nist-xcom-140kev-v2",
+      "title": "NIST XCOM mass attenuation anchors near 140 keV",
+      "source_type": "physics_standard",
+      "verification_status": "verified_reference_table",
+      "locator": "https://physics.nist.gov/PhysRefData/XrayMassCoef/tab4.html",
+      "supports": ["attenuation_coefficients_140kev_cm1"],
+      "notes": "Water and adipose anchors support the V2 correction; lung, liver and bone remain declared monoenergetic tissue approximations at the current model resolution."
+    },
+    {
+      "evidence_id": "engineering-ct-degradation-v2",
+      "title": "Uncalibrated conservative CT-like degradation contract",
+      "source_type": "engineering_prior",
+      "verification_status": "declared_assumption",
+      "locator": "D:/PFE-U/PAR/docs/superpowers/plans/2026-07-13-par-s-liver-simulation-data-v2.md#task-6",
+      "supports": ["ct_degradation_model_v2"],
+      "notes": "HU blur/noise settings are placeholders until Task 8 local calibration and are isolated from physical mu_true."
+    },
+    {
       "evidence_id": "coverage-broad-hcc-v2-design",
       "title": "Broad-HCC sensitivity and coverage sampling design",
       "source_type": "coverage_sampling",

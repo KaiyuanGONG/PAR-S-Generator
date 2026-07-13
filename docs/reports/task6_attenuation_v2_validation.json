@@ -1,0 +1,83 @@
+{
+  "schema_version": "pars_task6_attenuation_validation_v2",
+  "profile_id": "population_tare_hcc_nopvi_v2",
+  "seeds": [
+    101,
+    202,
+    303,
+    404,
+    505,
+    606,
+    707,
+    808
+  ],
+  "status": "pass",
+  "map_contract": {
+    "physical_map": "mu_true_140kev",
+    "network_input_map": "mu_input_140kev",
+    "simind_allowed_map": "mu_true_140kev",
+    "unit": "cm^-1"
+  },
+  "physical_coefficients_cm1": {
+    "outside_air": 0.0,
+    "lung": 0.05,
+    "fat": 0.146,
+    "water": 0.15,
+    "soft_tissue": 0.15,
+    "liver": 0.16,
+    "bone": 0.3
+  },
+  "ct_degradation": {
+    "hu_conversion": "single_energy_linear_water_reference",
+    "blur_sigma_mm": 1.5,
+    "hu_noise_sd": 15.0,
+    "hu_bias_field_sd": 5.0,
+    "hu_bias_correlation_length_mm": 40.0,
+    "uncalibrated_ct_degradation": true
+  },
+  "observed": {
+    "shape": [
+      64,
+      64,
+      64
+    ],
+    "body_voxels": 69784,
+    "mu_true_sha256": [
+      "fdf90bbdee28f96d984b4f1e24781541fd28a378fb082eb7469fa062ec7037c5",
+      "fdf90bbdee28f96d984b4f1e24781541fd28a378fb082eb7469fa062ec7037c5",
+      "fdf90bbdee28f96d984b4f1e24781541fd28a378fb082eb7469fa062ec7037c5",
+      "fdf90bbdee28f96d984b4f1e24781541fd28a378fb082eb7469fa062ec7037c5",
+      "fdf90bbdee28f96d984b4f1e24781541fd28a378fb082eb7469fa062ec7037c5",
+      "fdf90bbdee28f96d984b4f1e24781541fd28a378fb082eb7469fa062ec7037c5",
+      "fdf90bbdee28f96d984b4f1e24781541fd28a378fb082eb7469fa062ec7037c5",
+      "fdf90bbdee28f96d984b4f1e24781541fd28a378fb082eb7469fa062ec7037c5"
+    ],
+    "mu_input_sha256": [
+      "6b0030979d02750f63d58ea788b42e075e6f4e76afb65676209a3e9db8e24d48",
+      "681568a0e322af2f75cda7095a860cf87f1adee166b8ca49a3be09003c4ddeed",
+      "435eec2c6ab21832b0dec1d8be5adfb2f204e5b355d372dca0655ed607d9569d",
+      "b506d1fbbe223698ad90ce7ea09bcb568adcd997200d7a87cc03ee5aea39335c",
+      "8f0651db9671f5fcfb33e2ae3767aca86dea1c73f5b8e38c7dbf0e63ea3cb2ef",
+      "c5b6677274cc4f0beeb4c00615637dfd45e0d17b9c61e0be4850f2051e842242",
+      "bf65a6a9625e3bcf7f204c50bf6b2a925092b74a6a38f7b83c172832bf89430c",
+      "f26869a430745b801c762d6f2f8bb9c1ec4c93ca9d6dab9b059baff7d1fc3dec"
+    ],
+    "input_minus_true_body_mean_cm1": -0.00033534065005369484,
+    "input_minus_true_body_sd_cm1": 0.0027124895714223385,
+    "input_minus_true_body_mae_cm1": 0.002132981549948454,
+    "input_minus_true_body_max_abs_cm1": 0.01506739854812622
+  },
+  "figure": "docs/reports/task6_attenuation_v2_comparison.png",
+  "gates": {
+    "mu_true_seed_invariant": true,
+    "mu_input_seed_sensitive": true,
+    "fat_mu_exact_0_146_cm1": true,
+    "true_and_input_float32": true,
+    "finite_and_nonnegative": true,
+    "outside_body_zero": true,
+    "ct_degradation_changes_input_only": true,
+    "ct_degradation_declared_uncalibrated": true,
+    "simind_selects_true_identity": true,
+    "simind_rejects_mu_input": true
+  }
+}

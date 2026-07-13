@@ -210,6 +210,38 @@
       "applies_to": ["population_tare_hcc_nopvi_v2"],
       "notes": "Low-frequency field, within-patient dependence and size-to-necrosis mapping are explicit engineering assumptions pending local lesion-mask and CT calibration."
     },
+    "attenuation_coefficients_140kev_cm1": {
+      "value": {
+        "outside_air": 0.0,
+        "lung": 0.05,
+        "fat": 0.146,
+        "water": 0.15,
+        "soft_tissue": 0.15,
+        "liver": 0.16,
+        "bone": 0.30
+      },
+      "unit": "cm^-1_tissue_table",
+      "source_type": "physics_standard",
+      "evidence_ids": ["nist-xcom-140kev-v2"],
+      "applies_to": ["population_tare_hcc_nopvi_v2"],
+      "notes": "Water/fat are 140 keV anchors; retained lung/liver/bone values are the declared V2 monoenergetic approximations."
+    },
+    "ct_degradation_model_v2": {
+      "value": {
+        "hu_conversion": "single_energy_linear_water_reference",
+        "blur_sigma_mm": 1.5,
+        "hu_noise_sd": 15.0,
+        "hu_bias_field_sd": 5.0,
+        "hu_bias_correlation_length_mm": 40.0,
+        "hu_clip_range": [-1000.0, 2000.0],
+        "uncalibrated_ct_degradation": true
+      },
+      "unit": "model_specification",
+      "source_type": "engineering_prior",
+      "evidence_ids": ["engineering-ct-degradation-v2"],
+      "applies_to": ["population_tare_hcc_nopvi_v2"],
+      "notes": "Conservative HU-domain blur/noise placeholder pending the PHI-free local CT calibration in Task 8; never applied to mu_true_140kev."
+    },
     "age_median_auxiliary_years": {
       "value": 66,
       "unit": "years",

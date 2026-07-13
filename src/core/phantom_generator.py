@@ -18,6 +18,10 @@ from scipy.ndimage import gaussian_filter
 
 if TYPE_CHECKING:
     from .activity_model_v2 import ActivityFieldV2
+    from .attenuation_model_v2 import (
+        AttenuationAnatomyV2,
+        AttenuationDegradationMetadataV2,
+    )
     from .liver_geometry import LiverGeometryV2
     from .schemas_v2 import (
         ActivityTargetV2,
@@ -240,6 +244,13 @@ class ActivityCaseV2:
     tumors: "TumorGeometryV2"
     target: "ActivityTargetV2"
     field: "ActivityFieldV2"
+
+
+@dataclass(frozen=True)
+class AttenuationCaseV2:
+    mu_true_140kev: np.ndarray
+    mu_input_140kev: np.ndarray
+    degradation_metadata: "AttenuationDegradationMetadataV2"
 
 
 class TumorTargetRetryExhaustedError(RuntimeError):
@@ -678,6 +689,22 @@ class PhantomGenerator:
             tumors=tumors,
             target=target,
             field=field,
+        )
+
+    def generate_attenuation_v2(
+        self,
+        anatomy: "AttenuationAnatomyV2",
+        profile: "PopulationProfileV2",
+        rng: np.random.Generator,
+    ) -> AttenuationCaseV2:
+        """Generate separate physical and CT-like V2 attenuation maps."""
+        from .attenuation_model_v2 import generate_attenuation_maps
+
+        mu_true, mu_input, metadata = generate_attenuation_maps(anatomy, profile, rng)
+        return AttenuationCaseV2(
+            mu_true_140kev=mu_true,
+            mu_input_140kev=mu_input,
+            degradation_metadata=metadata,
         )
 
     def _resolve_perfusion_mode(self, rng, overrides: PreviewOverrides | None):
