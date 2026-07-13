@@ -1,0 +1,168 @@
+{
+  "schema_version": "pars_evidence_registry_v2",
+  "registry_id": "pars-v2-evidence-2026-07-13",
+  "entries": [
+    {
+      "evidence_id": "karger-tare-hcc-2025-table3-nopvi",
+      "title": "Y-90 HCC cohort, Table 3 no-PVI subgroup (n=259)",
+      "source_type": "literature_population",
+      "verification_status": "verified_original_table",
+      "locator": "https://karger.com/lic/article/14/2/158/913513/The-Impact-of-Radiation-Dose-and-Tumour-Burden-on",
+      "supports": ["tumor_count_bins", "dmax_bins", "lobe_distribution"],
+      "notes": "Patient-level no-PVI margins: 32.4/22.4/45.2%, 60.3/39.7%, 58.7/41.3%."
+    },
+    {
+      "evidence_id": "karger-tare-hcc-2025-table1-full",
+      "title": "Y-90 HCC cohort, full-cohort demographic summary",
+      "source_type": "literature_population",
+      "verification_status": "verified_original_table",
+      "locator": "https://karger.com/lic/article/14/2/158/913513/The-Impact-of-Radiation-Dose-and-Tumour-Burden-on",
+      "supports": ["age_median_auxiliary", "male_fraction_auxiliary"],
+      "notes": "Full cohort only; must not be described as no-PVI subgroup demographics."
+    },
+    {
+      "evidence_id": "ilhan-jnm-2015-hcc-table3",
+      "title": "HCC lesion-level 99mTc-MAA TBR and heterogeneity",
+      "source_type": "literature_population",
+      "verification_status": "verified_original_table",
+      "locator": "https://doi.org/10.2967/jnumed.114.150565",
+      "supports": ["tnr_mean", "tnr_max", "heterogeneous_fraction"],
+      "notes": "59 HCC patients and 77 lesions; within-patient correlation is not reported."
+    },
+    {
+      "evidence_id": "perez-radiology-2022-liver-volume",
+      "title": "Adult liver volume associations with body size",
+      "source_type": "literature_population",
+      "verification_status": "verified_article",
+      "locator": "https://doi.org/10.1148/radiol.2021210531",
+      "supports": ["liver_volume_reference", "patient_conditioning"],
+      "notes": "The equation 14*weight+979 is an upper limit of normal, not a generative mean."
+    },
+    {
+      "evidence_id": "mise-2014-liver-segments",
+      "title": "Normal liver segment volumes and left-liver fraction",
+      "source_type": "literature_population",
+      "verification_status": "verified_article",
+      "locator": "https://pmc.ncbi.nlm.nih.gov/articles/PMC4008162/",
+      "supports": ["left_liver_fraction"],
+      "notes": "Used for a truncated normal-liver fraction target, not exact Couinaud reconstruction."
+    },
+    {
+      "evidence_id": "hunt-cirrhosis-lsvr",
+      "title": "Segmental liver volume ratio changes with cirrhosis",
+      "source_type": "literature_population",
+      "verification_status": "verified_article",
+      "locator": "https://pmc.ncbi.nlm.nih.gov/articles/PMC4870102/",
+      "supports": ["cirrhotic_segment_proxy_changes"],
+      "notes": "Directional proxy targets only."
+    },
+    {
+      "evidence_id": "decision-scope-a-20260713",
+      "title": "User decision A: no-PVI TARE-HCC main population",
+      "source_type": "engineering_prior",
+      "verification_status": "user_decision",
+      "locator": "D:/PFE-U/PAR/docs/superpowers/plans/2026-07-13-par-s-liver-simulation-data-v2.md",
+      "supports": ["explicit_pvi", "main_case_count", "hepatic_only"],
+      "notes": "Broad HCC is sensitivity/coverage, not the main population claim."
+    },
+    {
+      "evidence_id": "decision-cirrhosis-a-20260713",
+      "title": "User decision A: cirrhosis main and sensitivity values",
+      "source_type": "engineering_prior",
+      "verification_status": "user_decision",
+      "locator": "D:/PFE-U/PAR/docs/superpowers/plans/2026-07-13-par-s-liver-simulation-data-v2.md",
+      "supports": ["cirrhosis_prevalence", "cirrhosis_sensitivity_values"],
+      "notes": "0.80 is an engineering prior, not a measured TARE prevalence."
+    },
+    {
+      "evidence_id": "decision-dmax-a-20260713",
+      "title": "User decision A: Dmax main and stress support",
+      "source_type": "engineering_prior",
+      "verification_status": "user_decision",
+      "locator": "D:/PFE-U/PAR/docs/superpowers/plans/2026-07-13-par-s-liver-simulation-data-v2.md",
+      "supports": ["dmax_min_mm", "dmax_max_mm", "confluent_required_above_mm"],
+      "notes": "Main 10-200 mm; 200-215 mm stress only."
+    },
+    {
+      "evidence_id": "decision-negative-a-20260713",
+      "title": "User decision A: independent 50-case negative control",
+      "source_type": "engineering_prior",
+      "verification_status": "user_decision",
+      "locator": "D:/PFE-U/PAR/docs/superpowers/plans/2026-07-13-par-s-liver-simulation-data-v2.md",
+      "supports": ["negative_case_count", "negative_population_weight", "negative_tumor_count"],
+      "notes": "Independent dataset; never used to complete the main 500."
+    },
+    {
+      "evidence_id": "engineering-tumor-geometry-v2",
+      "title": "V2 tumor rasterization and feasibility contract",
+      "source_type": "engineering_prior",
+      "verification_status": "declared_assumption",
+      "locator": "D:/PFE-U/PAR/docs/superpowers/plans/2026-07-13-par-s-liver-simulation-data-v2.md#task-4",
+      "supports": ["axis_ratio_range", "tumor_burden_fraction_max", "within_bin_count_model", "morphology_set"],
+      "notes": "Actual-mask gates supersede metadata targets."
+    },
+    {
+      "evidence_id": "coverage-broad-hcc-v2-design",
+      "title": "Broad-HCC sensitivity and coverage sampling design",
+      "source_type": "coverage_sampling",
+      "verification_status": "declared_sampling_design",
+      "locator": "D:/PFE-U/PAR/docs/superpowers/plans/2026-07-13-par-s-liver-simulation-data-v2.md",
+      "supports": ["fine_dmax_bins", "balanced_count_bins", "injection_territories", "tnr_sensitivity"],
+      "notes": "Coverage weights are not prevalence."
+    },
+    {
+      "evidence_id": "stress-tare-hcc-v2-design",
+      "title": "TARE-HCC stress challenge design",
+      "source_type": "stress_test",
+      "verification_status": "declared_stress_design",
+      "locator": "D:/PFE-U/PAR/docs/superpowers/plans/2026-07-13-par-s-liver-simulation-data-v2.md",
+      "supports": ["dmax_stress", "territory_mismatch", "tumor_dominant_low_background"],
+      "notes": "All stress cases have population_weight=0."
+    },
+    {
+      "evidence_id": "ge-870-czt-pds-page10",
+      "title": "GE NM/CT 870 CZT Parallel Hole Collimators table",
+      "source_type": "physics_standard",
+      "verification_status": "verified_local_pdf_page10",
+      "locator": "D:/PFE-U/PAR-S-Generator/docs/DOC2109131-NMCT-870-CZT-PDS.pdf#page=10",
+      "supports": ["collimator_name", "collimator_catalog", "hole_geometry"],
+      "notes": "WEHR H3906CM; square 2.26 mm opening, 0.2 mm septum, 45 mm length."
+    },
+    {
+      "evidence_id": "simind-manual-v8",
+      "title": "SIMIND version 8 manual",
+      "source_type": "physics_standard",
+      "verification_status": "verified_local_pdf",
+      "locator": "D:/PFE-U/PAR-S-Generator/docs/simind_manual.pdf",
+      "supports": ["voxel_source_histories", "index25", "index26", "flag8", "rr", "nn"],
+      "notes": "Flag 8 controls RNG sequence; voxel source sum defines base histories."
+    },
+    {
+      "evidence_id": "ge870-smc-local",
+      "title": "Local GE 870 CZT SIMIND SMC",
+      "source_type": "physics_standard",
+      "verification_status": "verified_local_file",
+      "locator": "D:/PFE-U/PAR-S-Generator/simind/ge870_czt.smc",
+      "supports": ["starting_angle", "rotation_extent", "matrix", "voxel_size"],
+      "notes": "Physical coordinate interpretation remains gated by Task 11."
+    },
+    {
+      "evidence_id": "tcmmaa-local-acquisition-protocol",
+      "title": "Local Tc-99m MAA acquisition protocol",
+      "source_type": "local_clinical",
+      "verification_status": "verified_project_protocol",
+      "locator": "D:/PFE-U/PAR/docs/superpowers/plans/2026-07-13-par-s-liver-simulation-data-v2.md",
+      "supports": ["activity_mbq", "time_per_projection_s", "views", "orbit", "energy_window"],
+      "notes": "60 MBq, 28.4 s/view, 60 views, 30 cm orbit, 126-154 keV."
+    },
+    {
+      "evidence_id": "engineering-simind-v2-runtime",
+      "title": "V2 SIMIND runtime and alignment gates",
+      "source_type": "engineering_prior",
+      "verification_status": "declared_runtime_contract",
+      "locator": "D:/PFE-U/PAR/docs/superpowers/plans/2026-07-13-par-s-liver-simulation-data-v2.md#task-7",
+      "supports": ["base_histories", "alignment_validation_required"],
+      "notes": "Thresholds are frozen empirically after high-history asymmetric baselines."
+    }
+  ]
+}

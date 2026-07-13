@@ -1,0 +1,54 @@
+{
+  "schema_version": "pars_profile_v2",
+  "profile_id": "population_broad_hcc_sensitivity_v2",
+  "role": "sensitivity",
+  "population_claim": false,
+  "description": "Broad-HCC sensitivity profile using explicit coverage weights, not a prevalence claim.",
+  "parent_profile_id": "population_tare_hcc_nopvi_v2",
+  "parameters": {
+    "tumor_count_bins": {
+      "value": {"1": 0.5, "2-5": 0.25, ">5": 0.25},
+      "unit": "probability_distribution",
+      "source_type": "coverage_sampling",
+      "evidence_ids": ["coverage-broad-hcc-v2-design"],
+      "applies_to": ["population_broad_hcc_sensitivity_v2"],
+      "notes": "Sensitivity weights only; not broad-HCC prevalence."
+    },
+    "fine_dmax_bins": {
+      "value": {"10-20_mm": 0.2, "20-40_mm": 0.2, "40-60_mm": 0.2, "60-100_mm": 0.2, "100-200_mm": 0.2},
+      "unit": "probability_distribution",
+      "source_type": "coverage_sampling",
+      "evidence_ids": ["coverage-broad-hcc-v2-design"],
+      "applies_to": ["population_broad_hcc_sensitivity_v2"],
+      "notes": "The original fine bins are coverage strata, not population proportions."
+    },
+    "tnr_mean_sensitivity_center": {
+      "value": 2.5,
+      "unit": "ratio",
+      "source_type": "coverage_sampling",
+      "evidence_ids": ["coverage-broad-hcc-v2-design"],
+      "applies_to": ["population_broad_hcc_sensitivity_v2"]
+    },
+    "dmax_min_mm": {
+      "value": 10,
+      "unit": "mm",
+      "source_type": "engineering_prior",
+      "evidence_ids": ["decision-dmax-a-20260713"],
+      "applies_to": ["population_broad_hcc_sensitivity_v2"]
+    },
+    "dmax_max_mm": {
+      "value": 200,
+      "unit": "mm",
+      "source_type": "engineering_prior",
+      "evidence_ids": ["decision-dmax-a-20260713"],
+      "applies_to": ["population_broad_hcc_sensitivity_v2"]
+    },
+    "cirrhosis_values": {
+      "value": [0.6, 0.8, 0.9],
+      "unit": "probability_values",
+      "source_type": "engineering_prior",
+      "evidence_ids": ["decision-cirrhosis-a-20260713"],
+      "applies_to": ["population_broad_hcc_sensitivity_v2"]
+    }
+  }
+}

@@ -1,0 +1,165 @@
+{
+  "schema_version": "pars_profile_v2",
+  "profile_id": "scanner_ge870_tcmma_v1",
+  "role": "scanner",
+  "population_claim": false,
+  "description": "GE NM/CT 870 CZT Tc-99m MAA acquisition and SIMIND contract.",
+  "parameters": {
+    "collimator_model": {
+      "value": "WEHR",
+      "unit": "model_name",
+      "source_type": "physics_standard",
+      "evidence_ids": ["ge-870-czt-pds-page10"],
+      "applies_to": ["scanner_ge870_tcmma_v1"]
+    },
+    "collimator_catalog_number": {
+      "value": "H3906CM",
+      "unit": "catalog_number",
+      "source_type": "physics_standard",
+      "evidence_ids": ["ge-870-czt-pds-page10"],
+      "applies_to": ["scanner_ge870_tcmma_v1"]
+    },
+    "collimator_legacy_aliases": {
+      "value": ["ge-legp"],
+      "unit": "categorical_set",
+      "source_type": "physics_standard",
+      "evidence_ids": ["ge-870-czt-pds-page10"],
+      "applies_to": ["scanner_ge870_tcmma_v1"],
+      "notes": "Legacy software alias only; default.yaml WEHR is already the PDS model name."
+    },
+    "hole_opening_mm": {
+      "value": 2.26,
+      "unit": "mm",
+      "source_type": "physics_standard",
+      "evidence_ids": ["ge-870-czt-pds-page10"],
+      "applies_to": ["scanner_ge870_tcmma_v1"]
+    },
+    "septal_thickness_mm": {
+      "value": 0.2,
+      "unit": "mm",
+      "source_type": "physics_standard",
+      "evidence_ids": ["ge-870-czt-pds-page10"],
+      "applies_to": ["scanner_ge870_tcmma_v1"]
+    },
+    "hole_length_mm": {
+      "value": 45.0,
+      "unit": "mm",
+      "source_type": "physics_standard",
+      "evidence_ids": ["ge-870-czt-pds-page10"],
+      "applies_to": ["scanner_ge870_tcmma_v1"]
+    },
+    "matrix": {
+      "value": [128, 128, 128],
+      "unit": "voxels_zyx",
+      "source_type": "physics_standard",
+      "evidence_ids": ["ge870-smc-local"],
+      "applies_to": ["scanner_ge870_tcmma_v1"]
+    },
+    "voxel_size_mm": {
+      "value": 4.42,
+      "unit": "mm_isotropic",
+      "source_type": "physics_standard",
+      "evidence_ids": ["ge870-smc-local"],
+      "applies_to": ["scanner_ge870_tcmma_v1"]
+    },
+    "starting_angle_deg": {
+      "value": 180.0,
+      "unit": "degrees_simind_nominal",
+      "source_type": "physics_standard",
+      "evidence_ids": ["ge870-smc-local"],
+      "applies_to": ["scanner_ge870_tcmma_v1"],
+      "notes": "Physical equivalence to the differentiable projector is gated by Task 11."
+    },
+    "rotation_extent_deg": {
+      "value": 360.0,
+      "unit": "degrees",
+      "source_type": "physics_standard",
+      "evidence_ids": ["ge870-smc-local"],
+      "applies_to": ["scanner_ge870_tcmma_v1"]
+    },
+    "rotation_direction": {
+      "value": "simind_positive_pending_common_frame_validation",
+      "unit": "coordinate_convention",
+      "source_type": "physics_standard",
+      "evidence_ids": ["ge870-smc-local"],
+      "applies_to": ["scanner_ge870_tcmma_v1"]
+    },
+    "views": {
+      "value": 60,
+      "unit": "views",
+      "source_type": "local_clinical",
+      "evidence_ids": ["tcmmaa-local-acquisition-protocol"],
+      "applies_to": ["scanner_ge870_tcmma_v1"]
+    },
+    "orbit_cm": {
+      "value": 30.0,
+      "unit": "cm",
+      "source_type": "local_clinical",
+      "evidence_ids": ["tcmmaa-local-acquisition-protocol"],
+      "applies_to": ["scanner_ge870_tcmma_v1"]
+    },
+    "energy_window_kev": {
+      "value": [126.0, 154.0],
+      "unit": "keV_range",
+      "source_type": "local_clinical",
+      "evidence_ids": ["tcmmaa-local-acquisition-protocol"],
+      "applies_to": ["scanner_ge870_tcmma_v1"]
+    },
+    "activity_mbq": {
+      "value": 60.0,
+      "unit": "MBq",
+      "source_type": "local_clinical",
+      "evidence_ids": ["tcmmaa-local-acquisition-protocol"],
+      "applies_to": ["scanner_ge870_tcmma_v1"]
+    },
+    "time_per_projection_s": {
+      "value": 28.4,
+      "unit": "seconds",
+      "source_type": "local_clinical",
+      "evidence_ids": ["tcmmaa-local-acquisition-protocol"],
+      "applies_to": ["scanner_ge870_tcmma_v1"]
+    },
+    "activity_time_product_mbq_s": {
+      "value": 1704.0,
+      "unit": "MBq_s",
+      "source_type": "local_clinical",
+      "evidence_ids": ["tcmmaa-local-acquisition-protocol"],
+      "applies_to": ["scanner_ge870_tcmma_v1"]
+    },
+    "smc_index25": {
+      "value": 1704.0,
+      "unit": "MBq_s",
+      "source_type": "physics_standard",
+      "evidence_ids": ["simind-manual-v8"],
+      "applies_to": ["scanner_ge870_tcmma_v1"]
+    },
+    "voxel_source_index26_semantics": {
+      "value": "ignored_for_voxel_source",
+      "unit": "simind_semantics",
+      "source_type": "physics_standard",
+      "evidence_ids": ["simind-manual-v8"],
+      "applies_to": ["scanner_ge870_tcmma_v1"]
+    },
+    "flag8_random_sequence": {
+      "value": true,
+      "unit": "boolean",
+      "source_type": "physics_standard",
+      "evidence_ids": ["simind-manual-v8"],
+      "applies_to": ["scanner_ge870_tcmma_v1"]
+    },
+    "base_histories_per_projection": {
+      "value": 80000,
+      "unit": "histories",
+      "source_type": "engineering_prior",
+      "evidence_ids": ["engineering-simind-v2-runtime"],
+      "applies_to": ["scanner_ge870_tcmma_v1"]
+    },
+    "alignment_validation_required": {
+      "value": true,
+      "unit": "boolean",
+      "source_type": "engineering_prior",
+      "evidence_ids": ["engineering-simind-v2-runtime"],
+      "applies_to": ["scanner_ge870_tcmma_v1"]
+    }
+  }
+}

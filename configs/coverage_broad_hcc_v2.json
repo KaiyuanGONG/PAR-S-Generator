@@ -1,0 +1,38 @@
+{
+  "schema_version": "pars_profile_v2",
+  "profile_id": "coverage_broad_hcc_v2",
+  "role": "coverage",
+  "population_claim": false,
+  "description": "Balanced training-coverage design for difficult broad-HCC phenotypes.",
+  "parent_profile_id": "population_tare_hcc_nopvi_v2",
+  "parameters": {
+    "fine_dmax_bins": {
+      "value": {"10-20_mm": 0.3, "20-40_mm": 0.2, "40-60_mm": 0.15, "60-100_mm": 0.15, "100-200_mm": 0.2},
+      "unit": "probability_distribution",
+      "source_type": "coverage_sampling",
+      "evidence_ids": ["coverage-broad-hcc-v2-design"],
+      "applies_to": ["coverage_broad_hcc_v2"]
+    },
+    "injection_territories": {
+      "value": {"whole_liver": 0.25, "right_lobar": 0.25, "left_lobar": 0.25, "sector_proxy": 0.25},
+      "unit": "probability_distribution",
+      "source_type": "coverage_sampling",
+      "evidence_ids": ["coverage-broad-hcc-v2-design"],
+      "applies_to": ["coverage_broad_hcc_v2"]
+    },
+    "tnr_coverage_strata": {
+      "value": {"low_0p29-1p5": 0.35, "mid_1p5-3": 0.35, "high_3-6p32": 0.3},
+      "unit": "probability_distribution",
+      "source_type": "coverage_sampling",
+      "evidence_ids": ["coverage-broad-hcc-v2-design"],
+      "applies_to": ["coverage_broad_hcc_v2"]
+    },
+    "preserve_population_weight": {
+      "value": true,
+      "unit": "boolean",
+      "source_type": "coverage_sampling",
+      "evidence_ids": ["coverage-broad-hcc-v2-design"],
+      "applies_to": ["coverage_broad_hcc_v2"]
+    }
+  }
+}

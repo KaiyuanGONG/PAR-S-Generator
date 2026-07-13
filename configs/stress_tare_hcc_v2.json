@@ -1,0 +1,38 @@
+{
+  "schema_version": "pars_profile_v2",
+  "profile_id": "stress_tare_hcc_v2",
+  "role": "stress",
+  "population_claim": false,
+  "description": "Population-weight-zero boundary and mismatch challenges.",
+  "parent_profile_id": "population_tare_hcc_nopvi_v2",
+  "parameters": {
+    "dmax_range_mm": {
+      "value": [200, 215],
+      "unit": "mm_range",
+      "source_type": "stress_test",
+      "evidence_ids": ["stress-tare-hcc-v2-design"],
+      "applies_to": ["stress_tare_hcc_v2"]
+    },
+    "activity_patterns": {
+      "value": ["tumor_dominant_low_background", "extreme_low_uptake"],
+      "unit": "categorical_set",
+      "source_type": "stress_test",
+      "evidence_ids": ["stress-tare-hcc-v2-design"],
+      "applies_to": ["stress_tare_hcc_v2"]
+    },
+    "territory_mismatch_enabled": {
+      "value": true,
+      "unit": "boolean",
+      "source_type": "stress_test",
+      "evidence_ids": ["stress-tare-hcc-v2-design"],
+      "applies_to": ["stress_tare_hcc_v2"]
+    },
+    "population_weight": {
+      "value": 0,
+      "unit": "weight",
+      "source_type": "stress_test",
+      "evidence_ids": ["stress-tare-hcc-v2-design"],
+      "applies_to": ["stress_tare_hcc_v2"]
+    }
+  }
+}

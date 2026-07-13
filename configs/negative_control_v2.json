@@ -1,0 +1,37 @@
+{
+  "schema_version": "pars_profile_v2",
+  "profile_id": "negative_control_v2",
+  "role": "negative",
+  "population_claim": false,
+  "description": "Independent 50-case tumor-negative false-positive evaluation set.",
+  "parameters": {
+    "case_count": {
+      "value": 50,
+      "unit": "cases",
+      "source_type": "engineering_prior",
+      "evidence_ids": ["decision-negative-a-20260713"],
+      "applies_to": ["negative_control_v2"]
+    },
+    "tumor_count": {
+      "value": 0,
+      "unit": "lesions",
+      "source_type": "engineering_prior",
+      "evidence_ids": ["decision-negative-a-20260713"],
+      "applies_to": ["negative_control_v2"]
+    },
+    "population_weight": {
+      "value": 0,
+      "unit": "weight",
+      "source_type": "engineering_prior",
+      "evidence_ids": ["decision-negative-a-20260713"],
+      "applies_to": ["negative_control_v2"]
+    },
+    "hepatic_only": {
+      "value": true,
+      "unit": "boolean",
+      "source_type": "engineering_prior",
+      "evidence_ids": ["decision-negative-a-20260713"],
+      "applies_to": ["negative_control_v2"]
+    }
+  }
+}

@@ -1,0 +1,191 @@
+{
+  "schema_version": "pars_profile_v2",
+  "profile_id": "population_tare_hcc_nopvi_v2",
+  "role": "population",
+  "population_claim": true,
+  "description": "Main 500-case no-PVI discrete or confluent TARE-HCC population profile.",
+  "parameters": {
+    "explicit_pvi": {
+      "value": false,
+      "unit": "boolean",
+      "source_type": "engineering_prior",
+      "evidence_ids": ["decision-scope-a-20260713"],
+      "applies_to": ["population_tare_hcc_nopvi_v2"]
+    },
+    "main_case_count": {
+      "value": 500,
+      "unit": "cases",
+      "source_type": "engineering_prior",
+      "evidence_ids": ["decision-scope-a-20260713"],
+      "applies_to": ["population_tare_hcc_nopvi_v2"]
+    },
+    "hepatic_only": {
+      "value": true,
+      "unit": "boolean",
+      "source_type": "engineering_prior",
+      "evidence_ids": ["decision-scope-a-20260713"],
+      "applies_to": ["population_tare_hcc_nopvi_v2"]
+    },
+    "cirrhosis_prevalence": {
+      "value": 0.8,
+      "unit": "probability",
+      "source_type": "engineering_prior",
+      "evidence_ids": ["decision-cirrhosis-a-20260713"],
+      "applies_to": ["population_tare_hcc_nopvi_v2"],
+      "notes": "General HCC engineering prior, not local TARE prevalence."
+    },
+    "cirrhosis_sensitivity_values": {
+      "value": [0.6, 0.9],
+      "unit": "probability_values",
+      "source_type": "engineering_prior",
+      "evidence_ids": ["decision-cirrhosis-a-20260713"],
+      "applies_to": ["population_tare_hcc_nopvi_v2"]
+    },
+    "tumor_count_bins": {
+      "value": {"1": 0.324, "2-5": 0.224, ">5": 0.452},
+      "unit": "probability_distribution",
+      "source_type": "literature_population",
+      "evidence_ids": ["karger-tare-hcc-2025-table3-nopvi"],
+      "applies_to": ["population_tare_hcc_nopvi_v2"]
+    },
+    "dmax_bins": {
+      "value": {"10-<80_mm": 0.603, "80-200_mm": 0.397},
+      "unit": "probability_distribution",
+      "source_type": "literature_population",
+      "evidence_ids": ["karger-tare-hcc-2025-table3-nopvi"],
+      "applies_to": ["population_tare_hcc_nopvi_v2"],
+      "notes": "Only the bin weights are literature population; within-bin shape is engineering."
+    },
+    "lobe_distribution": {
+      "value": {"unilobar": 0.587, "bilobar": 0.413},
+      "unit": "probability_distribution",
+      "source_type": "literature_population",
+      "evidence_ids": ["karger-tare-hcc-2025-table3-nopvi"],
+      "applies_to": ["population_tare_hcc_nopvi_v2"]
+    },
+    "dmax_min_mm": {
+      "value": 10,
+      "unit": "mm",
+      "source_type": "engineering_prior",
+      "evidence_ids": ["decision-dmax-a-20260713"],
+      "applies_to": ["population_tare_hcc_nopvi_v2"]
+    },
+    "dmax_max_mm": {
+      "value": 200,
+      "unit": "mm",
+      "source_type": "engineering_prior",
+      "evidence_ids": ["decision-dmax-a-20260713"],
+      "applies_to": ["population_tare_hcc_nopvi_v2"]
+    },
+    "confluent_required_above_mm": {
+      "value": 100,
+      "unit": "mm",
+      "source_type": "engineering_prior",
+      "evidence_ids": ["decision-dmax-a-20260713"],
+      "applies_to": ["population_tare_hcc_nopvi_v2"]
+    },
+    "tumor_burden_fraction_max": {
+      "value": 0.7,
+      "unit": "fraction",
+      "source_type": "engineering_prior",
+      "evidence_ids": ["engineering-tumor-geometry-v2"],
+      "applies_to": ["population_tare_hcc_nopvi_v2"]
+    },
+    "axis_ratio_range": {
+      "value": [0.7, 1.0],
+      "unit": "ratio_range",
+      "source_type": "engineering_prior",
+      "evidence_ids": ["engineering-tumor-geometry-v2"],
+      "applies_to": ["population_tare_hcc_nopvi_v2"]
+    },
+    "within_gt5_count_model": {
+      "value": {"family": "shifted_geometric", "minimum": 6, "maximum": 20},
+      "unit": "model_specification",
+      "source_type": "engineering_prior",
+      "evidence_ids": ["engineering-tumor-geometry-v2"],
+      "applies_to": ["population_tare_hcc_nopvi_v2"],
+      "notes": "within_bin_assumption=true must be written per case."
+    },
+    "morphology_set": {
+      "value": ["smooth_nodular", "lobulated_confluent"],
+      "unit": "categorical_set",
+      "source_type": "engineering_prior",
+      "evidence_ids": ["engineering-tumor-geometry-v2"],
+      "applies_to": ["population_tare_hcc_nopvi_v2"]
+    },
+    "tnr_mean_reference": {
+      "value": 2.11,
+      "unit": "ratio",
+      "source_type": "literature_population",
+      "evidence_ids": ["ilhan-jnm-2015-hcc-table3"],
+      "applies_to": ["population_tare_hcc_nopvi_v2"]
+    },
+    "tnr_mean_sd": {
+      "value": 1.24,
+      "unit": "ratio",
+      "source_type": "literature_population",
+      "evidence_ids": ["ilhan-jnm-2015-hcc-table3"],
+      "applies_to": ["population_tare_hcc_nopvi_v2"]
+    },
+    "tnr_mean_range": {
+      "value": [0.29, 6.32],
+      "unit": "ratio_range",
+      "source_type": "literature_population",
+      "evidence_ids": ["ilhan-jnm-2015-hcc-table3"],
+      "applies_to": ["population_tare_hcc_nopvi_v2"]
+    },
+    "tnr_max_reference": {
+      "value": {"mean": 6.03, "sd": 4.67, "range": [1.43, 21.57]},
+      "unit": "ratio_summary",
+      "source_type": "literature_population",
+      "evidence_ids": ["ilhan-jnm-2015-hcc-table3"],
+      "applies_to": ["population_tare_hcc_nopvi_v2"]
+    },
+    "heterogeneous_fraction": {
+      "value": 0.75,
+      "unit": "probability",
+      "source_type": "literature_population",
+      "evidence_ids": ["ilhan-jnm-2015-hcc-table3"],
+      "applies_to": ["population_tare_hcc_nopvi_v2"]
+    },
+    "age_median_auxiliary_years": {
+      "value": 66,
+      "unit": "years",
+      "source_type": "literature_population",
+      "evidence_ids": ["karger-tare-hcc-2025-table1-full"],
+      "applies_to": ["population_tare_hcc_nopvi_v2"],
+      "notes": "Full-cohort auxiliary only; not a no-PVI subgroup distribution."
+    },
+    "male_fraction_auxiliary": {
+      "value": 0.835,
+      "unit": "probability",
+      "source_type": "literature_population",
+      "evidence_ids": ["karger-tare-hcc-2025-table1-full"],
+      "applies_to": ["population_tare_hcc_nopvi_v2"],
+      "notes": "Full-cohort auxiliary only."
+    },
+    "liver_volume_reference_ml": {
+      "value": {"mean": 1533, "sd": 375},
+      "unit": "ml_summary",
+      "source_type": "literature_population",
+      "evidence_ids": ["perez-radiology-2022-liver-volume"],
+      "applies_to": ["population_tare_hcc_nopvi_v2"],
+      "notes": "Do not use 14*weight+979 as a generative mean."
+    },
+    "left_liver_fraction_reference": {
+      "value": {"median": 0.31, "range": [0.15, 0.45]},
+      "unit": "fraction_summary",
+      "source_type": "literature_population",
+      "evidence_ids": ["mise-2014-liver-segments"],
+      "applies_to": ["population_tare_hcc_nopvi_v2"]
+    },
+    "cirrhotic_segment_proxy_changes": {
+      "value": {"s4_to_s8": -0.17, "s1_to_s3": 0.59, "caudate": 1.75},
+      "unit": "relative_change",
+      "source_type": "literature_population",
+      "evidence_ids": ["hunt-cirrhosis-lsvr"],
+      "applies_to": ["population_tare_hcc_nopvi_v2"],
+      "notes": "Directional simplified-region targets, not exact Couinaud reconstruction."
+    }
+  }
+}
