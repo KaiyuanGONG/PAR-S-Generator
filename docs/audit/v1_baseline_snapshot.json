@@ -1,0 +1,126 @@
+{
+  "schema_version": "pars_generator_v1_baseline_snapshot_v1",
+  "created_at_utc": "2026-07-13T14:33:34.066295+00:00",
+  "source_commit": "b19feb9c0dbd206961986da6bb38f212aedc3143",
+  "read_only": true,
+  "source_worktree_state": {
+    "repo_root": "D:\\PFE-U\\PAR-S-Generator",
+    "head": "b19feb9c0dbd206961986da6bb38f212aedc3143",
+    "branch": "master",
+    "entries": [
+      {
+        "status": "M ",
+        "relative_path": "claude/settings.local.json",
+        "exists": false
+      },
+      {
+        "status": " M",
+        "relative_path": "src/core/interfile_writer.py",
+        "size_bytes": 6742,
+        "sha256": "dec6686a42128575b77b3bff8555de9be257d5a72dc4cb098042110637e122e2"
+      },
+      {
+        "status": " M",
+        "relative_path": "src/ui/app_state.py",
+        "size_bytes": 6489,
+        "sha256": "c90dad54b74d464671e2926f5f6fb5c4670e2397bc712f6baa0e4424956196d7"
+      },
+      {
+        "status": " M",
+        "relative_path": "src/ui/i18n.py",
+        "size_bytes": 39969,
+        "sha256": "308b65c80c6fdcdec3e1501727e79b4736d2a06b1fd4785502aedcaa2e163ec5"
+      },
+      {
+        "status": " M",
+        "relative_path": "src/ui/pages/simulation_page.py",
+        "size_bytes": 30945,
+        "sha256": "b6b6d52149721032256dbab91e0668ceb0923fc479a7f2d080812af8054f2a19"
+      },
+      {
+        "status": " M",
+        "relative_path": "src/ui/settings_store.py",
+        "size_bytes": 3107,
+        "sha256": "6ee04607bba5c32d40038da6506c45acde15f644b3bd805f2742bbb5e5ed90f9"
+      },
+      {
+        "status": "??",
+        "relative_path": "src/core/simind_runner.py",
+        "size_bytes": 11176,
+        "sha256": "6fc0957c522df8b53ea41d3bb86f537400bc122734f94b5e34cdc2da10e0b7a8"
+      },
+      {
+        "status": "??",
+        "relative_path": "src/core/smc_parser.py",
+        "size_bytes": 8108,
+        "sha256": "1ed5aa905b1062333d695485a13c490c65135dec50f41ef87349a2b30d9c84ea"
+      },
+      {
+        "status": "??",
+        "relative_path": "src/ui/widgets/override_table.py",
+        "size_bytes": 5144,
+        "sha256": "71526d4ff01a7850c43e9b2edd3f8b53930ec5e4e3dbdd775bfd9e95cc07cb77"
+      },
+      {
+        "status": "??",
+        "relative_path": "src/ui/widgets/smc_viewer.py",
+        "size_bytes": 6881,
+        "sha256": "6b6af44ea51932bedf95e783e46e6a8b2d4b58f49b7efd96cffa65fb1766f20d"
+      },
+      {
+        "status": "??",
+        "relative_path": "tests/test_smc_parser.py",
+        "size_bytes": 3765,
+        "sha256": "3f327b9170d89fc83c27c3af7e06942443114fbfe0be73ebf62c0953d95e9365"
+      }
+    ]
+  },
+  "runtime_artifacts": {
+    "installed_simind_exe": {
+      "path": "C:\\simind\\simind.exe",
+      "size_bytes": 2433024,
+      "mtime_ns": 1757655878348879900,
+      "sha256": "f984b8753f54b9f671f9fc1bcb2b45461e7cae8d027376b446dd1ed55a9a8319"
+    },
+    "bundled_simind_exe": {
+      "path": "D:\\PFE-U\\PAR-S-Generator\\simind\\simind.exe",
+      "size_bytes": 2433024,
+      "mtime_ns": 1757655878348879900,
+      "sha256": "f984b8753f54b9f671f9fc1bcb2b45461e7cae8d027376b446dd1ed55a9a8319"
+    },
+    "simind_ini": {
+      "path": "C:\\simind\\smc_dir\\simind.ini",
+      "size_bytes": 5825,
+      "mtime_ns": 1757655879136352900,
+      "sha256": "c5e01b5be872c4b87905eec8076b71b341a6659fe891c382db5ac567d4e78f12"
+    },
+    "ge870_czt_smc": {
+      "path": "D:\\PFE-U\\PAR-S-Generator\\simind\\ge870_czt.smc",
+      "size_bytes": 2501,
+      "mtime_ns": 1772905158195770200,
+      "sha256": "4d10eab246a7a6690663230d2f33aeb3c32f67c598af36b56d1575f0e3551d10"
+    },
+    "simind_manual": {
+      "path": "D:\\PFE-U\\PAR-S-Generator\\docs\\simind_manual.pdf",
+      "size_bytes": 3476779,
+      "mtime_ns": 1772650798933209100,
+      "sha256": "898e66b0201069d59fe92cee3a2822fb664e9575b59236b416a2981dcf1b5432"
+    },
+    "ge870_czt_pds": {
+      "path": "D:\\PFE-U\\PAR-S-Generator\\docs\\DOC2109131-NMCT-870-CZT-PDS.pdf",
+      "size_bytes": 752296,
+      "mtime_ns": 1764861203649325500,
+      "sha256": "79db89f7e9556c784ae0f12d8717b0f4b4c3f68042a437c85302f32ae8c1904e"
+    }
+  },
+  "known_baseline_tests": {
+    "command": "conda run -n SPECT python -m pytest -q tests",
+    "collected": 24,
+    "passed": 23,
+    "failed": 1,
+    "status": "known_baseline_failure",
+    "failure_id": "tests/test_ui_smoke.py::test_tumor_single_value_maps_to_min_max",
+    "root_cause": "The test expects preview tumor controls to overwrite batch min/max, while the same historical implementation explicitly keeps those controls preview-only.",
+    "scope_decision": "record_and_continue_without_ui_changes"
+  }
+}
