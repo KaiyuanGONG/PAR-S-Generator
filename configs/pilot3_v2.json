@@ -18,6 +18,8 @@
   "execution": {
     "base_histories_per_projection": 80000,
     "nn_multiplier": 1,
+    "rr_allocator": "affine_permutation_mod_10007_v1",
+    "rr_maximum": 10007,
     "timeout_seconds": 7200,
     "max_parallel": 1,
     "purpose": "deterministic_smoke_only_pending_task12_clinical_count_benchmark"
@@ -118,13 +120,21 @@
       "dmax_mm": 200.0,
       "profile_role": "population_upper_boundary",
       "expected_result": "structural_rejection",
-      "reason": "minimum_allowed_axis_ratios_imply_tumor_volume_above_70_percent_of_maximum_2300_ml_liver"
+      "axis_ratios": [0.7, 0.7],
+      "morphology": "lobulated_confluent",
+      "primitive_count": 2,
+      "orientation_deg_zyx": [0.0, 0.0, 0.0],
+      "reason": "actual_rasterized_lobulated_volume_exceeds_70_percent_of_maximum_2300_ml_liver"
     },
     {
       "dmax_mm": 215.0,
       "profile_role": "stress_boundary",
       "expected_result": "structural_rejection",
-      "reason": "minimum_allowed_axis_ratios_imply_tumor_volume_above_maximum_2300_ml_liver"
+      "axis_ratios": [0.7, 0.7],
+      "morphology": "lobulated_confluent",
+      "primitive_count": 2,
+      "orientation_deg_zyx": [0.0, 0.0, 0.0],
+      "reason": "actual_rasterized_lobulated_volume_exceeds_70_percent_of_maximum_2300_ml_liver"
     }
   ]
 }

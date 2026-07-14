@@ -998,6 +998,14 @@ def _validate_payload(payload: CasePayloadV2) -> tuple[dict[str, np.ndarray], di
     return arrays, metadata
 
 
+def validate_case_payload_v2(
+    payload: CasePayloadV2,
+) -> tuple[dict[str, np.ndarray], dict[str, object]]:
+    """Public fail-closed validation entry point used by independent dataset gates."""
+
+    return _validate_payload(payload)
+
+
 def _metadata_document(payload: CasePayloadV2, metadata: Mapping[str, object]) -> dict[str, object]:
     return {
         "schema_version": CASE_SCHEMA_VERSION,
