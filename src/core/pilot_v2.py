@@ -23,7 +23,7 @@ from .liver_geometry import (
     LiverShapeRejectedError,
     fit_liver_geometry,
 )
-from .measurements import measure_path_lengths
+from .measurements import PathLengthMetricsV2, measure_path_lengths
 from .population_sampler import sample_liver_target
 from .provenance import sha256_file
 from .schemas_v2 import (
@@ -511,6 +511,22 @@ def _simind_version(res_path: Path) -> str:
     return f"SIMIND V{match.group(1)}"
 
 
+def _path_length_document(paths: PathLengthMetricsV2) -> dict[str, object]:
+    """Convert immutable measurement tuples to the JSON payload contract.
+
+    ``dataclasses.asdict`` intentionally preserves tuple containers, while the
+    V2 case payload requires one JSON-array record per view.  Normalize here,
+    before the strict writer validates the in-memory payload.
+    """
+
+    return {
+        "angles_deg": [float(value) for value in paths.angles_deg],
+        "body": [asdict(value) for value in paths.body],
+        "liver": [asdict(value) for value in paths.liver],
+        "support_definition": paths.support_definition,
+    }
+
+
 def build_completed_metadata(
     prepared: PreparedPilotCaseV2,
     *,
@@ -596,7 +612,7 @@ def build_completed_metadata(
         },
         "actual_metrics": {
             "liver": dict(prepared.liver.actual_metrics),
-            "path_lengths": asdict(paths),
+            "path_lengths": _path_length_document(paths),
             "tumors": {
                 "count_bin": geometry.strata.count_bin,
                 "realized_count": prepared.tumors.realized_count,

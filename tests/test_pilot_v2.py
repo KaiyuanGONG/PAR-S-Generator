@@ -11,11 +11,13 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "src"))
 
 from core.pilot_v2 import (  # noqa: E402
+    _path_length_document,
     _simind_version,
     load_pilot_plan,
     resolve_plan_path,
     validate_boundary_rejections,
 )
+from core.measurements import PathLengthMetricsV2, PathLengthStatsV2  # noqa: E402
 from core.schemas_v2 import load_evidence_registry, load_profile  # noqa: E402
 
 
@@ -81,3 +83,25 @@ def test_simind_version_is_parsed_from_actual_result_syntax(tmp_path: Path) -> N
         encoding="ascii",
     )
     assert _simind_version(path) == "SIMIND V8.0"
+
+
+def test_path_length_document_uses_json_arrays_for_every_view() -> None:
+    stats = PathLengthStatsV2(mean_mm=10.0, p05_mm=5.0, p50_mm=10.0, p95_mm=15.0)
+    metrics = PathLengthMetricsV2(
+        angles_deg=tuple(float(index * 6) for index in range(60)),
+        body=tuple(stats for _ in range(60)),
+        liver=tuple(stats for _ in range(60)),
+    )
+
+    document = _path_length_document(metrics)
+
+    assert isinstance(document["angles_deg"], list)
+    assert isinstance(document["body"], list)
+    assert isinstance(document["liver"], list)
+    assert len(document["body"]) == 60
+    assert document["body"][0] == {
+        "mean_mm": 10.0,
+        "p05_mm": 5.0,
+        "p50_mm": 10.0,
+        "p95_mm": 15.0,
+    }
