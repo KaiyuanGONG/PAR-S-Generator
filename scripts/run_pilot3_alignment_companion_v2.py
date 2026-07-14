@@ -13,6 +13,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import shutil
 import subprocess
 import sys
 from dataclasses import dataclass
@@ -212,6 +213,26 @@ def _clean_git_commit() -> str:
     return head.stdout.strip()
 
 
+def snapshot_case_inputs(
+    case: FrozenAlignmentCase,
+    output_root: Path,
+) -> tuple[Path, Path]:
+    """Copy immutable artifacts to the filenames required by SIMIND."""
+
+    input_dir = output_root / "input_snapshots" / case.case_id
+    input_dir.mkdir(parents=True, exist_ok=False)
+    source = input_dir / f"{case.case_id}_act_av.bin"
+    density = input_dir / f"{case.case_id}_atn_av.bin"
+    shutil.copyfile(case.source_bin, source)
+    shutil.copyfile(case.density_bin, density)
+    if (
+        sha256_file(source) != sha256_file(case.source_bin)
+        or sha256_file(density) != sha256_file(case.density_bin)
+    ):
+        raise RuntimeError(f"{case.case_id}: staged SIMIND input hash mismatch")
+    return source, density
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Run NN=5 coordinate companions without modifying the frozen pilot."
@@ -268,14 +289,15 @@ def main(argv: list[str] | None = None) -> int:
     descriptor_cases: list[dict[str, str]] = []
     result_records: list[dict[str, object]] = []
     for case in cases:
+        source_bin, density_bin = snapshot_case_inputs(case, args.output_root)
         result = run_simind_case(
             SimindRunSpec(
                 case_id=case.case_id,
                 simind_exe=simind_exe,
                 smc_file=smc_path,
                 simind_ini=simind_ini,
-                source_bin=case.source_bin,
-                density_bin=case.density_bin,
+                source_bin=source_bin,
+                density_bin=density_bin,
                 output_root=args.output_root / "simind",
                 rr_seed=case.rr_seed,
                 nn_multiplier=ALIGNMENT_NN_MULTIPLIER,
