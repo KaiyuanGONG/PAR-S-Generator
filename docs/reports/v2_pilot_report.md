@@ -8,11 +8,11 @@ The first three V2 pilot cases were generated through the production V2 writer,
 SIMIND runner, manifest writer, split-before-generation policy, and freeze
 marker. Generator validation and PAR-S_2 frozen-manifest loading both pass.
 
-The dedicated current-runtime coordinate fixture also passes and recovers the
-frozen projection transform. However, the clinical three-case full-physics
-alignment search remains non-unique at both `/NN=1` and `/NN=5`, so expansion
-to 15 cases remains NO-GO until the clinical alignment criterion is revised and
-versioned.
+Task 12B now separates coordinate identity from clinical full-physics quality.
+The dedicated current-runtime coordinate fixture passes, and the independent
+clinical projection quality gate also passes. The `/NN=1` and `/NN=5` clinical
+480-transform searches remain non-unique but are retained as non-blocking
+diagnostic reports.
 
 ## Frozen dataset
 
@@ -55,7 +55,17 @@ tumor and perfusion overlays, plus sinogram and per-view projection curves for
 all three cases. Manual inspection found no clipping, non-finite projection,
 tumor mask offset, or obvious case-writer alignment error.
 
-## Alignment gates
+## Task 12B projection gates
+
+Machine-readable aggregate:
+`D:\PFE-U\PAR\.worktrees\PAR-S_2-task12\docs\reports\v2_pilot3_task12b_gate_summary.json`
+
+- `projection_coordinate_gate_v2`: **PASS**, blocking.
+- `clinical_projection_quality_gate_v1`: **PASS**, blocking.
+- `clinical_alignment_exploratory_report_v1`: `diagnostic_nonunique`,
+  non-blocking.
+
+### Exploratory alignment details
 
 Formal clinical pilot NN=1 search:
 
@@ -64,7 +74,7 @@ Formal clinical pilot NN=1 search:
 - Score margin: `0.0029309524`
 - Bootstrap top-1 frequency: `0.34`
 - Per-case top-1 frequency: `0.3333333333`
-- Result: FAIL uniqueness
+- Result: non-unique, diagnostic only
 
 Same-case clinical NN=5 companion:
 
@@ -73,7 +83,7 @@ Same-case clinical NN=5 companion:
 - Score margin: `0.0028330725`
 - Bootstrap top-1 frequency: `0.34`
 - Per-case top-1 frequency: `0.3333333333`
-- Result: FAIL uniqueness
+- Result: non-unique, diagnostic only
 
 Dedicated current-runtime sparse coordinate fixture:
 
@@ -90,8 +100,11 @@ Dedicated current-runtime sparse coordinate fixture:
 
 ## Verification
 
-- Generator full non-UI regression: `181 passed`
-- PAR-S_2 focused/frozen loader tests: `43 passed`
+- Generator pre-Task-12B full non-UI regression baseline: `181 passed`.
+- Current Generator Task-12/remainder focused regression: `63 passed`.
+- Current Generator non-UI full rerun reached `88%` with no failures before the
+  10-minute execution cap; it is not reported as a completed full pass.
+- PAR-S_2 full regression after Task 12B: `46 passed`.
 - PAR-D Task 11B bridge tests: `46 passed`
 - Generator gate report: `docs/reports/v2_pilot3_generator_gate.json`
 - PAR-S_2 loader gate report:
@@ -101,8 +114,7 @@ Dedicated current-runtime sparse coordinate fixture:
 
 ## Decision
 
-Task 12 pilot-3 generation and freeze are complete. The coordinate convention is
-validated by the dedicated current-runtime fixture. The clinical alignment gate
-does not support expansion yet, because the simplified analytic projector cannot
-uniquely discriminate the transform on these three full-physics clinical
-phantoms. Do not expand to 15 cases until that gate is revised and versioned.
+Task 12 pilot-3 generation and freeze are complete. Both Task 12B blocking gates
+pass. The engineering recommendation is to accept the versioned gate separation
+and proceed to the 15-case expansion; the run remains paused until the user
+completes the recorded methodology review.

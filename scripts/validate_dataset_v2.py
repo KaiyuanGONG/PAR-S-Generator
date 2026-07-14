@@ -377,7 +377,7 @@ def validate(
             "200_and_215_mm_expected_structural_rejection",
         ],
         "go_for_15_case_pilot": False,
-        "reason": "PAR-S_2 loader and coordinate alignment gate still required",
+        "reason": "Task 12B aggregate gates and manual methodology review are required",
     }
 
 
@@ -413,7 +413,7 @@ def _markdown(report: Mapping[str, Any]) -> str:
             "## 当前结论",
             "",
             "Generator 端生成、SIMIND、原子 case writer 与 dataset freeze 均已通过。",
-            "只有 PAR-S_2 真实 loader 和 Task 11 坐标对齐门禁也通过后，首批 3 例才算完整完成；15 例 pilot 尚未获准。",
+            "本报告仅是上游证据，不能单独批准 15 例扩展；最终决定由 Task 12B 聚合门禁和人工方法学审核给出。",
             "",
         ]
     )

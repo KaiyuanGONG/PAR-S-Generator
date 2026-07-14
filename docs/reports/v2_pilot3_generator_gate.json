@@ -116,7 +116,7 @@
   ],
   "go_for_15_case_pilot": false,
   "manifest_sha256": "900b3ec8dc71b388e8d5aa79a752677e755043b705b057ab57e9f2e1bc512dbd",
-  "reason": "PAR-S_2 loader and coordinate alignment gate still required",
+  "reason": "Task 12B aggregate gates and manual methodology review are required",
   "schema_version": "pars_v2_generator_pilot_gate_v1",
   "simind_binary_sha256": "f984b8753f54b9f671f9fc1bcb2b45461e7cae8d027376b446dd1ed55a9a8319",
   "status": "pass"
