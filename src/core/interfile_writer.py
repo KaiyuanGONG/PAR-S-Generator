@@ -6,7 +6,7 @@ Converts .npz phantom files to SIMIND-compatible raw binary format.
 SIMIND XcatBinMap convention (Index-14 = -7, Index-15 = -7):
   - Source file:  <stem>_act_av.bin   (read via /FS:<stem>)
   - Density file: <stem>_atn_av.bin   (read via /FD:<stem>)
-  - Format: float32, C-order (Z, Y, X), no header
+  - Format: explicit little-endian float32, C-order (Z, Y, X), no header
 """
 
 from __future__ import annotations
@@ -105,7 +105,7 @@ def write_bin(
     suffix: str,
 ) -> Path:
     """
-    Write a 3D numpy array as raw float32 binary.
+    Write a 3D numpy array as raw little-endian float32 binary.
 
     Parameters
     ----------
@@ -115,7 +115,9 @@ def write_bin(
     """
     output_stem = Path(output_stem)
     bin_path = output_stem.parent / (output_stem.name + suffix + ".bin")
-    volume.astype(np.float32, copy=False).tofile(str(bin_path))
+    # Do not rely on the host byte order: the SIMIND XcatBinMap input contract
+    # and V2 metadata both explicitly promise little-endian float32 bytes.
+    np.asarray(volume, dtype=np.dtype("<f4"), order="C").tofile(str(bin_path))
     return bin_path
 
 

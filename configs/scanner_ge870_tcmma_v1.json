@@ -68,7 +68,7 @@
       "source_type": "physics_standard",
       "evidence_ids": ["ge870-smc-local"],
       "applies_to": ["scanner_ge870_tcmma_v1"],
-      "notes": "Physical equivalence to the differentiable projector is gated by Task 11."
+      "notes": "SIMIND nominal angle. The frozen common-projector equivalent is 90 degrees."
     },
     "rotation_extent_deg": {
       "value": 360.0,
@@ -78,11 +78,31 @@
       "applies_to": ["scanner_ge870_tcmma_v1"]
     },
     "rotation_direction": {
-      "value": "simind_positive_pending_common_frame_validation",
+      "value": "clockwise",
       "unit": "coordinate_convention",
       "source_type": "physics_standard",
       "evidence_ids": ["ge870-smc-local"],
       "applies_to": ["scanner_ge870_tcmma_v1"]
+    },
+    "projection_coordinates": {
+      "value": {
+        "schema_version": "pars_projection_coordinates_v1",
+        "coordinate_contract_id": "pars_simind_v8_xcat_zyx_sar_v1",
+        "simind_starting_angle_deg": 180.0,
+        "projector_starting_angle_deg": 90.0,
+        "rotation_direction": "clockwise",
+        "simind_to_projector_angle_offset_deg": -90.0,
+        "detector_axis_contract": "pars_detector_v_plus_source_z__u_plus_rotated_source_y_v1",
+        "loader_transform_id": "simind_v8_xcat_v1_views_forward_roll000_det_v_flip_det_u_keep",
+        "source_index_order": "ZYX",
+        "source_positive_directions": "SAR",
+        "simind_basis_from_source": "Xsim=-Zsrc;Ysim=+Xsrc;Zsim=-Ysrc"
+      },
+      "unit": "projection_coordinate_contract",
+      "source_type": "engineering_prior",
+      "evidence_ids": ["engineering-simind-v2-runtime"],
+      "applies_to": ["scanner_ge870_tcmma_v1"],
+      "notes": "Task 11 frozen bridge. It preserves existing source/mu bytes and applies only the versioned row flip when loading SIMIND projections."
     },
     "views": {
       "value": 60,
@@ -160,6 +180,24 @@
       "source_type": "engineering_prior",
       "evidence_ids": ["engineering-simind-v2-runtime"],
       "applies_to": ["scanner_ge870_tcmma_v1"]
+    },
+    "projection_alignment_gate": {
+      "value": {
+        "candidate_count": 480,
+        "detector_downsample": 8,
+        "bootstrap_candidate_count": 16,
+        "bootstrap_iterations": 200,
+        "bootstrap_seed": 20260714,
+        "noise_relative_sd": 0.005,
+        "minimum_score_margin": 0.005,
+        "minimum_bootstrap_top1_frequency": 0.95,
+        "minimum_case_top1_frequency": 1.0
+      },
+      "unit": "projection_alignment_gate",
+      "source_type": "engineering_prior",
+      "evidence_ids": ["engineering-simind-v2-runtime"],
+      "applies_to": ["scanner_ge870_tcmma_v1"],
+      "notes": "Frozen after the Task 11 high-history baseline; changing a threshold requires a new coordinate contract and report."
     }
   }
 }

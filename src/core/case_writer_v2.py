@@ -28,6 +28,13 @@ from .provenance import (
     sha256_json,
 )
 from .seeds import SeedBundle
+from .schemas_v2 import (
+    FROZEN_LOADER_TRANSFORM_ID,
+    PROJECTION_COORDINATE_CONTRACT_ID,
+    ProjectionCoordinatesV1,
+    SchemaValidationError,
+    validate_projection_coordinates_v1,
+)
 
 
 CASE_SCHEMA_VERSION = "pars_syn_v2"
@@ -149,6 +156,8 @@ class CaseRecordV2:
     population_weight: float
     sampling_probability: float
     split_plan_sha256: str
+    projection_coordinate_contract_id: str
+    loader_transform_id: str
     artifacts: Mapping[str, ArtifactRecordV2]
     schema_version: str = CASE_RECORD_SCHEMA_VERSION
 
@@ -165,6 +174,10 @@ class CaseRecordV2:
             "population_weight": self.population_weight,
             "sampling_probability": self.sampling_probability,
             "split_plan_sha256": self.split_plan_sha256,
+            "projection_coordinate_contract_id": (
+                self.projection_coordinate_contract_id
+            ),
+            "loader_transform_id": self.loader_transform_id,
             "artifacts": {
                 name: artifact.to_dict()
                 for name, artifact in sorted(self.artifacts.items())
@@ -185,6 +198,8 @@ class CaseRecordV2:
             "population_weight",
             "sampling_probability",
             "split_plan_sha256",
+            "projection_coordinate_contract_id",
+            "loader_transform_id",
             "artifacts",
         }
         if set(data) != allowed or data.get("schema_version") != CASE_RECORD_SCHEMA_VERSION:
@@ -199,6 +214,14 @@ class CaseRecordV2:
         }
         if len(artifacts) != len(raw_artifacts):
             raise CaseWriteError("case record contains an invalid artifact")
+        coordinate_contract_id = str(data["projection_coordinate_contract_id"])
+        loader_transform_id = str(data["loader_transform_id"])
+        if coordinate_contract_id != PROJECTION_COORDINATE_CONTRACT_ID:
+            raise CaseWriteError(
+                "case record projection_coordinate_contract_id is not frozen V2"
+            )
+        if loader_transform_id != FROZEN_LOADER_TRANSFORM_ID:
+            raise CaseWriteError("case record loader_transform_id is not frozen V2")
         return cls(
             case_id=str(data["case_id"]),
             case_family_id=str(data["case_family_id"]),
@@ -210,6 +233,8 @@ class CaseRecordV2:
             population_weight=float(data["population_weight"]),
             sampling_probability=float(data["sampling_probability"]),
             split_plan_sha256=str(data["split_plan_sha256"]),
+            projection_coordinate_contract_id=coordinate_contract_id,
+            loader_transform_id=loader_transform_id,
             artifacts=artifacts,
         )
 
@@ -253,6 +278,8 @@ class DatasetContractV2:
     allowed_profile_ids: tuple[str, ...]
     split_plan_sha256: str
     required_artifact_names: tuple[str, ...]
+    projection_coordinate_contract_id: str = PROJECTION_COORDINATE_CONTRACT_ID
+    loader_transform_id: str = FROZEN_LOADER_TRANSFORM_ID
     required_simulation_status: str = "complete"
     required_quality_status: str = "pass"
     schema_version: str = DATASET_CONTRACT_SCHEMA_VERSION
@@ -267,6 +294,10 @@ class DatasetContractV2:
             "allowed_profile_ids": sorted(self.allowed_profile_ids),
             "split_plan_sha256": self.split_plan_sha256,
             "required_artifact_names": sorted(self.required_artifact_names),
+            "projection_coordinate_contract_id": (
+                self.projection_coordinate_contract_id
+            ),
+            "loader_transform_id": self.loader_transform_id,
             "required_simulation_status": self.required_simulation_status,
             "required_quality_status": self.required_quality_status,
         }
@@ -288,6 +319,8 @@ class DatasetFreezeRecordV2:
     split_plan_sha256: str
     contract_sha256: str
     required_artifact_names: tuple[str, ...]
+    projection_coordinate_contract_id: str
+    loader_transform_id: str
     frozen_utc: str
     status: str = "complete"
     schema_version: str = DATASET_FREEZE_SCHEMA_VERSION
@@ -306,6 +339,10 @@ class DatasetFreezeRecordV2:
             "split_plan_sha256": self.split_plan_sha256,
             "contract_sha256": self.contract_sha256,
             "required_artifact_names": list(self.required_artifact_names),
+            "projection_coordinate_contract_id": (
+                self.projection_coordinate_contract_id
+            ),
+            "loader_transform_id": self.loader_transform_id,
             "frozen_utc": self.frozen_utc,
         }
 
@@ -324,6 +361,8 @@ class DatasetFreezeRecordV2:
             "split_plan_sha256",
             "contract_sha256",
             "required_artifact_names",
+            "projection_coordinate_contract_id",
+            "loader_transform_id",
             "frozen_utc",
         }
         if set(data) != allowed or data.get("schema_version") != DATASET_FREEZE_SCHEMA_VERSION:
@@ -332,6 +371,16 @@ class DatasetFreezeRecordV2:
         artifacts = data["required_artifact_names"]
         if not isinstance(split_counts, dict) or not isinstance(artifacts, list):
             raise DatasetFreezeError("completion marker fields have invalid types")
+        if data.get("status") != "complete":
+            raise DatasetFreezeError("completion marker status must be complete")
+        if (
+            data.get("projection_coordinate_contract_id")
+            != PROJECTION_COORDINATE_CONTRACT_ID
+            or data.get("loader_transform_id") != FROZEN_LOADER_TRANSFORM_ID
+        ):
+            raise DatasetFreezeError(
+                "completion marker projection coordinate contract is not frozen V2"
+            )
         return cls(
             dataset_id=str(data["dataset_id"]),
             dataset_version=str(data["dataset_version"]),
@@ -343,6 +392,10 @@ class DatasetFreezeRecordV2:
             split_plan_sha256=str(data["split_plan_sha256"]),
             contract_sha256=str(data["contract_sha256"]),
             required_artifact_names=tuple(str(value) for value in artifacts),
+            projection_coordinate_contract_id=str(
+                data["projection_coordinate_contract_id"]
+            ),
+            loader_transform_id=str(data["loader_transform_id"]),
             frozen_utc=str(data["frozen_utc"]),
             status=str(data["status"]),
         )
@@ -374,6 +427,60 @@ def _require_keys(value: Mapping[str, object], required: set[str], name: str) ->
     missing = sorted(required - set(value))
     if missing:
         raise CaseWriteError(f"{name} missing required fields: {missing}")
+
+
+def _require_exact_keys(
+    value: Mapping[str, object],
+    required: set[str],
+    name: str,
+) -> None:
+    _require_keys(value, required, name)
+    unknown = sorted(set(value) - required)
+    if unknown:
+        raise CaseWriteError(f"{name} has unknown fields: {unknown}")
+
+
+def _validate_coordinate_metadata(
+    metadata: Mapping[str, object],
+) -> ProjectionCoordinatesV1:
+    """Validate the source-array and projection bridge without touching bytes."""
+
+    spatial = _require_mapping(metadata, "spatial")
+    if spatial.get("axis_order") != "ZYX" or spatial.get("orientation_code") != "SAR":
+        raise CaseWriteError(
+            "metadata.spatial must identify ZYX array components with positive "
+            "directions SAR; the diagonal array affine is not standard RAS"
+        )
+
+    acquisition = _require_mapping(metadata, "acquisition")
+    raw_contract = acquisition.get("projection_coordinates")
+    try:
+        contract = validate_projection_coordinates_v1(
+            raw_contract,
+            context="metadata.acquisition.projection_coordinates",
+        )
+    except SchemaValidationError as exc:
+        raise CaseWriteError(str(exc)) from exc
+    starting_angle = _finite_number(
+        acquisition.get("starting_angle_deg"),
+        "metadata.acquisition.starting_angle_deg",
+    )
+    if not math.isclose(
+        starting_angle,
+        contract.simind_starting_angle_deg,
+        rel_tol=0.0,
+        abs_tol=1e-9,
+    ):
+        raise CaseWriteError(
+            "metadata.acquisition.starting_angle_deg must match the frozen "
+            "SIMIND coordinate contract"
+        )
+    if acquisition.get("rotation_direction") != contract.rotation_direction:
+        raise CaseWriteError(
+            "metadata.acquisition.rotation_direction must match the frozen "
+            "projection coordinate contract"
+        )
+    return contract
 
 
 def _finite_sequence(
@@ -615,7 +722,7 @@ def _validate_metadata(payload: CasePayloadV2, shape: tuple[int, int, int]) -> d
         raise CaseWriteError("activity mismatch_challenge must be boolean")
 
     spatial = _require_mapping(metadata, "spatial")
-    _require_keys(
+    _require_exact_keys(
         spatial,
         {"affine_4x4", "world_origin_mm", "orientation_code", "axis_order", "reference_phase", "dvf_convention", "dvf_units"},
         "metadata.spatial",
@@ -626,21 +733,55 @@ def _validate_metadata(payload: CasePayloadV2, shape: tuple[int, int, int]) -> d
         raise CaseWriteError("metadata.spatial affine/origin are invalid")
     if not np.allclose(affine[:3, 3], origin, atol=1e-8):
         raise CaseWriteError("metadata.spatial.world_origin_mm must equal affine translation")
-    if spatial["axis_order"] != "ZYX" or spatial["reference_phase"] != "end_expiration":
-        raise CaseWriteError("metadata.spatial must use ZYX and end_expiration")
+    if (
+        spatial["axis_order"] != "ZYX"
+        or spatial["orientation_code"] != "SAR"
+        or spatial["reference_phase"] != "end_expiration"
+    ):
+        raise CaseWriteError(
+            "metadata.spatial must use ZYX components, SAR positive directions, "
+            "and end_expiration"
+        )
     if spatial["dvf_convention"] != "ref_to_phase" or spatial["dvf_units"] != "mm":
         raise CaseWriteError("metadata.spatial must freeze ref_to_phase DVF in mm")
 
     acquisition = _require_mapping(metadata, "acquisition")
-    _require_keys(
+    _require_exact_keys(
         acquisition,
-        {"matrix", "voxel_size_mm", "views", "starting_angle_deg", "rotation_direction", "orbit_cm", "energy_window_kev"},
+        {
+            "matrix",
+            "voxel_size_mm",
+            "views",
+            "starting_angle_deg",
+            "rotation_direction",
+            "orbit_cm",
+            "energy_window_kev",
+            "projection_coordinates",
+        },
         "metadata.acquisition",
     )
     if tuple(acquisition["matrix"]) != shape:
         raise CaseWriteError("metadata.acquisition.matrix must match array shape")
     if acquisition["views"] != 60:
         raise CaseWriteError("metadata.acquisition.views must be 60")
+    coordinate_contract = _validate_coordinate_metadata(metadata)
+    expected_path_angles = np.asarray(
+        [
+            (
+                coordinate_contract.projector_starting_angle_deg
+                + index * 360.0 / int(acquisition["views"])
+            )
+            % 360.0
+            for index in range(int(acquisition["views"]))
+        ],
+        dtype=np.float64,
+    )
+    actual_path_angles = np.asarray(path_lengths["angles_deg"], dtype=np.float64)
+    if not np.allclose(actual_path_angles, expected_path_angles, rtol=0.0, atol=1e-9):
+        raise CaseWriteError(
+            "metadata.actual_metrics.path_lengths.angles_deg must use the frozen "
+            "PAR-S common-projector angles"
+        )
 
     physics = _require_mapping(metadata, "physics")
     _require_keys(
@@ -1097,6 +1238,7 @@ def _resume_matches(
     record: CaseRecordV2,
     root: Path,
 ) -> bool:
+    coordinate_contract = _validate_coordinate_metadata(payload.metadata)
     identity = (
         payload.case_id,
         payload.case_family_id,
@@ -1107,6 +1249,8 @@ def _resume_matches(
         payload.split,
         float(payload.population_weight),
         float(payload.sampling_probability),
+        coordinate_contract.coordinate_contract_id,
+        coordinate_contract.loader_transform_id,
     )
     recorded = (
         record.case_id,
@@ -1118,6 +1262,8 @@ def _resume_matches(
         record.split,
         record.population_weight,
         record.sampling_probability,
+        record.projection_coordinate_contract_id,
+        record.loader_transform_id,
     )
     if identity != recorded:
         return False
@@ -1223,6 +1369,7 @@ def write_case_v2(
                     sha256_file(destination),
                 )
 
+        coordinate_contract = _validate_coordinate_metadata(metadata)
         record = CaseRecordV2(
             case_id=case.case_id,
             case_family_id=case.case_family_id,
@@ -1234,6 +1381,10 @@ def write_case_v2(
             population_weight=float(case.population_weight),
             sampling_probability=float(case.sampling_probability),
             split_plan_sha256=split_plan.sha256,
+            projection_coordinate_contract_id=(
+                coordinate_contract.coordinate_contract_id
+            ),
+            loader_transform_id=coordinate_contract.loader_transform_id,
             artifacts=artifacts,
         )
         (temporary / "case_record.json").write_bytes(canonical_json_bytes(record.to_dict()))
@@ -1272,6 +1423,14 @@ def _validate_record_set(
     for record in items:
         if record.split_plan_sha256 != split_plan_sha256:
             raise DatasetFreezeError(f"case {record.case_id} split plan hash mismatch")
+        if (
+            record.projection_coordinate_contract_id
+            != PROJECTION_COORDINATE_CONTRACT_ID
+            or record.loader_transform_id != FROZEN_LOADER_TRANSFORM_ID
+        ):
+            raise DatasetFreezeError(
+                f"case {record.case_id} record uses an unfrozen projection contract"
+            )
         previous = family_split.setdefault(record.case_family_id, record.split)
         if previous != record.split:
             raise DatasetFreezeError(
@@ -1325,6 +1484,14 @@ def _validate_contract(contract: DatasetContractV2) -> None:
         raise DatasetFreezeError("contract must declare profiles and required artifacts")
     if not _SHA256.fullmatch(contract.split_plan_sha256):
         raise DatasetFreezeError("contract split_plan_sha256 is invalid")
+    if (
+        contract.projection_coordinate_contract_id
+        != PROJECTION_COORDINATE_CONTRACT_ID
+        or contract.loader_transform_id != FROZEN_LOADER_TRANSFORM_ID
+    ):
+        raise DatasetFreezeError(
+            "dataset contract must use the frozen PAR-S projection coordinates"
+        )
 
 
 def freeze_dataset(
@@ -1365,6 +1532,15 @@ def freeze_dataset(
     for record in ordered:
         if record.profile_id not in contract.allowed_profile_ids:
             raise DatasetFreezeError(f"case {record.case_id} uses disallowed profile")
+        if (
+            record.projection_coordinate_contract_id
+            != contract.projection_coordinate_contract_id
+            or record.loader_transform_id != contract.loader_transform_id
+        ):
+            raise DatasetFreezeError(
+                f"case {record.case_id} manifest record violates the dataset "
+                "projection coordinate contract"
+            )
         if plan.family_to_split.get(record.case_family_id) != record.split:
             raise DatasetFreezeError(f"case {record.case_id} violates family split plan")
         prior = family_split.setdefault(record.case_family_id, record.split)
@@ -1388,6 +1564,23 @@ def freeze_dataset(
         }
         if any(metadata.get(key) != value for key, value in identity_fields.items()):
             raise DatasetFreezeError(f"case {record.case_id} metadata/manifest pairing mismatch")
+        try:
+            coordinate_contract = _validate_coordinate_metadata(metadata)
+        except CaseWriteError as exc:
+            raise DatasetFreezeError(
+                f"case {record.case_id} projection coordinate metadata is invalid: {exc}"
+            ) from exc
+        if (
+            coordinate_contract.coordinate_contract_id
+            != contract.projection_coordinate_contract_id
+            or coordinate_contract.loader_transform_id != contract.loader_transform_id
+            or coordinate_contract.coordinate_contract_id
+            != record.projection_coordinate_contract_id
+            or coordinate_contract.loader_transform_id != record.loader_transform_id
+        ):
+            raise DatasetFreezeError(
+                f"case {record.case_id} violates the dataset projection coordinate contract"
+            )
         simulation = metadata.get("simulation")
         quality = metadata.get("quality_control")
         if not isinstance(simulation, dict) or simulation.get("status") != contract.required_simulation_status:
@@ -1442,6 +1635,10 @@ def freeze_dataset(
         split_plan_sha256=contract.split_plan_sha256,
         contract_sha256=contract.sha256,
         required_artifact_names=tuple(sorted(contract.required_artifact_names)),
+        projection_coordinate_contract_id=(
+            contract.projection_coordinate_contract_id
+        ),
+        loader_transform_id=contract.loader_transform_id,
         frozen_utc=datetime.now(timezone.utc).isoformat(),
     )
     atomic_write_json(marker_path, frozen.to_dict())

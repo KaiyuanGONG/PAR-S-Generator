@@ -206,8 +206,8 @@
       "source_type": "physics_standard",
       "verification_status": "verified_local_pdf",
       "locator": "D:/PFE-U/PAR-S-Generator/docs/simind_manual.pdf",
-      "supports": ["voxel_source_histories", "index25", "index26", "flag8", "rr", "nn"],
-      "notes": "Flag 8 controls RNG sequence; voxel source sum defines base histories."
+      "supports": ["voxel_source_histories", "index25", "index26", "flag8", "rr", "nn", "clockwise_rotation", "generic_xcat_basis"],
+      "notes": "Flag 8 controls RNG sequence; voxel source sum defines base histories; positive SPECT rotation is clockwise and Generic XCAT input has a documented basis transform."
     },
     {
       "evidence_id": "ge870-smc-local",
@@ -215,8 +215,8 @@
       "source_type": "physics_standard",
       "verification_status": "verified_local_file",
       "locator": "D:/PFE-U/PAR-S-Generator/simind/ge870_czt.smc",
-      "supports": ["starting_angle", "rotation_extent", "matrix", "voxel_size"],
-      "notes": "Physical coordinate interpretation remains gated by Task 11."
+      "supports": ["starting_angle", "rotation_extent", "rotation_direction", "matrix", "voxel_size"],
+      "notes": "Indices 28-42 and 76-82 are checked against the frozen Task 11 coordinate contract."
     },
     {
       "evidence_id": "tcmmaa-local-acquisition-protocol",
@@ -231,10 +231,10 @@
       "evidence_id": "engineering-simind-v2-runtime",
       "title": "V2 SIMIND runtime and alignment gates",
       "source_type": "engineering_prior",
-      "verification_status": "declared_runtime_contract",
-      "locator": "D:/PFE-U/PAR/docs/superpowers/plans/2026-07-13-par-s-liver-simulation-data-v2.md#task-7",
-      "supports": ["base_histories", "alignment_validation_required"],
-      "notes": "Thresholds are frozen empirically after high-history asymmetric baselines."
+      "verification_status": "verified_coordinate_freeze_with_v2_runtime_revalidation_required",
+      "locator": "D:/PFE-U/PAR-S_2/docs/data/projection_transform_search_report.json",
+      "supports": ["base_histories", "alignment_validation_required", "projection_coordinate_contract", "loader_transform"],
+      "notes": "Task 11 freezes the common-projector angle offset, row-only loader transform, exhaustive search protocol and uniqueness thresholds. Report SHA-256: 3c9e1b061d04ecc2e68ebe6d3439b909df8188dbf57e30ee6bd2606473a6a692. The current-runtime sparse attempt timed out externally and is excluded; Task 12 must revalidate the first three complete formal V2 cases."
     },
     {
       "evidence_id": "engineering-patient-joint-model-v2",

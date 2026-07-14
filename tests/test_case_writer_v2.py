@@ -22,6 +22,7 @@ from core.case_writer_v2 import (  # noqa: E402
     write_split_plan,
 )
 from core.provenance import sha256_file  # noqa: E402
+from core.schemas_v2 import FROZEN_PROJECTION_COORDINATES_V1  # noqa: E402
 from core.seeds import SeedBundle  # noqa: E402
 
 
@@ -114,7 +115,7 @@ def _metadata(
                 "surface_roughness": 0.11,
             },
             "path_lengths": {
-                "angles_deg": [float(index * 6) for index in range(60)],
+                "angles_deg": [float((90 + index * 6) % 360) for index in range(60)],
                 "body": [
                     {"mean_mm": 250.0, "p05_mm": 120.0, "p50_mm": 250.0, "p95_mm": 350.0}
                     for _ in range(60)
@@ -162,7 +163,7 @@ def _metadata(
         "spatial": {
             "affine_4x4": affine.tolist(),
             "world_origin_mm": [-15.47, -17.68, -19.89],
-            "orientation_code": "RAS",
+            "orientation_code": "SAR",
             "axis_order": "ZYX",
             "reference_phase": "end_expiration",
             "dvf_convention": "ref_to_phase",
@@ -173,9 +174,10 @@ def _metadata(
             "voxel_size_mm": 4.42,
             "views": 60,
             "starting_angle_deg": 180.0,
-            "rotation_direction": "simind_positive_pending_common_frame_validation",
+            "rotation_direction": "clockwise",
             "orbit_cm": 30.0,
             "energy_window_kev": [126.0, 154.0],
+            "projection_coordinates": FROZEN_PROJECTION_COORDINATES_V1.to_dict(),
         },
         "physics": {
             "base_histories_per_projection": 80_000,
@@ -287,6 +289,19 @@ def test_writer_emits_strict_npz_json_record_and_hashes(tmp_path: Path) -> None:
     assert metadata["case_id"] == record.case_id
     assert metadata["case_family_id"] == record.case_family_id
     assert metadata["split"] == "train"
+    assert (
+        record.projection_coordinate_contract_id
+        == "pars_simind_v8_xcat_zyx_sar_v1"
+    )
+    assert (
+        record.loader_transform_id
+        == "simind_v8_xcat_v1_views_forward_roll000_det_v_flip_det_u_keep"
+    )
+    assert metadata["spatial"]["orientation_code"] == "SAR"
+    assert (
+        metadata["acquisition"]["projection_coordinates"]
+        == FROZEN_PROJECTION_COORDINATES_V1.to_dict()
+    )
     assert sha256_file(npz_path) == record.artifacts["phantom_npz"].sha256
     assert sha256_file(metadata_path) == record.artifacts["metadata_json"].sha256
     assert load_case_record_v2(record_path, dataset_root=tmp_path, verify_hashes=True) == record
@@ -329,6 +344,41 @@ def test_writer_rejects_incomplete_scientific_metadata(tmp_path: Path) -> None:
     metadata = json.loads(json.dumps(payload.metadata))
     del metadata["actual_metrics"]["path_lengths"]
     with pytest.raises(CaseWriteError, match="actual_metrics.*path_lengths"):
+        write_payload(replace(payload, metadata=metadata), tmp_path)
+
+
+@pytest.mark.parametrize(
+    ("mutation", "message"),
+    [
+        (
+            lambda metadata: metadata["spatial"].__setitem__(
+                "orientation_code", "RAS"
+            ),
+            "SAR",
+        ),
+        (
+            lambda metadata: metadata["acquisition"][
+                "projection_coordinates"
+            ].__setitem__("loader_transform_id", "implicit_flip"),
+            "frozen PAR-S coordinate contract",
+        ),
+        (
+            lambda metadata: metadata["actual_metrics"]["path_lengths"].__setitem__(
+                "angles_deg", [float(index * 6) for index in range(60)]
+            ),
+            "common-projector angles",
+        ),
+    ],
+)
+def test_writer_rejects_unfrozen_coordinate_metadata(
+    tmp_path: Path,
+    mutation,
+    message: str,
+) -> None:
+    payload = make_payload()
+    metadata = json.loads(json.dumps(payload.metadata))
+    mutation(metadata)
+    with pytest.raises(CaseWriteError, match=message):
         write_payload(replace(payload, metadata=metadata), tmp_path)
 
 

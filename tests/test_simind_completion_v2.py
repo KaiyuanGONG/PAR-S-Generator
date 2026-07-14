@@ -42,6 +42,7 @@ def _write_quartet(
                 "ObjectType = Image",
                 "BinaryData = True",
                 "BinaryDataByteOrderMSB = False",
+                "CompressedData = False",
                 "NDims = 3",
                 f"DimSize = {columns} {rows} {views}",
                 "ElementType = MET_FLOAT",
@@ -107,3 +108,33 @@ def test_completion_rejects_non_60_view_contract(tmp_path: Path) -> None:
     stem = _write_quartet(tmp_path, shape=(59, 16, 16))
     with pytest.raises(ValueError, match="60 views"):
         audit_simind_completion(stem, expected_shape=(59, 16, 16), exit_code=0)
+
+
+@pytest.mark.parametrize(
+    ("field", "replacement", "message"),
+    [
+        ("BinaryData = True", "BinaryData = False", "BinaryData"),
+        (
+            "BinaryDataByteOrderMSB = False",
+            "BinaryDataByteOrderMSB = True",
+            "BinaryDataByteOrderMSB",
+        ),
+        ("CompressedData = False", "CompressedData = True", "CompressedData"),
+        ("NDims = 3", "NDims = 2", "NDims"),
+        ("ElementType = MET_FLOAT", "ElementType = MET_DOUBLE", "ElementType"),
+    ],
+)
+def test_completion_rejects_noncanonical_mhd_contract(
+    tmp_path: Path,
+    field: str,
+    replacement: str,
+    message: str,
+) -> None:
+    stem = _write_quartet(tmp_path / message)
+    header = stem.with_suffix(".mhd")
+    header.write_text(
+        header.read_text(encoding="ascii").replace(field, replacement),
+        encoding="ascii",
+    )
+    with pytest.raises(SimindCompletionError, match=message):
+        audit_simind_completion(stem, expected_shape=SHAPE, exit_code=0)

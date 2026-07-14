@@ -12,9 +12,11 @@ sys.path.insert(0, str(REPO_ROOT / "src"))
 
 from core.schemas_v2 import (  # noqa: E402
     CaseMetadataV2,
+    FROZEN_PROJECTION_COORDINATES_V1,
     SchemaValidationError,
     load_evidence_registry,
     load_profile,
+    validate_projection_coordinates_v1,
 )
 
 
@@ -97,6 +99,35 @@ def test_scanner_profile_uses_pds_name_without_changing_geometry() -> None:
     assert scanner.value("matrix") == [128, 128, 128]
     assert scanner.value("views") == 60
     assert scanner.value("activity_time_product_mbq_s") == pytest.approx(1704.0)
+    assert scanner.value("rotation_direction") == "clockwise"
+    assert scanner.value("projection_alignment_gate") == {
+        "candidate_count": 480,
+        "detector_downsample": 8,
+        "bootstrap_candidate_count": 16,
+        "bootstrap_iterations": 200,
+        "bootstrap_seed": 20260714,
+        "noise_relative_sd": 0.005,
+        "minimum_score_margin": 0.005,
+        "minimum_bootstrap_top1_frequency": 0.95,
+        "minimum_case_top1_frequency": 1.0,
+    }
+    assert (
+        validate_projection_coordinates_v1(scanner.value("projection_coordinates"))
+        == FROZEN_PROJECTION_COORDINATES_V1
+    )
+
+
+def test_projection_coordinate_schema_rejects_implicit_or_unknown_transforms() -> None:
+    valid = FROZEN_PROJECTION_COORDINATES_V1.to_dict()
+    assert validate_projection_coordinates_v1(valid) == FROZEN_PROJECTION_COORDINATES_V1
+
+    wrong_loader = dict(valid, loader_transform_id="flip_some_axes")
+    with pytest.raises(SchemaValidationError, match="frozen PAR-S coordinate"):
+        validate_projection_coordinates_v1(wrong_loader)
+
+    unknown = dict(valid, implicit_transform=True)
+    with pytest.raises(SchemaValidationError, match="unknown fields"):
+        validate_projection_coordinates_v1(unknown)
 
 
 def test_schema_rejects_unknown_fields_invalid_probabilities_and_missing_evidence(tmp_path: Path) -> None:
@@ -127,4 +158,3 @@ def test_schema_rejects_unknown_fields_invalid_probabilities_and_missing_evidenc
 def test_case_metadata_has_frozen_v2_schema_name() -> None:
     metadata = CaseMetadataV2(case_id="case_0001", case_family_id="family_0001", profile_id="population_tare_hcc_nopvi_v2")
     assert metadata.schema_version == "pars_syn_v2"
-

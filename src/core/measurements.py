@@ -254,10 +254,15 @@ def measure_path_lengths(
     affine_4x4: np.ndarray,
     *,
     views: int = 60,
-    starting_angle_deg: float = 0.0,
-    rotation_direction: str = "positive",
+    starting_angle_deg: float = 90.0,
+    rotation_direction: str = "clockwise",
 ) -> PathLengthMetricsV2:
-    """Measure positive-ray body/liver path distributions over a transverse 360-degree orbit."""
+    """Measure path distributions in the frozen PAR-S common-projector frame.
+
+    Formal V2 angles start at 90 degrees and increase clockwise.  The labels
+    deliberately match ``SPECTProjector.angles_deg``; callers must not pass
+    raw SIMIND nominal angles (which start at 180 degrees in its native basis).
+    """
     body = _validate_mask(body_mask, "body_mask")
     liver = _validate_mask(liver_mask, "liver_mask")
     if body.shape != liver.shape:
@@ -269,9 +274,11 @@ def measure_path_lengths(
         raise ValueError("transverse voxel spacing must be isotropic for rotation-based path lengths")
     if not isinstance(views, int) or isinstance(views, bool) or views <= 0:
         raise ValueError("views must be a positive integer")
-    if rotation_direction not in {"positive", "negative"}:
-        raise ValueError("rotation_direction must be 'positive' or 'negative'")
-    sign = 1.0 if rotation_direction == "positive" else -1.0
+    if rotation_direction not in {"clockwise", "counterclockwise"}:
+        raise ValueError(
+            "rotation_direction must be 'clockwise' or 'counterclockwise'"
+        )
+    sign = 1.0 if rotation_direction == "clockwise" else -1.0
     angles = tuple((starting_angle_deg + sign * index * 360.0 / views) % 360.0 for index in range(views))
     body_stats = tuple(_path_stats(body, angle, float(spacing[2])) for angle in angles)
     liver_stats = tuple(_path_stats(liver, angle, float(spacing[2])) for angle in angles)

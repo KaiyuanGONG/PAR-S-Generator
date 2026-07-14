@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import json
 import sys
+from dataclasses import replace
 from pathlib import Path
 
 import numpy as np
+import pytest
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -25,7 +27,7 @@ args = sys.argv[1:]
 output_stem = Path(args[1])
 rr = int(next(value.split(':', 1)[1] for value in args if value.startswith('/RR:')))
 rng = np.random.default_rng(rr)
-shape = (60, 16, 16)
+shape = (60, 128, 128)
 values = rng.poisson(4.0, size=shape).astype(np.float32)
 values.tofile(output_stem.with_suffix('.a00'))
 output_stem.with_suffix('.mhd').write_text(
@@ -33,8 +35,9 @@ output_stem.with_suffix('.mhd').write_text(
         'ObjectType = Image',
         'BinaryData = True',
         'BinaryDataByteOrderMSB = False',
+        'CompressedData = False',
         'NDims = 3',
-        'DimSize = 16 16 60',
+        'DimSize = 128 128 60',
         'ElementType = MET_FLOAT',
         f'ElementDataFile = {output_stem.name}.a00',
         '',
@@ -72,7 +75,7 @@ def _spec(
         output_root=root / "output",
         rr_seed=rr_seed,
         nn_multiplier=2,
-        expected_shape=(60, 16, 16),
+        expected_shape=(60, 128, 128),
     )
 
 
@@ -83,6 +86,16 @@ def test_seed_tree_simind_rr_is_stable_unique_and_in_range() -> None:
     assert len(set(first)) == len(first)
     assert min(first) >= 1
     assert max(first) <= 2_147_483_646
+
+
+def test_runner_rejects_projection_shape_that_disagrees_with_smc(tmp_path: Path) -> None:
+    fake_script = tmp_path / "fake_simind.py"
+    _write_fake_simind(fake_script)
+    spec = _spec(tmp_path, fake_script, case_id="case_00001", rr_seed=123)
+    with pytest.raises(ValueError, match="match the frozen SMC projection geometry"):
+        run_simind_case(replace(spec, expected_shape=(60, 16, 16)))
+    with pytest.raises(ValueError, match="three positive integers"):
+        run_simind_case(replace(spec, expected_shape=()))
 
 
 def test_same_rr_reproduces_hash_and_different_rr_changes_noise(tmp_path: Path) -> None:

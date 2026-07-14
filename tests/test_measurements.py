@@ -115,16 +115,14 @@ def test_path_lengths_report_every_view_and_known_axis_aligned_depth() -> None:
         liver,
         affine_zyx(spacing=(2.0, 2.0, 2.0)),
         views=60,
-        starting_angle_deg=0.0,
-        rotation_direction="positive",
     )
 
     assert len(paths.angles_deg) == 60
-    assert paths.angles_deg[:3] == pytest.approx((0.0, 6.0, 12.0))
-    assert paths.body[0].p05_mm == pytest.approx(80.0)
-    assert paths.body[0].p50_mm == pytest.approx(80.0)
-    assert paths.body[0].p95_mm == pytest.approx(80.0)
-    assert paths.liver[0].p50_mm == pytest.approx(40.0)
+    assert paths.angles_deg[:3] == pytest.approx((90.0, 96.0, 102.0))
+    assert paths.body[0].p05_mm == pytest.approx(60.0)
+    assert paths.body[0].p50_mm == pytest.approx(60.0)
+    assert paths.body[0].p95_mm == pytest.approx(60.0)
+    assert paths.liver[0].p50_mm == pytest.approx(32.0)
     assert all(item.mean_mm > 0 for item in paths.body)
     assert all(item.mean_mm > 0 for item in paths.liver)
 
@@ -137,4 +135,3 @@ def test_measurements_reject_empty_masks_and_sheared_affines() -> None:
     sheared[0, 1] = 0.2
     with pytest.raises(ValueError, match="orthogonal"):
         measure_liver(np.ones((8, 8, 8), dtype=bool), sheared)
-

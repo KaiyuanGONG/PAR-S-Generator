@@ -128,6 +128,16 @@ def test_manifest_pairs_records_rejects_duplicates_and_family_leakage(tmp_path: 
     assert len(lines) == len(records)
     assert {line["case_id"] for line in lines} == {record.case_id for record in records}
     assert all("phantom_npz" in line["artifacts"] and "metadata_json" in line["artifacts"] for line in lines)
+    assert all(
+        line["projection_coordinate_contract_id"]
+        == "pars_simind_v8_xcat_zyx_sar_v1"
+        for line in lines
+    )
+    assert all(
+        line["loader_transform_id"]
+        == "simind_v8_xcat_v1_views_forward_roll000_det_v_flip_det_u_keep"
+        for line in lines
+    )
 
     with pytest.raises(DatasetFreezeError, match="duplicate case_id"):
         write_case_manifest(records + (records[0],), tmp_path / "duplicate", split_plan_sha256=plan.sha256)
@@ -153,6 +163,15 @@ def test_record_cannot_borrow_artifact_from_another_case(tmp_path: Path) -> None
         freeze_dataset((corrupted_record, records[1]), contract)
 
 
+def test_manifest_record_cannot_override_dataset_projection_contract(
+    tmp_path: Path,
+) -> None:
+    plan, records = _records(tmp_path, count=2)
+    corrupted = replace(records[0], loader_transform_id="implicit_flip")
+    with pytest.raises(DatasetFreezeError, match="unfrozen projection contract"):
+        freeze_dataset((corrupted, records[1]), _contract(tmp_path, plan, records))
+
+
 def test_freeze_verifies_every_hash_and_writes_complete_marker_last(tmp_path: Path) -> None:
     plan, records = _records(tmp_path)
     frozen = freeze_dataset(records, _contract(tmp_path, plan, records))
@@ -166,7 +185,44 @@ def test_freeze_verifies_every_hash_and_writes_complete_marker_last(tmp_path: Pa
     assert marker_data["status"] == "complete"
     assert marker_data["manifest_sha256"] == sha256_file(manifest)
     assert marker_data["split_counts"] == frozen.split_counts
+    assert (
+        marker_data["projection_coordinate_contract_id"]
+        == "pars_simind_v8_xcat_zyx_sar_v1"
+    )
+    assert (
+        marker_data["loader_transform_id"]
+        == "simind_v8_xcat_v1_views_forward_roll000_det_v_flip_det_u_keep"
+    )
     assert freeze_dataset(records, _contract(tmp_path, plan, records)) == frozen
+
+    marker_data["loader_transform_id"] = "tampered"
+    marker.write_text(json.dumps(marker_data), encoding="utf-8")
+    with pytest.raises(DatasetFreezeError, match="not frozen V2"):
+        freeze_dataset(records, _contract(tmp_path, plan, records))
+
+
+def test_freeze_revalidates_coordinate_metadata_not_only_hashes(tmp_path: Path) -> None:
+    plan, records = _records(tmp_path, count=2)
+    record = records[0]
+    metadata_path = tmp_path / record.artifacts["metadata_json"].relative_path
+    metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+    metadata["acquisition"]["projection_coordinates"][
+        "loader_transform_id"
+    ] = "unversioned_flip"
+    metadata_path.write_text(json.dumps(metadata), encoding="utf-8")
+    artifacts = dict(record.artifacts)
+    artifacts["metadata_json"] = ArtifactRecordV2(
+        relative_path=record.artifacts["metadata_json"].relative_path,
+        size_bytes=metadata_path.stat().st_size,
+        sha256=sha256_file(metadata_path),
+    )
+    rehashed_record = replace(record, artifacts=artifacts)
+
+    with pytest.raises(DatasetFreezeError, match="projection coordinate metadata"):
+        freeze_dataset(
+            (rehashed_record, records[1]),
+            _contract(tmp_path, plan, records),
+        )
 
 
 def test_freeze_failure_never_leaves_completion_marker(tmp_path: Path) -> None:

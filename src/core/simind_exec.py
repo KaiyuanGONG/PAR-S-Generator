@@ -113,6 +113,14 @@ def _validate_spec(spec: SimindRunSpec) -> None:
         raise ValueError("source_bin must pair with case_id and end in _act_av.bin")
     if spec.density_bin.name != f"{spec.case_id}_atn_av.bin":
         raise ValueError("density_bin must pair with case_id and end in _atn_av.bin")
+    if (
+        len(spec.expected_shape) != 3
+        or any(
+            not isinstance(value, int) or isinstance(value, bool) or value <= 0
+            for value in spec.expected_shape
+        )
+    ):
+        raise ValueError("expected_shape must contain three positive integers")
     if spec.expected_shape[0] != 60:
         raise ValueError("expected_shape must use the frozen 60-view protocol")
     build_simind_command(
@@ -125,7 +133,17 @@ def _validate_spec(spec: SimindRunSpec) -> None:
         nn_multiplier=spec.nn_multiplier,
         rr_seed=spec.rr_seed,
     )
-    validate_voxel_source_smc(parse_smc(spec.smc_file))
+    smc_contract = validate_voxel_source_smc(parse_smc(spec.smc_file))
+    expected_projection_shape = (
+        smc_contract.projection_views,
+        smc_contract.image_matrix_xy[1],
+        smc_contract.image_matrix_xy[0],
+    )
+    if spec.expected_shape != expected_projection_shape:
+        raise ValueError(
+            "expected_shape must match the frozen SMC projection geometry "
+            f"{expected_projection_shape}, got {spec.expected_shape}"
+        )
     for key, value in spec.environment_overrides.items():
         if not isinstance(key, str) or not key or not isinstance(value, str):
             raise TypeError("environment_overrides must map non-empty strings to strings")

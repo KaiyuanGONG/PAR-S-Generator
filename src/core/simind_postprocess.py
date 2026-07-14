@@ -60,8 +60,23 @@ def _parse_mhd(path: Path) -> dict[str, str]:
         if "=" not in raw_line:
             continue
         key, value = raw_line.split("=", 1)
-        result[key.strip().lower()] = value.strip()
+        normalized = key.strip().lower()
+        if normalized in result:
+            raise SimindCompletionError(f"MHD contains duplicate field {key.strip()!r}")
+        result[normalized] = value.strip()
     return result
+
+
+def _require_mhd_value(
+    header: Mapping[str, str],
+    key: str,
+    expected: str,
+) -> None:
+    actual = header.get(key.lower())
+    if actual is None or actual.casefold() != expected.casefold():
+        raise SimindCompletionError(
+            f"MHD {key} must be {expected}, got {actual!r}"
+        )
 
 
 def audit_simind_completion(
@@ -103,6 +118,11 @@ def audit_simind_completion(
         )
 
     header = _parse_mhd(paths["mhd"])
+    _require_mhd_value(header, "ObjectType", "Image")
+    _require_mhd_value(header, "BinaryData", "True")
+    _require_mhd_value(header, "BinaryDataByteOrderMSB", "False")
+    _require_mhd_value(header, "CompressedData", "False")
+    _require_mhd_value(header, "NDims", "3")
     try:
         dims_xyz = tuple(int(item) for item in header["dimsize"].split())
     except (KeyError, ValueError) as exc:
@@ -112,8 +132,7 @@ def audit_simind_completion(
         raise SimindCompletionError(
             f"MHD DimSize {dims_xyz} does not match expected {expected_xyz}"
         )
-    if header.get("elementtype", "").upper() != "MET_FLOAT":
-        raise SimindCompletionError("MHD ElementType must be MET_FLOAT")
+    _require_mhd_value(header, "ElementType", "MET_FLOAT")
     element_file = header.get("elementdatafile", "").replace("\\", "/").split("/")[-1]
     if element_file.casefold() != paths["a00"].name.casefold():
         raise SimindCompletionError(

@@ -22,6 +22,16 @@ class SchemaValidationError(ValueError):
     pass
 
 
+PROJECTION_COORDINATE_SCHEMA_VERSION = "pars_projection_coordinates_v1"
+PROJECTION_COORDINATE_CONTRACT_ID = "pars_simind_v8_xcat_zyx_sar_v1"
+PARS_DETECTOR_AXIS_CONTRACT = (
+    "pars_detector_v_plus_source_z__u_plus_rotated_source_y_v1"
+)
+FROZEN_LOADER_TRANSFORM_ID = (
+    "simind_v8_xcat_v1_views_forward_roll000_det_v_flip_det_u_keep"
+)
+
+
 def _require_object(value: Any, context: str) -> dict:
     if not isinstance(value, dict):
         raise SchemaValidationError(f"{context} must be a JSON object")
@@ -147,6 +157,122 @@ class ActivityTargetV2:
 
 
 @dataclass(frozen=True)
+class ProjectionCoordinatesV1:
+    """Frozen bridge from Generator arrays through SIMIND to PAR-S projections.
+
+    The source arrays remain in their established ``(Z, Y, X)`` storage order.
+    ``SAR`` names the positive physical direction represented by those three
+    array components: superior, anterior and right, respectively.  It is not a
+    claim that the diagonal array affine is a standard RAS affine.
+    """
+
+    schema_version: str
+    coordinate_contract_id: str
+    simind_starting_angle_deg: float
+    projector_starting_angle_deg: float
+    rotation_direction: str
+    simind_to_projector_angle_offset_deg: float
+    detector_axis_contract: str
+    loader_transform_id: str
+    source_index_order: str
+    source_positive_directions: str
+    simind_basis_from_source: str
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "schema_version": self.schema_version,
+            "coordinate_contract_id": self.coordinate_contract_id,
+            "simind_starting_angle_deg": self.simind_starting_angle_deg,
+            "projector_starting_angle_deg": self.projector_starting_angle_deg,
+            "rotation_direction": self.rotation_direction,
+            "simind_to_projector_angle_offset_deg": (
+                self.simind_to_projector_angle_offset_deg
+            ),
+            "detector_axis_contract": self.detector_axis_contract,
+            "loader_transform_id": self.loader_transform_id,
+            "source_index_order": self.source_index_order,
+            "source_positive_directions": self.source_positive_directions,
+            "simind_basis_from_source": self.simind_basis_from_source,
+        }
+
+
+FROZEN_PROJECTION_COORDINATES_V1 = ProjectionCoordinatesV1(
+    schema_version=PROJECTION_COORDINATE_SCHEMA_VERSION,
+    coordinate_contract_id=PROJECTION_COORDINATE_CONTRACT_ID,
+    simind_starting_angle_deg=180.0,
+    projector_starting_angle_deg=90.0,
+    rotation_direction="clockwise",
+    simind_to_projector_angle_offset_deg=-90.0,
+    detector_axis_contract=PARS_DETECTOR_AXIS_CONTRACT,
+    loader_transform_id=FROZEN_LOADER_TRANSFORM_ID,
+    source_index_order="ZYX",
+    source_positive_directions="SAR",
+    simind_basis_from_source="Xsim=-Zsrc;Ysim=+Xsrc;Zsim=-Ysrc",
+)
+
+
+def validate_projection_coordinates_v1(
+    value: Any,
+    *,
+    context: str = "projection_coordinates",
+) -> ProjectionCoordinatesV1:
+    """Parse the coordinate object and reject every non-frozen alternative."""
+
+    raw = _require_object(value, context)
+    required = set(FROZEN_PROJECTION_COORDINATES_V1.to_dict())
+    _reject_unknown(raw, required, context)
+    missing = sorted(required - set(raw))
+    if missing:
+        raise SchemaValidationError(f"{context} is missing fields: {missing}")
+
+    string_fields = (
+        "schema_version",
+        "coordinate_contract_id",
+        "rotation_direction",
+        "detector_axis_contract",
+        "loader_transform_id",
+        "source_index_order",
+        "source_positive_directions",
+        "simind_basis_from_source",
+    )
+    strings = {
+        name: _require_string(raw[name], f"{context}.{name}")
+        for name in string_fields
+    }
+
+    numbers: dict[str, float] = {}
+    for name in (
+        "simind_starting_angle_deg",
+        "projector_starting_angle_deg",
+        "simind_to_projector_angle_offset_deg",
+    ):
+        item = raw[name]
+        if (
+            not isinstance(item, (int, float))
+            or isinstance(item, bool)
+            or not math.isfinite(float(item))
+        ):
+            raise SchemaValidationError(f"{context}.{name} must be finite")
+        numbers[name] = float(item)
+
+    parsed = ProjectionCoordinatesV1(
+        **strings,
+        **numbers,
+    )
+    if parsed != FROZEN_PROJECTION_COORDINATES_V1:
+        expected = FROZEN_PROJECTION_COORDINATES_V1.to_dict()
+        actual = parsed.to_dict()
+        mismatches = sorted(
+            name for name in expected if actual[name] != expected[name]
+        )
+        raise SchemaValidationError(
+            f"{context} does not match the frozen PAR-S coordinate contract; "
+            f"mismatched fields: {mismatches}"
+        )
+    return parsed
+
+
+@dataclass(frozen=True)
 class AcquisitionProfileV2:
     matrix: tuple[int, int, int]
     voxel_size_mm: float
@@ -155,6 +281,7 @@ class AcquisitionProfileV2:
     rotation_direction: str
     orbit_cm: float
     energy_window_kev: tuple[float, float]
+    projection_coordinates: ProjectionCoordinatesV1
 
 
 @dataclass(frozen=True)

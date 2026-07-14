@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import sys
+from dataclasses import replace
 from pathlib import Path
 
 import numpy as np
@@ -12,6 +13,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "src"))
 
 from core.interfile_writer import (  # noqa: E402
+    write_bin,
     write_attenuation_map_v2,
     write_voxel_source,
 )
@@ -52,6 +54,19 @@ def test_voxel_source_sum_is_base_histories_not_nn_or_activity_time(tmp_path: Pa
     assert result.activity_time_product_mbq_s is None
 
 
+def test_raw_writer_always_emits_little_endian_c_order(tmp_path: Path) -> None:
+    native_values = np.arange(24, dtype=np.float32).reshape(2, 3, 4)
+    big_endian_noncontiguous = native_values[:, :, ::-1].astype(">f4")
+    path = write_bin(big_endian_noncontiguous, tmp_path / "endian", "_act_av")
+
+    expected = np.asarray(big_endian_noncontiguous, dtype=np.float32)
+    written = np.fromfile(path, dtype="<f4").reshape(expected.shape)
+    assert np.array_equal(written, expected)
+    assert path.read_bytes() == np.asarray(expected, dtype="<f4", order="C").tobytes(
+        order="C"
+    )
+
+
 def test_writer_rejects_invalid_probability_and_mu_input_semantics(tmp_path: Path) -> None:
     with pytest.raises(ValueError, match="non-negative"):
         write_voxel_source(
@@ -89,6 +104,23 @@ def test_smc_and_scanner_contract_keep_four_count_concepts_separate() -> None:
     assert smc.get_flag(8) is True
     assert SMC_FLAG_LABELS[8] == "Random-number sequence control"
     assert SMC_FLAG_LABELS[7].startswith("Crystal rear volume")
+    assert contract.projection_views == 60
+    assert contract.rotation_code == 2
+    assert contract.starting_angle_deg == pytest.approx(180.0)
+    assert contract.projection_pixel_size_cm == pytest.approx(0.442)
+    assert contract.density_pixel_size_cm == pytest.approx(0.442)
+    assert contract.image_matrix_xy == (128, 128)
+    assert contract.density_matrix_ij == (128, 128)
+    assert contract.source_matrix_ij == (128, 128)
+
+
+@pytest.mark.parametrize("index", [28, 29, 30, 31, 32, 34, 41, 42, 76, 77, 78, 79, 81, 82])
+def test_smc_geometry_contract_rejects_every_coordinate_index_drift(index: int) -> None:
+    smc = parse_smc(REPO_ROOT / "simind" / "ge870_czt.smc")
+    values = list(smc.values)
+    values[index - 1] += 1.0
+    with pytest.raises(ValueError, match=rf"Index {index}"):
+        validate_voxel_source_smc(replace(smc, values=tuple(values)))
 
 
 def test_command_requires_case_specific_rr_and_protocol_name_has_28p4s() -> None:
