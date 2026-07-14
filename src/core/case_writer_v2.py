@@ -28,6 +28,7 @@ from .provenance import (
     sha256_json,
 )
 from .seeds import SeedBundle
+from .simind_postprocess import SimindCompletionError, audit_simind_completion
 from .schemas_v2 import (
     FROZEN_LOADER_TRANSFORM_ID,
     PROJECTION_COORDINATE_CONTRACT_ID,
@@ -51,6 +52,13 @@ _SAFE_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,191}$")
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
 _SPLITS = ("train", "val", "test")
 _DATASET_ROLES = ("main", "negative")
+_SIMIND_QUARTET_SUFFIXES: Mapping[str, str] = {
+    "projection_a00": "a00",
+    "projection_mhd": "mhd",
+    "projection_res": "res",
+    "projection_spe": "spe",
+}
+_SIMIND_PROVENANCE_ARTIFACT = "simind_run_provenance"
 
 
 class CaseWriteError(RuntimeError):
@@ -1285,6 +1293,80 @@ def _resume_matches(
     )
 
 
+def _extra_artifact_destination_names(
+    extra_artifacts: Mapping[str, Path],
+) -> dict[str, str]:
+    """Choose safe copy names while preserving the SIMIND quartet pairing."""
+
+    names = set(extra_artifacts)
+    quartet_names = set(_SIMIND_QUARTET_SUFFIXES)
+    touched = names & (quartet_names | {_SIMIND_PROVENANCE_ARTIFACT})
+    if touched and not (quartet_names | {_SIMIND_PROVENANCE_ARTIFACT}).issubset(names):
+        missing = sorted(
+            (quartet_names | {_SIMIND_PROVENANCE_ARTIFACT}) - names
+        )
+        raise CaseWriteError(
+            "SIMIND projection quartet and run provenance are inseparable; "
+            f"missing={missing}"
+        )
+
+    destinations: dict[str, str] = {}
+    if quartet_names.issubset(names):
+        quartet_sources = {
+            name: Path(extra_artifacts[name]) for name in quartet_names
+        }
+        for name, suffix in _SIMIND_QUARTET_SUFFIXES.items():
+            source = quartet_sources[name]
+            if not source.is_file():
+                raise CaseWriteError(f"extra artifact does not exist: {source}")
+            if source.suffix.casefold() != f".{suffix}":
+                raise CaseWriteError(
+                    f"{name} must reference a .{suffix} file, got {source.name}"
+                )
+        stems = {source.stem.casefold() for source in quartet_sources.values()}
+        if len(stems) != 1:
+            raise CaseWriteError("SIMIND quartet source files must share one stem")
+        stem = quartet_sources["projection_a00"].stem
+        _safe_identifier(stem, "SIMIND quartet stem")
+
+        try:
+            mhd_lines = quartet_sources["projection_mhd"].read_text(
+                encoding="ascii", errors="strict"
+            ).splitlines()
+        except (OSError, UnicodeError) as exc:
+            raise CaseWriteError(f"SIMIND MHD cannot be read: {exc}") from exc
+        element_values = [
+            value.strip()
+            for line in mhd_lines
+            if "=" in line
+            for key, value in [line.split("=", 1)]
+            if key.strip().casefold() == "elementdatafile"
+        ]
+        if len(element_values) != 1:
+            raise CaseWriteError("SIMIND MHD must contain exactly one ElementDataFile")
+        element_name = element_values[0].replace("\\", "/").split("/")[-1]
+        if element_name.casefold() != quartet_sources["projection_a00"].name.casefold():
+            raise CaseWriteError(
+                "SIMIND MHD ElementDataFile must name the paired A00 before copying"
+            )
+        destinations.update(
+            {name: quartet_sources[name].name for name in quartet_names}
+        )
+
+    for name, source_value in sorted(extra_artifacts.items()):
+        _safe_identifier(name, "artifact name")
+        if name in destinations:
+            continue
+        source = Path(source_value)
+        if not source.is_file():
+            raise CaseWriteError(f"extra artifact does not exist: {source}")
+        destinations[name] = f"{name}{''.join(source.suffixes)}"
+
+    if len(set(value.casefold() for value in destinations.values())) != len(destinations):
+        raise CaseWriteError("extra artifact destination names collide")
+    return destinations
+
+
 def write_case_v2(
     case: CasePayloadV2,
     output_root: str | Path,
@@ -1353,15 +1435,15 @@ def write_case_v2(
         if case.extra_artifacts:
             artifact_dir = temporary / "artifacts"
             artifact_dir.mkdir()
+            destination_names = _extra_artifact_destination_names(
+                case.extra_artifacts
+            )
             for name, source_value in sorted(case.extra_artifacts.items()):
                 _safe_identifier(name, "artifact name")
                 if name in artifacts:
                     raise CaseWriteError(f"reserved artifact name: {name}")
                 source = Path(source_value)
-                if not source.is_file():
-                    raise CaseWriteError(f"extra artifact does not exist: {source}")
-                suffix = "".join(source.suffixes)
-                destination = artifact_dir / f"{name}{suffix}"
+                destination = artifact_dir / destination_names[name]
                 shutil.copyfile(source, destination)
                 artifacts[name] = ArtifactRecordV2(
                     (final_relative_base / "artifacts" / destination.name).as_posix(),
@@ -1473,6 +1555,270 @@ def _read_case_metadata(record: CaseRecordV2, root: Path) -> Mapping[str, object
     return data
 
 
+def _read_json_artifact(
+    record: CaseRecordV2,
+    root: Path,
+    artifact_name: str,
+) -> Mapping[str, object]:
+    path = resolve_relative_path(record.artifacts[artifact_name].relative_path, root)
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise DatasetFreezeError(
+            f"case {record.case_id} {artifact_name} cannot be read: {exc}"
+        ) from exc
+    if not isinstance(value, dict):
+        raise DatasetFreezeError(
+            f"case {record.case_id} {artifact_name} must be a JSON object"
+        )
+    return value
+
+
+def _command_switch(command: object, prefix: str, case_id: str) -> int:
+    if not isinstance(command, list) or not all(
+        isinstance(value, str) for value in command
+    ):
+        raise DatasetFreezeError(f"case {case_id} SIMIND command is invalid")
+    values = [value for value in command if value.upper().startswith(prefix)]
+    if len(values) != 1:
+        raise DatasetFreezeError(
+            f"case {case_id} SIMIND command must contain exactly one {prefix} switch"
+        )
+    try:
+        return int(values[0].split(":", 1)[1])
+    except (IndexError, ValueError) as exc:
+        raise DatasetFreezeError(
+            f"case {case_id} SIMIND command has an invalid {prefix} switch"
+        ) from exc
+
+
+def _snapshot_hash(value: object, case_id: str, name: str) -> str:
+    if not isinstance(value, Mapping):
+        raise DatasetFreezeError(f"case {case_id} provenance {name} is invalid")
+    digest = value.get("sha256")
+    snapshot = value.get("snapshot")
+    if not isinstance(digest, str) or not _SHA256.fullmatch(digest):
+        raise DatasetFreezeError(
+            f"case {case_id} provenance {name} SHA-256 is invalid"
+        )
+    if not isinstance(snapshot, str) or sha256_bytes(snapshot.encode("utf-8")) != digest:
+        raise DatasetFreezeError(
+            f"case {case_id} provenance {name} snapshot does not match its SHA-256"
+        )
+    return digest
+
+
+def _audit_simind_case_binding(
+    record: CaseRecordV2,
+    root: Path,
+    metadata: Mapping[str, object],
+) -> tuple[object, ...] | None:
+    """Re-audit copied bytes and bind every formal-success identity field."""
+
+    quartet_names = set(_SIMIND_QUARTET_SUFFIXES)
+    all_names = quartet_names | {_SIMIND_PROVENANCE_ARTIFACT}
+    present = set(record.artifacts) & all_names
+    if not present:
+        return None
+    missing = all_names - set(record.artifacts)
+    if missing:
+        raise DatasetFreezeError(
+            f"case {record.case_id} has an incomplete SIMIND evidence set: {sorted(missing)}"
+        )
+
+    paths = {
+        name: resolve_relative_path(record.artifacts[name].relative_path, root)
+        for name in quartet_names
+    }
+    a00_path = paths["projection_a00"]
+    output_stem = a00_path.with_suffix("")
+    for name, suffix in _SIMIND_QUARTET_SUFFIXES.items():
+        if paths[name].resolve() != output_stem.with_suffix(f".{suffix}").resolve():
+            raise DatasetFreezeError(
+                f"case {record.case_id} SIMIND quartet does not share one paired stem"
+            )
+
+    provenance = _read_json_artifact(
+        record, root, _SIMIND_PROVENANCE_ARTIFACT
+    )
+    if (
+        provenance.get("schema_version") != "pars_simind_run_v2"
+        or provenance.get("status") != "complete"
+        or provenance.get("case_id") != record.case_id
+        or provenance.get("exit_code") != 0
+        or not isinstance(provenance.get("protocol_name"), str)
+        or not provenance.get("protocol_name")
+    ):
+        raise DatasetFreezeError(
+            f"case {record.case_id} SIMIND provenance is not a formal successful run"
+        )
+    expected_shape_raw = provenance.get("expected_shape")
+    if not isinstance(expected_shape_raw, list) or len(expected_shape_raw) != 3 or any(
+        not isinstance(value, int) or isinstance(value, bool) or value <= 0
+        for value in expected_shape_raw
+    ):
+        raise DatasetFreezeError(
+            f"case {record.case_id} SIMIND expected_shape is invalid"
+        )
+    expected_shape = tuple(expected_shape_raw)
+    try:
+        audit = audit_simind_completion(
+            output_stem,
+            expected_shape=expected_shape,
+            exit_code=0,
+        )
+    except (SimindCompletionError, ValueError) as exc:
+        raise DatasetFreezeError(
+            f"case {record.case_id} SIMIND quartet strict audit failed: {exc}"
+        ) from exc
+    if provenance.get("completion_audit") != audit.to_dict():
+        raise DatasetFreezeError(
+            f"case {record.case_id} stored SIMIND completion audit does not match copied bytes"
+        )
+
+    simulation = metadata.get("simulation")
+    physics = metadata.get("physics")
+    hashes = metadata.get("config_hashes")
+    if not all(isinstance(value, Mapping) for value in (simulation, physics, hashes)):
+        raise DatasetFreezeError(
+            f"case {record.case_id} SIMIND metadata binding fields are invalid"
+        )
+    assert isinstance(simulation, Mapping)
+    assert isinstance(physics, Mapping)
+    assert isinstance(hashes, Mapping)
+
+    rr_seed = provenance.get("rr_seed")
+    nn_multiplier = provenance.get("nn_multiplier")
+    if (
+        not isinstance(rr_seed, int)
+        or isinstance(rr_seed, bool)
+        or not 1 <= rr_seed <= 2_147_483_646
+        or not isinstance(nn_multiplier, int)
+        or isinstance(nn_multiplier, bool)
+        or nn_multiplier <= 0
+        or rr_seed != physics.get("rr_seed")
+        or nn_multiplier != physics.get("nn_multiplier")
+        or simulation.get("exit_code") != provenance.get("exit_code")
+    ):
+        raise DatasetFreezeError(
+            f"case {record.case_id} SIMIND exit/RR/NN provenance binding mismatch"
+        )
+    timeout_seconds = provenance.get("timeout_seconds")
+    if timeout_seconds is not None and (
+        not isinstance(timeout_seconds, (int, float))
+        or isinstance(timeout_seconds, bool)
+        or not math.isfinite(float(timeout_seconds))
+        or float(timeout_seconds) <= 0
+    ):
+        raise DatasetFreezeError(
+            f"case {record.case_id} SIMIND timeout provenance is invalid"
+        )
+    for command in (provenance.get("command"), simulation.get("command")):
+        if (
+            _command_switch(command, "/RR:", record.case_id) != rr_seed
+            or _command_switch(command, "/NN:", record.case_id) != nn_multiplier
+        ):
+            raise DatasetFreezeError(
+                f"case {record.case_id} SIMIND command RR/NN binding mismatch"
+            )
+
+    binary_digest = provenance.get("binary_sha256")
+    smc_digest = _snapshot_hash(provenance.get("smc"), record.case_id, "smc")
+    ini_digest = _snapshot_hash(
+        provenance.get("simind_ini"), record.case_id, "simind_ini"
+    )
+    if (
+        not isinstance(binary_digest, str)
+        or not _SHA256.fullmatch(binary_digest)
+        or binary_digest != simulation.get("binary_sha256")
+        or smc_digest != simulation.get("smc_snapshot_sha256")
+        or ini_digest != simulation.get("simind_ini_snapshot_sha256")
+        or ini_digest != hashes.get("simind_ini_sha256")
+    ):
+        raise DatasetFreezeError(
+            f"case {record.case_id} SIMIND binary/SMC/INI provenance binding mismatch"
+        )
+
+    inputs = provenance.get("inputs")
+    metadata_inputs = simulation.get("input_sha256")
+    if not isinstance(inputs, Mapping) or not isinstance(metadata_inputs, Mapping) or {
+        "source": inputs.get("source_sha256"),
+        "density": inputs.get("density_sha256"),
+    } != dict(metadata_inputs):
+        raise DatasetFreezeError(
+            f"case {record.case_id} SIMIND input hash provenance binding mismatch"
+        )
+
+    metadata_outputs = simulation.get("output_sha256")
+    artifact_outputs = {
+        suffix: record.artifacts[name].sha256
+        for name, suffix in _SIMIND_QUARTET_SUFFIXES.items()
+    }
+    if (
+        not isinstance(metadata_outputs, Mapping)
+        or dict(metadata_outputs) != dict(audit.sha256)
+        or artifact_outputs != dict(audit.sha256)
+    ):
+        raise DatasetFreezeError(
+            f"case {record.case_id} SIMIND output hash provenance binding mismatch"
+        )
+
+    projection_stats = simulation.get("projection_stats")
+    if not isinstance(projection_stats, Mapping):
+        raise DatasetFreezeError(
+            f"case {record.case_id} SIMIND projection statistics are invalid"
+        )
+    projections = np.memmap(
+        a00_path, dtype="<f4", mode="r", shape=expected_shape
+    )
+    per_view = np.asarray(
+        projections.sum(axis=(1, 2), dtype=np.float64), dtype=np.float64
+    )
+    del projections
+    stored_per_view = np.asarray(
+        projection_stats.get("projection_per_view_weight_sum"), dtype=np.float64
+    )
+    if (
+        projection_stats.get("view_count") != expected_shape[0]
+        or projection_stats.get("finite") is not True
+        or not math.isclose(
+            float(projection_stats.get("projection_weight_sum", math.nan)),
+            audit.projection_sum,
+            rel_tol=1e-9,
+            abs_tol=1e-5,
+        )
+        or stored_per_view.shape != per_view.shape
+        or not np.allclose(stored_per_view, per_view, rtol=1e-9, atol=1e-5)
+    ):
+        raise DatasetFreezeError(
+            f"case {record.case_id} SIMIND projection statistics do not match copied A00"
+        )
+
+    required_config_fields = {
+        "evidence_registry_sha256",
+        "population_config_sha256",
+        "scanner_config_sha256",
+        "simind_ini_sha256",
+    }
+    if set(hashes) != required_config_fields or any(
+        not isinstance(hashes[name], str) or not _SHA256.fullmatch(hashes[name])
+        for name in required_config_fields
+    ):
+        raise DatasetFreezeError(
+            f"case {record.case_id} config hash set is invalid"
+        )
+    return (
+        nn_multiplier,
+        tuple((name, hashes[name]) for name in sorted(required_config_fields)),
+        binary_digest,
+        smc_digest,
+        ini_digest,
+        provenance.get("protocol_name"),
+        expected_shape,
+        None if timeout_seconds is None else float(timeout_seconds),
+    )
+
+
 def _validate_contract(contract: DatasetContractV2) -> None:
     if not isinstance(contract, DatasetContractV2):
         raise DatasetFreezeError("contract must be DatasetContractV2")
@@ -1529,6 +1875,8 @@ def freeze_dataset(
 
     required_artifacts = set(contract.required_artifact_names)
     family_split: dict[str, str] = {}
+    simind_signature: tuple[object, ...] | None = None
+    simind_case_count = 0
     for record in ordered:
         if record.profile_id not in contract.allowed_profile_ids:
             raise DatasetFreezeError(f"case {record.case_id} uses disallowed profile")
@@ -1587,21 +1935,20 @@ def freeze_dataset(
             raise DatasetFreezeError(f"case {record.case_id} simulation status is not freeze-ready")
         if not isinstance(quality, dict) or quality.get("status") != contract.required_quality_status:
             raise DatasetFreezeError(f"case {record.case_id} quality status is not freeze-ready")
-        quartet_names = {
-            "projection_a00": "a00",
-            "projection_mhd": "mhd",
-            "projection_res": "res",
-            "projection_spe": "spe",
-        }
-        if set(quartet_names).issubset(required_artifacts):
-            output_hashes = simulation.get("output_sha256")
-            if not isinstance(output_hashes, dict) or any(
-                record.artifacts[artifact_name].sha256 != output_hashes[suffix]
-                for artifact_name, suffix in quartet_names.items()
-            ):
+        current_signature = _audit_simind_case_binding(record, root, metadata)
+        if current_signature is not None:
+            simind_case_count += 1
+            if simind_signature is None:
+                simind_signature = current_signature
+            elif current_signature != simind_signature:
                 raise DatasetFreezeError(
-                    f"case {record.case_id} projection artifacts do not match SIMIND metadata hashes"
+                    f"case {record.case_id} violates cross-case NN/scanner/config/SIMIND consistency"
                 )
+
+    if simind_case_count not in {0, len(ordered)}:
+        raise DatasetFreezeError(
+            "dataset mixes cases with and without complete SIMIND evidence"
+        )
 
     expected_manifest = _manifest_bytes(ordered)
     if marker_path.exists():

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import math
 import os
 import re
 import shutil
@@ -41,6 +42,7 @@ class SimindRunSpec:
     protocol_name: str = SIMIND_PROTOCOL_NAME_V2
     simind_executable_args: tuple[str, ...] = ()
     environment_overrides: Mapping[str, str] = field(default_factory=dict)
+    timeout_seconds: float | None = None
 
 
 @dataclass(frozen=True)
@@ -53,6 +55,7 @@ class SimindRunResult:
     started_utc: str
     finished_utc: str
     final_dir: Path | None = None
+    failure_dir: Path | None = None
     output_hashes: Mapping[str, str] = field(default_factory=dict)
     error: str = ""
     stdout_tail: str = ""
@@ -147,6 +150,13 @@ def _validate_spec(spec: SimindRunSpec) -> None:
     for key, value in spec.environment_overrides.items():
         if not isinstance(key, str) or not key or not isinstance(value, str):
             raise TypeError("environment_overrides must map non-empty strings to strings")
+    if spec.timeout_seconds is not None and (
+        not isinstance(spec.timeout_seconds, (int, float))
+        or isinstance(spec.timeout_seconds, bool)
+        or not math.isfinite(float(spec.timeout_seconds))
+        or float(spec.timeout_seconds) <= 0
+    ):
+        raise ValueError("timeout_seconds must be a finite positive number or None")
 
 
 def _text_snapshot(path: Path) -> str:
@@ -155,6 +165,14 @@ def _text_snapshot(path: Path) -> str:
 
 def _tail(text: str, limit: int = 4000) -> str:
     return text[-limit:]
+
+
+def _process_text(value: str | bytes | None) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, bytes):
+        return value.decode("utf-8", errors="replace")
+    return value
 
 
 def _failed_result(
@@ -166,6 +184,7 @@ def _failed_result(
     error: str,
     stdout: str = "",
     stderr: str = "",
+    failure_dir: Path | None = None,
 ) -> SimindRunResult:
     return SimindRunResult(
         case_id=spec.case_id,
@@ -175,6 +194,136 @@ def _failed_result(
         expected_shape=spec.expected_shape,
         started_utc=started,
         finished_utc=_utc_now(),
+        failure_dir=failure_dir,
+        error=error,
+        stdout_tail=_tail(stdout),
+        stderr_tail=_tail(stderr),
+    )
+
+
+def _argument_file_hashes(spec: SimindRunSpec) -> dict[str, str]:
+    return {
+        value: sha256_file(Path(value))
+        for value in spec.simind_executable_args
+        if Path(value).is_file()
+    }
+
+
+def _base_provenance(
+    spec: SimindRunSpec,
+    *,
+    status: str,
+    command: tuple[str, ...],
+    started: str,
+    finished: str,
+    exit_code: int | None,
+) -> dict[str, object]:
+    return {
+        "schema_version": "pars_simind_run_v2",
+        "status": status,
+        "case_id": spec.case_id,
+        "protocol_name": spec.protocol_name,
+        "expected_shape": list(spec.expected_shape),
+        "timeout_seconds": (
+            None if spec.timeout_seconds is None else float(spec.timeout_seconds)
+        ),
+        "command": list(command),
+        "environment_overrides": dict(spec.environment_overrides),
+        "rr_seed": spec.rr_seed,
+        "nn_multiplier": spec.nn_multiplier,
+        "exit_code": exit_code,
+        "started_utc": started,
+        "finished_utc": finished,
+        "binary_sha256": sha256_file(spec.simind_exe),
+        "executable_argument_file_sha256": _argument_file_hashes(spec),
+        "smc": {
+            "source_name": Path(spec.smc_file).name,
+            "sha256": sha256_file(spec.smc_file),
+            "snapshot": _text_snapshot(spec.smc_file),
+        },
+        "simind_ini": {
+            "source_name": Path(spec.simind_ini).name,
+            "sha256": sha256_file(spec.simind_ini),
+            "snapshot": _text_snapshot(spec.simind_ini),
+        },
+        "inputs": {
+            "source_sha256": sha256_file(spec.source_bin),
+            "density_sha256": sha256_file(spec.density_bin),
+        },
+    }
+
+
+def _persist_failed_run(
+    spec: SimindRunSpec,
+    *,
+    temp_dir: Path,
+    protocol_dir: Path,
+    command: tuple[str, ...],
+    started: str,
+    exit_code: int | None,
+    failure_kind: str,
+    error: str,
+    stdout: str = "",
+    stderr: str = "",
+) -> SimindRunResult:
+    """Publish an immutable diagnostic attempt outside the formal-success path."""
+
+    finished = _utc_now()
+    stdout_path = temp_dir / "stdout.log"
+    stderr_path = temp_dir / "stderr.log"
+    stdout_path.write_text(stdout, encoding="utf-8", newline="\n")
+    stderr_path.write_text(stderr, encoding="utf-8", newline="\n")
+    provenance = _base_provenance(
+        spec,
+        status="failed",
+        command=command,
+        started=started,
+        finished=finished,
+        exit_code=exit_code,
+    )
+    provenance.update(
+        {
+            "failure_kind": failure_kind,
+            "error": error,
+            "stdout_log": {
+                "relative_path": "stdout.log",
+                "size_bytes": stdout_path.stat().st_size,
+                "sha256": sha256_file(stdout_path),
+            },
+            "stderr_log": {
+                "relative_path": "stderr.log",
+                "size_bytes": stderr_path.stat().st_size,
+                "sha256": sha256_file(stderr_path),
+            },
+            "stdout_tail": _tail(stdout),
+            "stderr_tail": _tail(stderr),
+        }
+    )
+    (temp_dir / "run_provenance.json").write_text(
+        json.dumps(provenance, indent=2, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+        newline="\n",
+    )
+
+    failure_parent = (
+        protocol_dir.parent / "_failures" / spec.protocol_name / spec.case_id
+    )
+    failure_parent.mkdir(parents=True, exist_ok=True)
+    failure_id = (
+        datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S.%fZ")
+        + f"-{uuid.uuid4().hex}"
+    )
+    failure_dir = failure_parent / failure_id
+    os.replace(temp_dir, failure_dir)
+    return SimindRunResult(
+        case_id=spec.case_id,
+        success=False,
+        exit_code=exit_code,
+        command=command,
+        expected_shape=spec.expected_shape,
+        started_utc=started,
+        finished_utc=finished,
+        failure_dir=failure_dir,
         error=error,
         stdout_tail=_tail(stdout),
         stderr_tail=_tail(stderr),
@@ -195,6 +344,39 @@ def run_simind_case(spec: SimindRunSpec) -> SimindRunResult:
     started = _utc_now()
     command: tuple[str, ...] = ()
     completed: subprocess.CompletedProcess[str] | None = None
+
+    def publish_failure(
+        *,
+        exit_code: int | None,
+        failure_kind: str,
+        error: str,
+        stdout: str = "",
+        stderr: str = "",
+    ) -> SimindRunResult:
+        try:
+            return _persist_failed_run(
+                spec,
+                temp_dir=temp_dir,
+                protocol_dir=protocol_dir,
+                command=command,
+                started=started,
+                exit_code=exit_code,
+                failure_kind=failure_kind,
+                error=error,
+                stdout=stdout,
+                stderr=stderr,
+            )
+        except OSError as persist_error:
+            return _failed_result(
+                spec,
+                command=command,
+                started=started,
+                exit_code=exit_code,
+                error=f"{error}; diagnostic persistence failed: {persist_error}",
+                stdout=stdout,
+                stderr=stderr,
+            )
+
     try:
         local_smc = temp_dir / Path(spec.smc_file).name
         local_ini = temp_dir / "simind.ini"
@@ -216,21 +398,34 @@ def run_simind_case(spec: SimindRunSpec) -> SimindRunResult:
         )
         environment = os.environ.copy()
         environment.update(spec.environment_overrides)
-        completed = subprocess.run(
-            command,
-            cwd=temp_dir,
-            env=environment,
-            capture_output=True,
-            text=True,
-            errors="replace",
-            check=False,
-        )
+        try:
+            completed = subprocess.run(
+                command,
+                cwd=temp_dir,
+                env=environment,
+                capture_output=True,
+                text=True,
+                errors="replace",
+                check=False,
+                timeout=spec.timeout_seconds,
+            )
+        except subprocess.TimeoutExpired as exc:
+            stdout = _process_text(exc.stdout)
+            stderr = _process_text(exc.stderr)
+            return publish_failure(
+                exit_code=None,
+                failure_kind="timeout",
+                error=(
+                    "SIMIND timed out after "
+                    f"{float(spec.timeout_seconds):g} seconds"
+                ),
+                stdout=stdout,
+                stderr=stderr,
+            )
         if completed.returncode != 0:
-            return _failed_result(
-                spec,
-                command=command,
-                started=started,
+            return publish_failure(
                 exit_code=completed.returncode,
+                failure_kind="nonzero_exit",
                 error=f"SIMIND exited with code {completed.returncode}",
                 stdout=completed.stdout,
                 stderr=completed.stderr,
@@ -242,53 +437,29 @@ def run_simind_case(spec: SimindRunSpec) -> SimindRunResult:
                 exit_code=completed.returncode,
             )
         except SimindCompletionError as exc:
-            return _failed_result(
-                spec,
-                command=command,
-                started=started,
+            return publish_failure(
                 exit_code=completed.returncode,
+                failure_kind="completion_audit",
                 error=str(exc),
                 stdout=completed.stdout,
                 stderr=completed.stderr,
             )
 
-        argument_file_hashes = {
-            value: sha256_file(Path(value))
-            for value in spec.simind_executable_args
-            if Path(value).is_file()
-        }
-        provenance = {
-            "schema_version": "pars_simind_run_v2",
-            "case_id": spec.case_id,
-            "protocol_name": spec.protocol_name,
-            "expected_shape": list(spec.expected_shape),
-            "command": list(command),
-            "environment_overrides": dict(spec.environment_overrides),
-            "rr_seed": spec.rr_seed,
-            "nn_multiplier": spec.nn_multiplier,
-            "exit_code": completed.returncode,
-            "started_utc": started,
-            "finished_utc": _utc_now(),
-            "binary_sha256": sha256_file(spec.simind_exe),
-            "executable_argument_file_sha256": argument_file_hashes,
-            "smc": {
-                "source_name": Path(spec.smc_file).name,
-                "sha256": sha256_file(spec.smc_file),
-                "snapshot": _text_snapshot(spec.smc_file),
-            },
-            "simind_ini": {
-                "source_name": Path(spec.simind_ini).name,
-                "sha256": sha256_file(spec.simind_ini),
-                "snapshot": _text_snapshot(spec.simind_ini),
-            },
-            "inputs": {
-                "source_sha256": sha256_file(spec.source_bin),
-                "density_sha256": sha256_file(spec.density_bin),
-            },
-            "completion_audit": audit.to_dict(),
-            "stdout_tail": _tail(completed.stdout),
-            "stderr_tail": _tail(completed.stderr),
-        }
+        provenance = _base_provenance(
+            spec,
+            status="complete",
+            command=command,
+            started=started,
+            finished=_utc_now(),
+            exit_code=completed.returncode,
+        )
+        provenance.update(
+            {
+                "completion_audit": audit.to_dict(),
+                "stdout_tail": _tail(completed.stdout),
+                "stderr_tail": _tail(completed.stderr),
+            }
+        )
         (temp_dir / "run_provenance.json").write_text(
             json.dumps(provenance, indent=2, ensure_ascii=False) + "\n",
             encoding="utf-8",
@@ -302,18 +473,16 @@ def run_simind_case(spec: SimindRunSpec) -> SimindRunResult:
             command=command,
             expected_shape=spec.expected_shape,
             started_utc=started,
-            finished_utc=provenance["finished_utc"],
+            finished_utc=str(provenance["finished_utc"]),
             final_dir=final_dir,
             output_hashes=dict(audit.sha256),
             stdout_tail=_tail(completed.stdout),
             stderr_tail=_tail(completed.stderr),
         )
     except (OSError, subprocess.SubprocessError) as exc:
-        return _failed_result(
-            spec,
-            command=command,
-            started=started,
+        return publish_failure(
             exit_code=None if completed is None else completed.returncode,
+            failure_kind="execution_error",
             error=f"SIMIND execution failed: {exc}",
             stdout="" if completed is None else completed.stdout,
             stderr="" if completed is None else completed.stderr,

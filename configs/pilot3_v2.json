@@ -1,0 +1,130 @@
+{
+  "schema_version": "pars_v2_pilot3_plan_v1",
+  "dataset_id": "PAR-S-TARE-HCC-NoPVI-SYN-v2-pilot3",
+  "dataset_version": "2.0.0-pilot3",
+  "dataset_role": "main",
+  "profile_path": "configs/population_tare_hcc_nopvi_v2.json",
+  "scanner_path": "configs/scanner_ge870_tcmma_v1.json",
+  "evidence_registry_path": "configs/evidence_registry_v2.json",
+  "smc_path": "simind/ge870_czt.smc",
+  "simind_ini_path": "configs/simind_v2.ini",
+  "expected_simind_binary_sha256": "f984b8753f54b9f671f9fc1bcb2b45461e7cae8d027376b446dd1ed55a9a8319",
+  "global_seed": 20260714,
+  "split_ratios": {
+    "train": 0.3333333333333333,
+    "val": 0.3333333333333333,
+    "test": 0.3333333333333334
+  },
+  "execution": {
+    "base_histories_per_projection": 80000,
+    "nn_multiplier": 1,
+    "timeout_seconds": 7200,
+    "max_parallel": 1,
+    "purpose": "deterministic_smoke_only_pending_task12_clinical_count_benchmark"
+  },
+  "cases": [
+    {
+      "case_id": "case_00000",
+      "case_family_id": "family_00000",
+      "size_label": "small",
+      "patient": {
+        "sex": "male",
+        "age_years": 52.0,
+        "height_cm": 176.0,
+        "weight_kg": 76.0,
+        "liver_morphology": "normal"
+      },
+      "lesions": [
+        {
+          "dmax_mm": 20.0,
+          "axis_ratios": [0.9, 0.85],
+          "lobe": "left",
+          "morphology": "smooth_nodular",
+          "primitive_count": 1,
+          "subcapsular": false
+        }
+      ],
+      "injection_territory": "whole_liver",
+      "activity_pattern": "physiologic_heterogeneous",
+      "mismatch_challenge": false,
+      "heterogeneous": false,
+      "tnr_mean": 1.9
+    },
+    {
+      "case_id": "case_00001",
+      "case_family_id": "family_00001",
+      "size_label": "medium",
+      "patient": {
+        "sex": "female",
+        "age_years": 64.0,
+        "height_cm": 162.0,
+        "weight_kg": 68.0,
+        "liver_morphology": "cirrhotic"
+      },
+      "lesions": [
+        {
+          "dmax_mm": 55.0,
+          "axis_ratios": [0.82, 0.88],
+          "lobe": "right",
+          "morphology": "smooth_nodular",
+          "primitive_count": 1,
+          "subcapsular": false
+        }
+      ],
+      "injection_territory": "right_lobar",
+      "activity_pattern": "physiologic_heterogeneous",
+      "mismatch_challenge": false,
+      "heterogeneous": true,
+      "tnr_mean": 2.1
+    },
+    {
+      "case_id": "case_00002",
+      "case_family_id": "family_00002",
+      "size_label": "large",
+      "patient": {
+        "sex": "male",
+        "age_years": 70.0,
+        "height_cm": 180.0,
+        "weight_kg": 92.0,
+        "liver_morphology": "cirrhotic"
+      },
+      "lesions": [
+        {
+          "dmax_mm": 90.0,
+          "axis_ratios": [0.72, 0.78],
+          "lobe": "right",
+          "morphology": "lobulated_confluent",
+          "primitive_count": 3,
+          "subcapsular": false
+        },
+        {
+          "dmax_mm": 24.0,
+          "axis_ratios": [0.88, 0.9],
+          "lobe": "left",
+          "morphology": "smooth_nodular",
+          "primitive_count": 1,
+          "subcapsular": false
+        }
+      ],
+      "injection_territory": "left_lobar",
+      "activity_pattern": "physiologic_heterogeneous",
+      "mismatch_challenge": true,
+      "heterogeneous": true,
+      "tnr_mean": 2.3
+    }
+  ],
+  "boundary_gates": [
+    {
+      "dmax_mm": 200.0,
+      "profile_role": "population_upper_boundary",
+      "expected_result": "structural_rejection",
+      "reason": "minimum_allowed_axis_ratios_imply_tumor_volume_above_70_percent_of_maximum_2300_ml_liver"
+    },
+    {
+      "dmax_mm": 215.0,
+      "profile_role": "stress_boundary",
+      "expected_result": "structural_rejection",
+      "reason": "minimum_allowed_axis_ratios_imply_tumor_volume_above_maximum_2300_ml_liver"
+    }
+  ]
+}

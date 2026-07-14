@@ -45,6 +45,7 @@ logs/
 
 # Settings (user-specific)
 *.ini
+!configs/simind_v2.ini
 
 # Pytest / local temp artifacts
 .pytest_cache/

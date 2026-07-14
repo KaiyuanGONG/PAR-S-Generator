@@ -76,6 +76,7 @@ def _spec(
         rr_seed=rr_seed,
         nn_multiplier=2,
         expected_shape=(60, 128, 128),
+        timeout_seconds=10.0,
     )
 
 
@@ -85,7 +86,16 @@ def test_seed_tree_simind_rr_is_stable_unique_and_in_range() -> None:
     assert first == second
     assert len(set(first)) == len(first)
     assert min(first) >= 1
-    assert max(first) <= 2_147_483_646
+    assert max(first) <= 10_007
+    assert first != [
+        SeedBundle.from_case(20260715, f"case_{index:05d}").simind
+        for index in range(1000)
+    ]
+
+
+def test_seed_tree_rejects_numeric_case_index_outside_rr_permutation() -> None:
+    with pytest.raises(ValueError, match="below 10007"):
+        SeedBundle.from_case(20260714, "case_10007")
 
 
 def test_runner_rejects_projection_shape_that_disagrees_with_smc(tmp_path: Path) -> None:
@@ -96,6 +106,8 @@ def test_runner_rejects_projection_shape_that_disagrees_with_smc(tmp_path: Path)
         run_simind_case(replace(spec, expected_shape=(60, 16, 16)))
     with pytest.raises(ValueError, match="three positive integers"):
         run_simind_case(replace(spec, expected_shape=()))
+    with pytest.raises(ValueError, match="timeout_seconds"):
+        run_simind_case(replace(spec, timeout_seconds=0))
 
 
 def test_same_rr_reproduces_hash_and_different_rr_changes_noise(tmp_path: Path) -> None:
@@ -122,6 +134,8 @@ def test_same_rr_reproduces_hash_and_different_rr_changes_noise(tmp_path: Path) 
     provenance = json.loads((first.final_dir / "run_provenance.json").read_text(encoding="utf-8"))
     assert provenance["rr_seed"] == same_rr
     assert provenance["exit_code"] == 0
+    assert provenance["status"] == "complete"
+    assert provenance["timeout_seconds"] == 10.0
     assert provenance["smc"]["snapshot"].startswith("SMCV2")
     assert provenance["simind_ini"]["snapshot"].replace("\r\n", "\n") == "[audit fixture]\n"
     assert len(provenance["binary_sha256"]) == 64
@@ -136,6 +150,43 @@ def test_failed_run_is_atomic_and_leaves_no_formal_case(tmp_path: Path) -> None:
     assert not result.success
     assert result.exit_code == 3
     assert result.final_dir is None
+    assert result.failure_dir is not None and result.failure_dir.is_dir()
+    provenance = json.loads(
+        (result.failure_dir / "run_provenance.json").read_text(encoding="utf-8")
+    )
+    assert provenance["status"] == "failed"
+    assert provenance["failure_kind"] == "nonzero_exit"
+    assert provenance["exit_code"] == 3
+    assert (result.failure_dir / "stdout.log").is_file()
+    assert (result.failure_dir / "stderr.log").is_file()
     protocol_dir = spec.output_root / spec.protocol_name
     assert not (protocol_dir / spec.case_id).exists()
     assert not list(protocol_dir.glob(".*.tmp-*"))
+
+
+def test_timeout_is_frozen_and_publishes_auditable_failure_only(tmp_path: Path) -> None:
+    sleeper = tmp_path / "sleep.py"
+    sleeper.write_text(
+        "import time\nprint('started', flush=True)\ntime.sleep(2)\n",
+        encoding="utf-8",
+    )
+    spec = replace(
+        _spec(tmp_path / "timeout", sleeper, case_id="case_00010", rr_seed=10),
+        timeout_seconds=0.05,
+    )
+    result = run_simind_case(spec)
+
+    assert not result.success
+    assert result.final_dir is None
+    assert result.failure_dir is not None and result.failure_dir.is_dir()
+    provenance = json.loads(
+        (result.failure_dir / "run_provenance.json").read_text(encoding="utf-8")
+    )
+    assert provenance["failure_kind"] == "timeout"
+    assert provenance["timeout_seconds"] == 0.05
+    assert provenance["rr_seed"] == 10
+    assert provenance["nn_multiplier"] == 2
+    stdout_log = result.failure_dir / "stdout.log"
+    assert stdout_log.is_file()
+    assert provenance["stdout_log"]["size_bytes"] == stdout_log.stat().st_size
+    assert not (spec.output_root / spec.protocol_name / spec.case_id).exists()

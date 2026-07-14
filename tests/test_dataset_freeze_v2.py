@@ -6,6 +6,7 @@ import sys
 from dataclasses import replace
 from pathlib import Path
 
+import numpy as np
 import pytest
 
 
@@ -22,7 +23,8 @@ from core.case_writer_v2 import (  # noqa: E402
     write_case_v2,
     write_split_plan,
 )
-from core.provenance import sha256_file  # noqa: E402
+from core.provenance import sha256_bytes, sha256_file  # noqa: E402
+from core.simind_postprocess import audit_simind_completion  # noqa: E402
 from test_case_writer_v2 import _metadata, make_payload  # noqa: E402
 
 
@@ -327,34 +329,135 @@ def test_generate_cli_writes_family_split_and_generation_plan_before_cases(tmp_p
     assert not (output / "cases").exists()
 
 
+def _write_valid_simind_evidence(
+    staging_case: Path,
+    metadata: dict[str, object],
+    *,
+    case_id: str,
+) -> dict[str, str]:
+    output_stem = staging_case / case_id
+    shape = (60, 128, 128)
+    values = np.ones(shape, dtype="<f4")
+    values.tofile(output_stem.with_suffix(".a00"))
+    output_stem.with_suffix(".mhd").write_text(
+        "\n".join(
+            [
+                "ObjectType = Image",
+                "BinaryData = True",
+                "BinaryDataByteOrderMSB = False",
+                "CompressedData = False",
+                "NDims = 3",
+                "DimSize = 128 128 60",
+                "ElementType = MET_FLOAT",
+                f"ElementDataFile = {case_id}.a00",
+                "",
+            ]
+        ),
+        encoding="ascii",
+    )
+    output_stem.with_suffix(".res").write_text("fixture result\n", encoding="ascii")
+    output_stem.with_suffix(".spe").write_bytes(b"fixture spectrum")
+    audit = audit_simind_completion(output_stem, expected_shape=shape, exit_code=0)
+
+    simulation = metadata["simulation"]
+    physics = metadata["physics"]
+    config_hashes = metadata["config_hashes"]
+    assert isinstance(simulation, dict)
+    assert isinstance(physics, dict)
+    assert isinstance(config_hashes, dict)
+    smc_snapshot = "SMCV2 audit fixture\n"
+    ini_snapshot = "[audit fixture]\n"
+    smc_digest = sha256_bytes(smc_snapshot.encode("utf-8"))
+    ini_digest = sha256_bytes(ini_snapshot.encode("utf-8"))
+    source_digest = "d" * 64
+    density_digest = "e" * 64
+    command = [
+        "simind",
+        "ge870_czt",
+        case_id,
+        f"/NN:{physics['nn_multiplier']}",
+        f"/RR:{physics['rr_seed']}",
+    ]
+    simulation.update(
+        {
+            "command": command,
+            "binary_sha256": "b" * 64,
+            "smc_snapshot_sha256": smc_digest,
+            "simind_ini_snapshot_sha256": ini_digest,
+            "input_sha256": {
+                "source": source_digest,
+                "density": density_digest,
+            },
+            "output_sha256": dict(audit.sha256),
+            "projection_stats": {
+                "view_count": 60,
+                "projection_weight_sum": float(values.sum(dtype=np.float64)),
+                "projection_per_view_weight_sum": [
+                    float(value)
+                    for value in values.sum(axis=(1, 2), dtype=np.float64)
+                ],
+                "finite": True,
+            },
+        }
+    )
+    config_hashes["simind_ini_sha256"] = ini_digest
+    provenance = {
+        "schema_version": "pars_simind_run_v2",
+        "status": "complete",
+        "case_id": case_id,
+        "protocol_name": "SPECT_60MBq_28p4s_v2",
+        "expected_shape": list(shape),
+        "timeout_seconds": 7200.0,
+        "command": command,
+        "environment_overrides": {},
+        "rr_seed": physics["rr_seed"],
+        "nn_multiplier": physics["nn_multiplier"],
+        "exit_code": 0,
+        "started_utc": "2026-07-14T00:00:00Z",
+        "finished_utc": "2026-07-14T00:01:00Z",
+        "binary_sha256": simulation["binary_sha256"],
+        "executable_argument_file_sha256": {},
+        "smc": {
+            "source_name": "ge870_czt.smc",
+            "sha256": smc_digest,
+            "snapshot": smc_snapshot,
+        },
+        "simind_ini": {
+            "source_name": "simind.ini",
+            "sha256": ini_digest,
+            "snapshot": ini_snapshot,
+        },
+        "inputs": {
+            "source_sha256": source_digest,
+            "density_sha256": density_digest,
+        },
+        "completion_audit": audit.to_dict(),
+        "stdout_tail": "",
+        "stderr_tail": "",
+    }
+    (staging_case / "run_provenance.json").write_text(
+        json.dumps(provenance), encoding="utf-8"
+    )
+    return {
+        "projection_a00": f"{case_id}.a00",
+        "projection_mhd": f"{case_id}.mhd",
+        "projection_res": f"{case_id}.res",
+        "projection_spe": f"{case_id}.spe",
+        "simind_run_provenance": "run_provenance.json",
+    }
+
+
 def test_cli_ingest_then_freeze_requires_and_binds_simind_artifacts(tmp_path: Path) -> None:
     output = tmp_path / "dataset"
     staging_case = tmp_path / "staging" / "case_00000"
     staging_case.mkdir(parents=True)
     payload = make_payload("case_00000", family_id="family_00000")
     npz_path = staging_case / "phantom.npz"
-    import numpy as np
-
     np.savez_compressed(npz_path, **payload.arrays)
-    artifact_files = {
-        "projection_a00": "projection.a00",
-        "projection_mhd": "projection.mhd",
-        "projection_res": "projection.res",
-        "projection_spe": "projection.spe",
-        "simind_run_provenance": "run_provenance.json",
-    }
-    for index, relative in enumerate(artifact_files.values(), start=1):
-        (staging_case / relative).write_bytes(f"artifact-{index}".encode("ascii"))
     metadata = _metadata(case_id="case_00000")
-    for artifact_name, suffix in (
-        ("projection_a00", "a00"),
-        ("projection_mhd", "mhd"),
-        ("projection_res", "res"),
-        ("projection_spe", "spe"),
-    ):
-        metadata["simulation"]["output_sha256"][suffix] = sha256_file(
-            staging_case / artifact_files[artifact_name]
-        )
+    artifact_files = _write_valid_simind_evidence(
+        staging_case, metadata, case_id="case_00000"
+    )
     (staging_case / "payload.json").write_text(
         json.dumps(
             {"metadata": metadata, "extra_artifacts": artifact_files},
@@ -381,6 +484,30 @@ def test_cli_ingest_then_freeze_requires_and_binds_simind_artifacts(tmp_path: Pa
     )
     assert generated.returncode == 0, generated.stderr
     assert json.loads(generated.stdout)["written_case_count"] == 1
+    case_record = json.loads(
+        (output / "cases" / "case_00000" / "case_record.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    copied_projection_names = {
+        name: Path(case_record["artifacts"][name]["relative_path"]).name
+        for name in (
+            "projection_a00",
+            "projection_mhd",
+            "projection_res",
+            "projection_spe",
+        )
+    }
+    assert copied_projection_names == {
+        "projection_a00": "case_00000.a00",
+        "projection_mhd": "case_00000.mhd",
+        "projection_res": "case_00000.res",
+        "projection_spe": "case_00000.spe",
+    }
+    copied_mhd = output / case_record["artifacts"]["projection_mhd"]["relative_path"]
+    assert "ElementDataFile = case_00000.a00" in copied_mhd.read_text(
+        encoding="ascii"
+    )
 
     frozen = subprocess.run(
         [
@@ -406,3 +533,108 @@ def test_cli_ingest_then_freeze_requires_and_binds_simind_artifacts(tmp_path: Pa
         "projection_spe",
         "simind_run_provenance",
     }
+
+
+def _formal_simind_contract(root: Path, plan, records) -> DatasetContractV2:
+    return DatasetContractV2(
+        output_root=root,
+        dataset_id="PAR-S-TARE-HCC-NoPVI-SYN-v2-test",
+        dataset_version="2.0.0-test",
+        dataset_role="main",
+        expected_case_ids=tuple(record.case_id for record in records),
+        allowed_profile_ids=("population_tare_hcc_nopvi_v2",),
+        split_plan_sha256=plan.sha256,
+        required_artifact_names=(
+            "phantom_npz",
+            "metadata_json",
+            "projection_a00",
+            "projection_mhd",
+            "projection_res",
+            "projection_spe",
+            "simind_run_provenance",
+        ),
+    )
+
+
+def test_freeze_rejects_rehashed_run_provenance_rr_binding_mismatch(
+    tmp_path: Path,
+) -> None:
+    family = "family_00000"
+    case_id = "case_00000"
+    plan = build_split_plan(
+        [family],
+        dataset_id="PAR-S-TARE-HCC-NoPVI-SYN-v2-test",
+        profile_id="population_tare_hcc_nopvi_v2",
+        global_seed=20260714,
+        ratios={"train": 1.0, "val": 0.0, "test": 0.0},
+    )
+    write_split_plan(plan, tmp_path)
+    staging = tmp_path / "simind" / case_id
+    staging.mkdir(parents=True)
+    payload = make_payload(case_id, family_id=family)
+    metadata = json.loads(json.dumps(payload.metadata))
+    artifact_files = _write_valid_simind_evidence(
+        staging, metadata, case_id=case_id
+    )
+    provenance_path = staging / artifact_files["simind_run_provenance"]
+    provenance = json.loads(provenance_path.read_text(encoding="utf-8"))
+    provenance["rr_seed"] += 1
+    provenance_path.write_text(json.dumps(provenance), encoding="utf-8")
+    record = write_case_v2(
+        replace(
+            payload,
+            metadata=metadata,
+            extra_artifacts={
+                name: staging / relative for name, relative in artifact_files.items()
+            },
+        ),
+        tmp_path,
+    )
+
+    with pytest.raises(DatasetFreezeError, match="exit/RR/NN.*mismatch"):
+        freeze_dataset((record,), _formal_simind_contract(tmp_path, plan, (record,)))
+    assert not (tmp_path / "DATASET_COMPLETE.json").exists()
+
+
+def test_freeze_rejects_cross_case_nn_scanner_or_config_drift(tmp_path: Path) -> None:
+    families = ("family_00000", "family_00001")
+    plan = build_split_plan(
+        families,
+        dataset_id="PAR-S-TARE-HCC-NoPVI-SYN-v2-test",
+        profile_id="population_tare_hcc_nopvi_v2",
+        global_seed=20260714,
+        ratios={"train": 1.0, "val": 0.0, "test": 0.0},
+    )
+    write_split_plan(plan, tmp_path)
+    records = []
+    for index, family in enumerate(families):
+        case_id = f"case_{index:05d}"
+        staging = tmp_path / "simind" / case_id
+        staging.mkdir(parents=True)
+        payload = make_payload(case_id, family_id=family)
+        metadata = json.loads(json.dumps(payload.metadata))
+        artifact_files = _write_valid_simind_evidence(
+            staging, metadata, case_id=case_id
+        )
+        if index == 1:
+            metadata["config_hashes"]["scanner_config_sha256"] = "9" * 64
+        records.append(
+            write_case_v2(
+                replace(
+                    payload,
+                    metadata=metadata,
+                    extra_artifacts={
+                        name: staging / relative
+                        for name, relative in artifact_files.items()
+                    },
+                ),
+                tmp_path,
+            )
+        )
+
+    with pytest.raises(DatasetFreezeError, match="cross-case NN/scanner/config"):
+        freeze_dataset(
+            tuple(records),
+            _formal_simind_contract(tmp_path, plan, tuple(records)),
+        )
+    assert not (tmp_path / "DATASET_COMPLETE.json").exists()
