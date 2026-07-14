@@ -30,6 +30,8 @@ PARS_DETECTOR_AXIS_CONTRACT = (
 FROZEN_LOADER_TRANSFORM_ID = (
     "simind_v8_xcat_v1_views_forward_roll000_det_v_flip_det_u_keep"
 )
+PARS_V2_TO_PARD_BRIDGE_SCHEMA_VERSION = "pars_v2_to_pard_reference_bridge_v1"
+PARS_V2_SOURCE_WORLD_FRAME_ID = "pars_v2_centered_sar_world_v1"
 
 
 def _require_object(value: Any, context: str) -> dict:
@@ -209,6 +211,157 @@ FROZEN_PROJECTION_COORDINATES_V1 = ProjectionCoordinatesV1(
     source_positive_directions="SAR",
     simind_basis_from_source="Xsim=-Zsrc;Ysim=+Xsrc;Zsim=-Ysrc",
 )
+
+
+@dataclass(frozen=True)
+class ParsV2ToPardBridgeV1:
+    """Frozen semantic contract for materializing a PAR-D reference phase.
+
+    PAR-S does not produce a DVF.  The DVF fields below describe what the
+    downstream bridge must require from an XCAT/DVF provider; none may be
+    inferred from array shape.  ``world_frame_id`` and an explicit registration
+    are owned by the bridge because PAR-S and XCAT are independent anatomies.
+    """
+
+    schema_version: str
+    source_schema_version: str
+    source_world_frame_id: str
+    canonical_world_basis: str
+    source_array_keys: tuple[str, ...]
+    source_spatial_keys: tuple[str, ...]
+    required_grid_fields: tuple[str, ...]
+    lesion_center_path: str
+    activity_target_key: str
+    mu_target_key: str
+    organ_target_key: str
+    lesion_target_key: str
+    family_target_key: str
+    source_reference_phase: str
+    target_reference_phase: str
+    source_axis_order: str
+    source_orientation_code: str
+    dvf_direction: str
+    dvf_units: str
+    dvf_domain: str
+    dvf_layout: str
+    required_dvf_fields: tuple[str, ...]
+    activity_interpolation: str
+    mu_interpolation: str
+    mask_interpolation: str
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "schema_version": self.schema_version,
+            "source_schema_version": self.source_schema_version,
+            "source_world_frame_id": self.source_world_frame_id,
+            "canonical_world_basis": self.canonical_world_basis,
+            "source_array_keys": list(self.source_array_keys),
+            "source_spatial_keys": list(self.source_spatial_keys),
+            "required_grid_fields": list(self.required_grid_fields),
+            "lesion_center_path": self.lesion_center_path,
+            "activity_target_key": self.activity_target_key,
+            "mu_target_key": self.mu_target_key,
+            "organ_target_key": self.organ_target_key,
+            "lesion_target_key": self.lesion_target_key,
+            "family_target_key": self.family_target_key,
+            "source_reference_phase": self.source_reference_phase,
+            "target_reference_phase": self.target_reference_phase,
+            "source_axis_order": self.source_axis_order,
+            "source_orientation_code": self.source_orientation_code,
+            "dvf_direction": self.dvf_direction,
+            "dvf_units": self.dvf_units,
+            "dvf_domain": self.dvf_domain,
+            "dvf_layout": self.dvf_layout,
+            "required_dvf_fields": list(self.required_dvf_fields),
+            "activity_interpolation": self.activity_interpolation,
+            "mu_interpolation": self.mu_interpolation,
+            "mask_interpolation": self.mask_interpolation,
+        }
+
+
+FROZEN_PARS_V2_TO_PARD_BRIDGE_V1 = ParsV2ToPardBridgeV1(
+    schema_version=PARS_V2_TO_PARD_BRIDGE_SCHEMA_VERSION,
+    source_schema_version="pars_syn_v2",
+    source_world_frame_id=PARS_V2_SOURCE_WORLD_FRAME_ID,
+    canonical_world_basis="RAS_mm",
+    source_array_keys=(
+        "activity_probability",
+        "mu_true_140kev",
+        "liver_mask",
+        "tumor_instance_mask",
+    ),
+    source_spatial_keys=(
+        "affine_4x4",
+        "world_origin_mm",
+        "orientation_code",
+        "axis_order",
+        "reference_phase",
+        "dvf_convention",
+        "dvf_units",
+    ),
+    required_grid_fields=(
+        "shape_zyx",
+        "affine_4x4",
+        "world_origin_mm",
+        "orientation_code",
+        "axis_order",
+        "reference_phase",
+        "world_frame_id",
+        "phase_id",
+    ),
+    lesion_center_path="actual_metrics.tumors.lesions[].center_world_mm",
+    activity_target_key="activity_ref",
+    mu_target_key="mu_ref",
+    organ_target_key="organ_ref",
+    lesion_target_key="lesion_ref",
+    family_target_key="dynamic_case_family_id",
+    source_reference_phase="end_expiration",
+    target_reference_phase="phase_0",
+    source_axis_order="ZYX",
+    source_orientation_code="SAR",
+    dvf_direction="ref_to_phase",
+    dvf_units="mm",
+    dvf_domain="reference_grid",
+    dvf_layout="ZYX3",
+    required_dvf_fields=(
+        "values",
+        "reference_grid",
+        "phase_grid",
+        "dynamic_case_family_id",
+        "reference_phase_id",
+        "target_phase_id",
+        "direction",
+        "units",
+        "component_order",
+        "domain",
+        "layout",
+    ),
+    activity_interpolation="mass_conserving_trilinear",
+    mu_interpolation="trilinear",
+    mask_interpolation="deterministic_forward_nearest",
+)
+
+
+def validate_pars_v2_to_pard_bridge_v1(
+    value: Any,
+    *,
+    context: str = "pars_v2_to_pard_bridge",
+) -> ParsV2ToPardBridgeV1:
+    """Reject any drift from the frozen cross-repository bridge contract."""
+
+    raw = _require_object(value, context)
+    expected = FROZEN_PARS_V2_TO_PARD_BRIDGE_V1.to_dict()
+    _reject_unknown(raw, set(expected), context)
+    missing = sorted(set(expected) - set(raw))
+    if missing:
+        raise SchemaValidationError(f"{context} is missing fields: {missing}")
+    mismatches = sorted(name for name in expected if raw[name] != expected[name])
+    if mismatches:
+        raise SchemaValidationError(
+            f"{context} does not match the frozen PAR-S V2 to PAR-D bridge; "
+            f"mismatched fields: {mismatches}"
+        )
+    return FROZEN_PARS_V2_TO_PARD_BRIDGE_V1
 
 
 def validate_projection_coordinates_v1(

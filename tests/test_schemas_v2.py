@@ -12,10 +12,12 @@ sys.path.insert(0, str(REPO_ROOT / "src"))
 
 from core.schemas_v2 import (  # noqa: E402
     CaseMetadataV2,
+    FROZEN_PARS_V2_TO_PARD_BRIDGE_V1,
     FROZEN_PROJECTION_COORDINATES_V1,
     SchemaValidationError,
     load_evidence_registry,
     load_profile,
+    validate_pars_v2_to_pard_bridge_v1,
     validate_projection_coordinates_v1,
 )
 
@@ -128,6 +130,41 @@ def test_projection_coordinate_schema_rejects_implicit_or_unknown_transforms() -
     unknown = dict(valid, implicit_transform=True)
     with pytest.raises(SchemaValidationError, match="unknown fields"):
         validate_projection_coordinates_v1(unknown)
+
+
+def test_pars_v2_to_pard_bridge_freezes_keys_world_frame_and_dvf_semantics() -> None:
+    frozen = FROZEN_PARS_V2_TO_PARD_BRIDGE_V1.to_dict()
+    assert validate_pars_v2_to_pard_bridge_v1(frozen) == FROZEN_PARS_V2_TO_PARD_BRIDGE_V1
+    assert frozen["source_array_keys"] == [
+        "activity_probability",
+        "mu_true_140kev",
+        "liver_mask",
+        "tumor_instance_mask",
+    ]
+    assert frozen["source_world_frame_id"] == "pars_v2_centered_sar_world_v1"
+    assert frozen["canonical_world_basis"] == "RAS_mm"
+    assert frozen["dvf_direction"] == "ref_to_phase"
+    assert frozen["dvf_units"] == "mm"
+    assert frozen["dvf_domain"] == "reference_grid"
+    assert frozen["dvf_layout"] == "ZYX3"
+    assert "component_order" in frozen["required_dvf_fields"]
+    assert "dynamic_case_family_id" in frozen["required_dvf_fields"]
+    assert "target_phase_id" in frozen["required_dvf_fields"]
+    assert "phase_id" in frozen["required_grid_fields"]
+    assert frozen["mask_interpolation"] == "deterministic_forward_nearest"
+
+    for key, wrong in (
+        ("dvf_direction", "phase_to_ref"),
+        ("dvf_units", "voxel"),
+        ("dvf_domain", "phase_grid"),
+        ("source_orientation_code", "RAS"),
+    ):
+        mutated = dict(frozen, **{key: wrong})
+        with pytest.raises(SchemaValidationError, match="frozen PAR-S V2 to PAR-D"):
+            validate_pars_v2_to_pard_bridge_v1(mutated)
+
+    with pytest.raises(SchemaValidationError, match="unknown fields"):
+        validate_pars_v2_to_pard_bridge_v1(dict(frozen, infer_from_shape=True))
 
 
 def test_schema_rejects_unknown_fields_invalid_probabilities_and_missing_evidence(tmp_path: Path) -> None:
