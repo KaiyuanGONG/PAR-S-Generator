@@ -1,39 +1,108 @@
-# PAR-S V2 Task 12：首批 3 例 pilot 报告
+# PAR-S V2 Task 12 pilot-3 report
 
-- Generator gate：**PASS**
-- Dataset：`PAR-S-TARE-HCC-NoPVI-SYN-v2-pilot3` / `2.0.0-pilot3`
-- 冻结病例数：3
-- Manifest SHA-256：`900b3ec8dc71b388e8d5aa79a752677e755043b705b057ab57e9f2e1bc512dbd`
-- `/NN=1` 仅用于 deterministic smoke；不能据此声明临床计数标定完成。
-- 200 mm 与 215 mm 为预期结构性拒绝边界，不伪装成可完整 containment 的主人群病例。
+Date: 2026-07-14
 
-## 病例结果
+## Outcome
 
-| Case | Split | 肝形态 | 目标 Dmax (mm) | 实际 RECIST (mm) | 叶范围 | 注射区 | Mismatch | /RR | 投影权重和 |
-|---|---|---|---:|---:|---|---|---|---:|---:|
-| case_00000 | train | normal | 20.0 | 18.75 | unilobar | whole_liver | False | 7765 | 750112 |
-| case_00001 | test | cirrhotic | 55.0 | 54.87 | unilobar | right_lobar | False | 5706 | 961086 |
-| case_00002 | val | cirrhotic | 90.0, 24.0 | 89.80, 25.70 | bilobar | left_lobar | True | 3647 | 776081 |
+The first three V2 pilot cases were generated through the production V2 writer,
+SIMIND runner, manifest writer, split-before-generation policy, and freeze
+marker. Generator validation and PAR-S_2 frozen-manifest loading both pass.
 
-## 当前结论
+The dedicated current-runtime coordinate fixture also passes and recovers the
+frozen projection transform. However, the clinical three-case full-physics
+alignment search remains non-unique at both `/NN=1` and `/NN=5`, so expansion
+to 15 cases remains NO-GO until the clinical alignment criterion is revised and
+versioned.
 
-Generator 端生成、SIMIND、原子 case writer 与 dataset freeze 均已通过；
-PAR-S_2 也已通过冻结 manifest 的 train/val/test 实际加载门禁。多切面、投影
-sinogram 与每视角权重的只读复核见
-[`v2_pilot3_overview.png`](v2_pilot3_overview.png)，其 SHA-256 为
-`908b577f84531ce4d2f422864008abf5350c4f168e03b8ba39dc1aae1c5d4489`；未见病灶截断、
-mask 错位或非有限投影。
+## Frozen dataset
 
-Task 11 原冻结变换在 3 例合并搜索中仍排名第一，但 NN=1 smoke 的唯一性门禁未通过：
-score margin `0.002931 < 0.005`、bootstrap top-1 `0.34 < 0.95`、逐病例一致率
-`1/3 < 1.0`。这不是一个统一的 loader 方向错误；替代最优解在病例间分别为不同的
-reverse/roll 组合。复核进一步发现 Task 11 阈值的实际基线是 `80,000 × /NN=5`
-（约 400,000 histories/projection），而本数据集按设计仅为 `/NN=1`。
+- Dataset ID: `PAR-S-TARE-HCC-NoPVI-SYN-v2-pilot3`
+- Version: `2.0.0-pilot3`
+- Frozen root: `D:\PFE-U\PAR\outputs\pars_v2_pilot3_r2`
+- Work root: `D:\PFE-U\PAR\outputs\pars_v2_pilot3_r2_work`
+- Manifest SHA-256:
+  `900b3ec8dc71b388e8d5aa79a752677e755043b705b057ab57e9f2e1bc512dbd`
+- Contract SHA-256:
+  `9b4a2617d4c58553226a1319e24650f301021a0da12ef0eee37f4d656655e45b`
+- Freeze marker SHA-256:
+  `da0ec057bdbe2322be7d8cb9ca63525bd0f6923e09a6e6b3878cd0cc1996db7f`
+- File count: `43`
+- Size: `64.82 MiB`
+- Split: train `1`, val `1`, test `1`
 
-因此当前状态为：**3 例数据冻结与 loader PASS，但扩大到 15 例仍为 NO-GO**。
-下一门禁是在不覆盖正式四件套的独立目录中，对同一冻结 phantom/source/density
-运行 `/NN=5` companion 并原样重跑 480 候选阈值；若仍不唯一，再运行同历史水平、
-强非对称、零衰减的 current-runtime 坐标 fixture。禁止降低阈值或挑选病例绕过。
+## Cases
 
-完整非 UI 回归还发现并修复了 main/negative `/RR` 跨前缀碰撞：正式 500+50
-现共享一个仿射置换并占用不重叠槽位，同时保持本批三例已冻结 `/RR` 不变。
+| Case | Split | Liver phenotype | Actual RECIST mm | Perfusion | Mismatch | `/RR` | Projection sum |
+|---|---|---|---:|---|---|---:|---:|
+| `case_00000` | train | normal | `18.75` | whole_liver | false | `7765` | `750112` |
+| `case_00001` | test | cirrhotic | `54.87` | right_lobar | false | `5706` | `961086` |
+| `case_00002` | val | cirrhotic | `89.80`, `25.70` | left_lobar | true | `3647` | `776081` |
+
+The 200 mm and 215 mm boundary examples are retained as expected structural
+rejects because their rasterized liver/tumor volume burden exceeds the locked
+profile maximum.
+
+## Visual check
+
+Visual summary:
+`D:\PFE-U\PAR\.worktrees\PAR-S-Generator-task12\docs\reports\v2_pilot3_overview.png`
+
+SHA-256:
+`908b577f84531ce4d2f422864008abf5350c4f168e03b8ba39dc1aae1c5d4489`
+
+The board contains axial, coronal and sagittal mu-input slices with liver,
+tumor and perfusion overlays, plus sinogram and per-view projection curves for
+all three cases. Manual inspection found no clipping, non-finite projection,
+tumor mask offset, or obvious case-writer alignment error.
+
+## Alignment gates
+
+Formal clinical pilot NN=1 search:
+
+- Preferred transform:
+  `simind_v8_xcat_v1_views_forward_roll000_det_v_flip_det_u_keep`
+- Score margin: `0.0029309524`
+- Bootstrap top-1 frequency: `0.34`
+- Per-case top-1 frequency: `0.3333333333`
+- Result: FAIL uniqueness
+
+Same-case clinical NN=5 companion:
+
+- Preferred transform:
+  `simind_v8_xcat_v1_views_forward_roll000_det_v_flip_det_u_keep`
+- Score margin: `0.0028330725`
+- Bootstrap top-1 frequency: `0.34`
+- Per-case top-1 frequency: `0.3333333333`
+- Result: FAIL uniqueness
+
+Dedicated current-runtime sparse coordinate fixture:
+
+- Descriptor:
+  `D:\PFE-U\PAR\outputs\projection_coordinate_fixtures_v2\projection_alignment_cases_v1.json`
+- Descriptor SHA-256:
+  `db1608dfb164f31a5f74d3bd68a3ecd6c504e4eccd8f9e6f8deab469845854db`
+- Preferred transform:
+  `simind_v8_xcat_v1_views_forward_roll000_det_v_flip_det_u_keep`
+- Score margin: `0.0074740511`
+- Bootstrap top-1 frequency: `1.0`
+- Per-case top-1 frequency: `1.0`
+- Result: PASS
+
+## Verification
+
+- Generator full non-UI regression: `181 passed`
+- PAR-S_2 focused/frozen loader tests: `43 passed`
+- PAR-D Task 11B bridge tests: `46 passed`
+- Generator gate report: `docs/reports/v2_pilot3_generator_gate.json`
+- PAR-S_2 loader gate report:
+  `D:\PFE-U\PAR\.worktrees\PAR-S_2-task12\docs\reports\v2_pilot_pars_loader_gate.json`
+- PAR-S_2 alignment audit:
+  `D:\PFE-U\PAR\.worktrees\PAR-S_2-task12\docs\reports\v2_pilot3_alignment_audit.md`
+
+## Decision
+
+Task 12 pilot-3 generation and freeze are complete. The coordinate convention is
+validated by the dedicated current-runtime fixture. The clinical alignment gate
+does not support expansion yet, because the simplified analytic projector cannot
+uniquely discriminate the transform on these three full-physics clinical
+phantoms. Do not expand to 15 cases until that gate is revised and versioned.
