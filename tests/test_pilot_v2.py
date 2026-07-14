@@ -64,6 +64,12 @@ def test_pilot_plan_rejects_unversioned_rr_mapping(tmp_path: Path) -> None:
         load_pilot_plan(path)
 
 
+def test_pilot3_schema_remains_exactly_three_cases() -> None:
+    plan = load_pilot_plan(REPO_ROOT / "configs" / "pilot3_v2.json")
+    assert plan["schema_version"] == "pars_v2_pilot3_plan_v1"
+    assert len(plan["cases"]) == 3
+
+
 def test_plan_paths_cannot_escape_repository() -> None:
     assert resolve_plan_path(
         REPO_ROOT,

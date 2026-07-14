@@ -14,6 +14,7 @@ sys.path.insert(0, str(REPO_ROOT / "src"))
 
 from core.anatomy_v2 import (  # noqa: E402
     TorsoAnatomyRejectedError,
+    _retain_largest_component,
     build_attenuation_anatomy_v2,
     build_torso_anatomy_v2,
 )
@@ -94,6 +95,30 @@ def test_formal_builder_returns_contained_disjoint_128_cube_anatomy() -> None:
     assert soft_tissue.any()
     assert result.metadata.qc.passed
     assert result.metadata.qc.failed_gates == ()
+    cleanup = result.metadata.actual_metrics["lung_component_cleanup"]
+    limit = result.metadata.qc.limits[
+        "maximum_lung_component_cleanup_fraction_per_side"
+    ]
+    assert cleanup["left"]["discarded_fraction"] <= limit
+    assert cleanup["right"]["discarded_fraction"] <= limit
+
+
+def test_lung_raster_island_cleanup_is_explicit_and_bounded() -> None:
+    mask = np.zeros((7, 7, 7), dtype=bool)
+    mask[1:4, 1:4, 1:4] = True
+    mask[6, 6, 6] = True
+
+    cleaned, audit = _retain_largest_component(mask)
+
+    assert ndimage.label(cleaned)[1] == 1
+    assert np.count_nonzero(cleaned) == 27
+    assert audit == {
+        "raw_component_count": 2,
+        "raw_voxel_count": 28,
+        "retained_voxel_count": 27,
+        "discarded_voxel_count": 1,
+        "discarded_fraction": 1 / 28,
+    }
 
 
 def test_sar_orientation_places_lungs_superior_and_spine_posterior() -> None:

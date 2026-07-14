@@ -153,6 +153,33 @@ def _clamp(value: float, lower: float, upper: float) -> float:
     return float(min(max(value, lower), upper))
 
 
+def _retain_largest_component(mask: np.ndarray) -> tuple[np.ndarray, dict[str, float | int]]:
+    """Remove only disconnected raster islands and report the exact cleanup."""
+
+    labels, component_count = ndimage.label(np.asarray(mask, dtype=bool))
+    voxel_count = int(np.count_nonzero(mask))
+    if component_count == 0:
+        return np.zeros_like(mask, dtype=bool), {
+            "raw_component_count": 0,
+            "raw_voxel_count": 0,
+            "retained_voxel_count": 0,
+            "discarded_voxel_count": 0,
+            "discarded_fraction": 0.0,
+        }
+    component_sizes = np.bincount(labels.ravel())[1:]
+    retained_label = int(np.argmax(component_sizes)) + 1
+    cleaned = labels == retained_label
+    retained_voxels = int(component_sizes[retained_label - 1])
+    discarded_voxels = voxel_count - retained_voxels
+    return cleaned, {
+        "raw_component_count": int(component_count),
+        "raw_voxel_count": voxel_count,
+        "retained_voxel_count": retained_voxels,
+        "discarded_voxel_count": discarded_voxels,
+        "discarded_fraction": float(discarded_voxels / voxel_count),
+    }
+
+
 def _habitus_dimensions(patient: PatientSampleV2, grid: GridSpecV2) -> dict[str, float]:
     height_scale = float(patient.height_cm) / 172.0
     bmi_delta = float(patient.bmi) - 25.0
@@ -243,8 +270,12 @@ def _build_masks(
         + ((r - lung_offset_r) / lung_lr_radius) ** 2
         <= 1.0
     )
-    left_lung = left_lung_raw & body & ~liver_mask
-    right_lung = right_lung_raw & body & ~liver_mask
+    left_lung, left_lung_cleanup = _retain_largest_component(
+        left_lung_raw & body & ~liver_mask
+    )
+    right_lung, right_lung_cleanup = _retain_largest_component(
+        right_lung_raw & body & ~liver_mask
+    )
     lung = left_lung | right_lung
 
     spine_center_a = -0.31 * body_ap
@@ -277,6 +308,8 @@ def _build_masks(
     auxiliaries: dict[str, object] = {
         "left_lung_mask": left_lung,
         "right_lung_mask": right_lung,
+        "left_lung_component_cleanup": left_lung_cleanup,
+        "right_lung_component_cleanup": right_lung_cleanup,
         "distance_inside_body_mm": distance_inside_mm,
     }
     return anatomy, auxiliaries, design
@@ -301,6 +334,8 @@ def _evaluate_qc(
     }
     left_metrics = _mask_metrics(np.asarray(auxiliaries["left_lung_mask"]), grid)
     right_metrics = _mask_metrics(np.asarray(auxiliaries["right_lung_mask"]), grid)
+    left_cleanup = dict(auxiliaries["left_lung_component_cleanup"])
+    right_cleanup = dict(auxiliaries["right_lung_component_cleanup"])
     body_components = int(ndimage.label(body)[1])
     lung_components = int(ndimage.label(anatomy.lung_mask)[1])
     outside_voxels = {
@@ -331,6 +366,7 @@ def _evaluate_qc(
         "lung_superior_to_liver_mm_min": 55.0,
         "spine_posterior_to_liver_mm_min": 45.0,
         "required_lung_components": 2,
+        "maximum_lung_component_cleanup_fraction_per_side": 0.002,
     }
     numeric_metrics: dict[str, object] = {
         "body_extent_mm_zyx": body_extent,
@@ -347,6 +383,8 @@ def _evaluate_qc(
         "liver_minus_spine_centroid_a_mm": float(liver_centroid[1] - bone_centroid[1]),
         "left_lung_centroid_r_mm": float(left_centroid[2]),
         "right_lung_centroid_r_mm": float(right_centroid[2]),
+        "left_lung_component_cleanup": left_cleanup,
+        "right_lung_component_cleanup": right_cleanup,
     }
 
     failures: list[str] = []
@@ -356,6 +394,11 @@ def _evaluate_qc(
         failures.append("body_not_single_component")
     if lung_components != 2:
         failures.append("lungs_not_two_components")
+    if max(
+        float(left_cleanup["discarded_fraction"]),
+        float(right_cleanup["discarded_fraction"]),
+    ) > float(limits["maximum_lung_component_cleanup_fraction_per_side"]):
+        failures.append("lung_component_cleanup_exceeds_raster_island_tolerance")
     if any(outside_voxels.values()):
         failures.append("compartment_outside_body")
     if any(overlap_voxels.values()):
@@ -386,6 +429,10 @@ def _evaluate_qc(
         "tissues": metrics_by_tissue,
         "left_lung": left_metrics,
         "right_lung": right_metrics,
+        "lung_component_cleanup": {
+            "left": left_cleanup,
+            "right": right_cleanup,
+        },
         "qc_metrics": numeric_metrics,
         "requested_body_extent_mm_zyx": (
             float(design["body_si_mm"]),
@@ -432,6 +479,9 @@ def build_torso_anatomy_v2(
             **design,
             "coordinate_meaning": {"Z": "superior", "Y": "anterior", "X": "right"},
             "lung_model": "paired_superior_ellipsoids",
+            "lung_component_cleanup": (
+                "retain_largest_component_per_side_with_qc_fraction_gate"
+            ),
             "bone_model": "posterior_vertebral_column_proxy",
             "fat_model": "subcutaneous_distance_shell",
             "randomness": "none",

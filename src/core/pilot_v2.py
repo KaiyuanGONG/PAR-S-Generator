@@ -46,7 +46,18 @@ from .tumor_generator_v2 import (
 
 
 PILOT_PLAN_SCHEMA_VERSION = "pars_v2_pilot3_plan_v1"
+PILOT15_PLAN_SCHEMA_VERSION = "pars_v2_pilot15_plan_v1"
 PILOT_GATE_SCHEMA_VERSION = "pars_v2_pilot3_gate_v1"
+_PLAN_CASE_COUNTS = {
+    PILOT_PLAN_SCHEMA_VERSION: 3,
+    PILOT15_PLAN_SCHEMA_VERSION: 15,
+}
+_PLAN_PURPOSES = {
+    PILOT_PLAN_SCHEMA_VERSION: (
+        "deterministic_smoke_only_pending_task12_clinical_count_benchmark"
+    ),
+    PILOT15_PLAN_SCHEMA_VERSION: "visual_physics_qa_before_statistical_pilot",
+}
 _SIMIND_VERSION = re.compile(r"SIMIND Monte Carlo Simulation Program\s+V([0-9.]+)")
 _MAX_INT63 = 2**63 - 1
 
@@ -76,8 +87,10 @@ def load_pilot_plan(path: str | Path) -> dict[str, object]:
         raw = json.loads(plan_path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
         raise ValueError(f"cannot read pilot plan: {exc}") from exc
-    if not isinstance(raw, dict) or raw.get("schema_version") != PILOT_PLAN_SCHEMA_VERSION:
+    if not isinstance(raw, dict) or raw.get("schema_version") not in _PLAN_CASE_COUNTS:
         raise ValueError("pilot plan has an invalid schema_version")
+    schema_version = str(raw["schema_version"])
+    expected_count = _PLAN_CASE_COUNTS[schema_version]
     required = {
         "dataset_id",
         "dataset_version",
@@ -98,21 +111,21 @@ def load_pilot_plan(path: str | Path) -> dict[str, object]:
     if missing:
         raise ValueError(f"pilot plan missing required fields: {missing}")
     cases = raw["cases"]
-    if not isinstance(cases, list) or len(cases) != 3:
-        raise ValueError("pilot plan must contain exactly three smoke cases")
+    if not isinstance(cases, list) or len(cases) != expected_count:
+        raise ValueError(f"pilot plan must contain exactly {expected_count} cases")
     case_ids = [case.get("case_id") for case in cases if isinstance(case, dict)]
     family_ids = [case.get("case_family_id") for case in cases if isinstance(case, dict)]
-    if len(case_ids) != 3 or len(set(case_ids)) != 3:
-        raise ValueError("pilot case IDs must be three unique strings")
-    if len(family_ids) != 3 or len(set(family_ids)) != 3:
-        raise ValueError("pilot family IDs must be three unique strings")
+    if len(case_ids) != expected_count or len(set(case_ids)) != expected_count:
+        raise ValueError(f"pilot case IDs must be {expected_count} unique strings")
+    if len(family_ids) != expected_count or len(set(family_ids)) != expected_count:
+        raise ValueError(f"pilot family IDs must be {expected_count} unique strings")
     execution = raw["execution"]
     if not isinstance(execution, dict):
         raise ValueError("pilot execution must be an object")
-    if execution.get("purpose") != "deterministic_smoke_only_pending_task12_clinical_count_benchmark":
-        raise ValueError("pilot /NN=1 purpose label is missing")
+    if execution.get("purpose") != _PLAN_PURPOSES[schema_version]:
+        raise ValueError("pilot /NN=1 purpose label is missing or mismatched")
     if execution.get("nn_multiplier") != 1:
-        raise ValueError("the three-case smoke pilot must use frozen /NN=1")
+        raise ValueError("Task-12 pilot plans must use frozen /NN=1")
     if (
         execution.get("rr_allocator") != "affine_permutation_mod_10007_v1"
         or execution.get("rr_maximum") != 10_007
@@ -222,7 +235,10 @@ def validate_boundary_rejections(
     return results
 
 
-def _fixed_patient(case: Mapping[str, object]) -> PatientSampleV2:
+def _fixed_patient(
+    case: Mapping[str, object],
+    coverage_label: str,
+) -> PatientSampleV2:
     raw = case.get("patient")
     if not isinstance(raw, Mapping):
         raise ValueError("case.patient must be an object")
@@ -241,8 +257,8 @@ def _fixed_patient(case: Mapping[str, object]) -> PatientSampleV2:
         bmi=bmi,
         liver_morphology=morphology,
         evidence_types={
-            "phenotype": "task12_fixed_smoke_coverage",
-            "morphology": "task12_fixed_smoke_coverage",
+            "phenotype": coverage_label,
+            "morphology": coverage_label,
         },
     )
 
@@ -277,6 +293,7 @@ def _tumor_case_target(
     case: Mapping[str, object],
     profile: PopulationProfileV2,
     seeds: SeedBundle,
+    coverage_label: str,
 ) -> TumorCaseTargetV2:
     raw_lesions = case.get("lesions")
     if not isinstance(raw_lesions, list) or not raw_lesions:
@@ -307,8 +324,8 @@ def _tumor_case_target(
                 dmax_bin="10-<80_mm" if diameter < 80.0 else "80-200_mm",
                 within_bin_assumption=False,
                 evidence_types={
-                    "diameter": "task12_fixed_smoke_coverage",
-                    "morphology": "task12_fixed_smoke_coverage",
+                    "diameter": coverage_label,
+                    "morphology": coverage_label,
                     "orientation": "engineering_seeded",
                 },
             )
@@ -334,13 +351,14 @@ def _tumor_case_target(
             geometry_model["subcapsular_clearance_max_mm"]
         ),
         sampling_attempts=1,
-        evidence_types={"case_target": "task12_fixed_smoke_coverage"},
+        evidence_types={"case_target": coverage_label},
     )
 
 
 def _activity_target(
     case: Mapping[str, object],
     tumors: TumorGeometryV2,
+    coverage_label: str,
 ) -> ActivityTargetV2:
     tnr = float(case["tnr_mean"])
     heterogeneous = bool(case["heterogeneous"])
@@ -351,6 +369,11 @@ def _activity_target(
         tnr_mean=tnr,
         heterogeneous=heterogeneous,
         mismatch_challenge=bool(case["mismatch_challenge"]),
+        sector_proxy_label=(
+            None
+            if case.get("sector_proxy_label") is None
+            else int(case["sector_proxy_label"])
+        ),
         lesion_tnr_means={instance_id: tnr for instance_id in instance_ids},
         lesion_heterogeneous={
             instance_id: heterogeneous for instance_id in instance_ids
@@ -359,9 +382,9 @@ def _activity_target(
             "task12_fixed_case_mean_shared_across_lesions"
         ),
         evidence_types={
-            "tnr_mean": "task12_fixed_smoke_coverage",
-            "heterogeneous": "task12_fixed_smoke_coverage",
-            "injection_territory": "task12_fixed_smoke_coverage",
+            "tnr_mean": coverage_label,
+            "heterogeneous": coverage_label,
+            "injection_territory": coverage_label,
             "activity_pattern": "literature_anchored_population",
         },
     )
@@ -375,16 +398,17 @@ def prepare_pilot_case(
     global_seed: int,
     base_histories: int,
     work_dir: Path,
+    coverage_label: str = "task12_fixed_smoke_coverage",
 ) -> PreparedPilotCaseV2:
     """Create one complete phantom and exact SIMIND inputs, but do not run SIMIND."""
 
     case_id = str(case["case_id"])
     seeds = SeedBundle.from_case(global_seed, case_id)
-    patient = _fixed_patient(case)
+    patient = _fixed_patient(case, coverage_label)
     liver, fit_attempt = _fit_liver(patient, profile, grid, seeds)
-    tumor_target = _tumor_case_target(case, profile, seeds)
+    tumor_target = _tumor_case_target(case, profile, seeds, coverage_label)
     tumors = place_and_rasterize_tumors(tumor_target, liver, grid)
-    activity_target = _activity_target(case, tumors)
+    activity_target = _activity_target(case, tumors, coverage_label)
     activity = generate_activity_field(
         patient,
         liver,
