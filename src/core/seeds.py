@@ -8,6 +8,7 @@ from dataclasses import dataclass
 SEED_NAMESPACES = ("patient", "liver", "tumor", "activity", "mu", "simind")
 _MAX_INT63 = 2**63 - 1
 _SIMIND_RR_PERMUTATION_PRIME = 10_007
+_FORMAL_MAIN_RR_CAPACITY = 5_000
 _NUMERIC_CASE_ID = re.compile(r"^(?P<prefix>.*?)(?P<index>[0-9]+)$")
 
 
@@ -23,11 +24,12 @@ def _derive_simind_rr(global_seed: int, case_id: str) -> int:
     SIMIND ``/RR`` is a random-number *sequence selector*, not an arbitrary
     31-bit RNG seed.  With Flag 8 enabled, very large selectors make SIMIND
     spend minutes advancing the sequence before tracing a photon.  Formal V2
-    case IDs end in a numeric index, so an affine permutation over a small
-    prime gives collision-free selectors for up to 10,007 cases per ID prefix
-    while keeping the selector cheap to initialize.  The permutation changes
-    with both the global seed and prefix, avoiding a fixed sequence assignment
-    across independently frozen datasets.
+    case IDs end in a numeric index.  Main (``case_``/legacy ``main_``) and
+    negative-control IDs share one affine permutation but occupy disjoint
+    slots, so the formal 500+50 corpus cannot collide.  Keeping ``case_`` as
+    the canonical permutation namespace also preserves already frozen pilot
+    /RR values.  Other numeric prefixes retain their independent engineering
+    namespace; they must not be mixed into one formal SIMIND run.
     """
 
     match = _NUMERIC_CASE_ID.fullmatch(case_id)
@@ -39,13 +41,35 @@ def _derive_simind_rr(global_seed: int, case_id: str) -> int:
             _SIMIND_RR_PERMUTATION_PRIME,
         )
     index = int(match.group("index"))
-    if index >= _SIMIND_RR_PERMUTATION_PRIME:
+    prefix = match.group("prefix")
+    if prefix in {"case_", "main_"}:
+        if index >= _FORMAL_MAIN_RR_CAPACITY:
+            raise ValueError(
+                "main numeric case index must be below 5000 for collision-free "
+                "SIMIND /RR allocation"
+            )
+        permutation_prefix = "case_"
+        slot = index
+    elif prefix in {"negative_", "negative_case_"}:
+        negative_capacity = (
+            _SIMIND_RR_PERMUTATION_PRIME - _FORMAL_MAIN_RR_CAPACITY
+        )
+        if index >= negative_capacity:
+            raise ValueError(
+                "negative numeric case index exceeds the reserved SIMIND /RR range"
+            )
+        permutation_prefix = "case_"
+        slot = _FORMAL_MAIN_RR_CAPACITY + index
+    else:
+        permutation_prefix = prefix
+        slot = index
+    if slot >= _SIMIND_RR_PERMUTATION_PRIME:
         raise ValueError(
             "numeric case index must be below 10007 for collision-free "
             "SIMIND /RR allocation"
         )
     payload = (
-        f"pars-syn-v2|{global_seed}|{match.group('prefix')}|simind_rr_permutation"
+        f"pars-syn-v2|{global_seed}|{permutation_prefix}|simind_rr_permutation"
     ).encode("utf-8")
     digest = hashlib.sha256(payload).digest()
     multiplier = int.from_bytes(digest[:4], "big") % (
@@ -53,7 +77,7 @@ def _derive_simind_rr(global_seed: int, case_id: str) -> int:
     ) + 1
     offset = int.from_bytes(digest[4:8], "big") % _SIMIND_RR_PERMUTATION_PRIME
     return (
-        multiplier * index + offset
+        multiplier * slot + offset
     ) % _SIMIND_RR_PERMUTATION_PRIME + 1
 
 

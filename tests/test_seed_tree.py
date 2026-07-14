@@ -22,14 +22,42 @@ def test_seed_bundle_is_exactly_reproducible() -> None:
 
 
 def test_seed_tree_has_no_collision_for_formal_500_plus_negative_50() -> None:
-    bundles = [SeedBundle.from_case(20260713, f"main_{index:04d}") for index in range(500)]
-    bundles += [SeedBundle.from_case(20260713, f"negative_{index:04d}") for index in range(50)]
+    bundles = [
+        SeedBundle.from_case(20260713, f"case_{index:05d}")
+        for index in range(500)
+    ]
+    bundles += [
+        SeedBundle.from_case(20260713, f"negative_{index:04d}")
+        for index in range(50)
+    ]
 
     case_seeds = [bundle.case_seed for bundle in bundles]
     all_children = [seed for bundle in bundles for seed in bundle.child_seeds.values()]
     assert len(case_seeds) == len(set(case_seeds))
     assert len(all_children) == len(set(all_children))
     assert set(case_seeds).isdisjoint(all_children)
+
+
+def test_legacy_main_alias_and_frozen_pilot_rr_values_are_stable() -> None:
+    canonical = [
+        SeedBundle.from_case(20260713, f"case_{index:05d}").simind
+        for index in range(500)
+    ]
+    legacy = [
+        SeedBundle.from_case(20260713, f"main_{index:04d}").simind
+        for index in range(500)
+    ]
+    negative = [
+        SeedBundle.from_case(20260713, f"negative_{index:04d}").simind
+        for index in range(50)
+    ]
+
+    assert canonical == legacy
+    assert set(canonical).isdisjoint(negative)
+    assert [
+        SeedBundle.from_case(20260714, f"case_{index:05d}").simind
+        for index in range(3)
+    ] == [7765, 5706, 3647]
 
 
 def test_namespaces_and_global_seed_change_every_child_seed() -> None:
@@ -48,4 +76,3 @@ def test_namespaces_and_global_seed_change_every_child_seed() -> None:
 def test_seed_bundle_rejects_invalid_identity(global_seed: int, case_id: str) -> None:
     with pytest.raises(ValueError):
         SeedBundle.from_case(global_seed, case_id)
-

@@ -1,0 +1,123 @@
+{
+  "boundary_gates": [
+    {
+      "actual_rasterized_volume_ml": 1669.5944194799995,
+      "actual_recist_3d_mm": 200.11753035450624,
+      "axis_ratios": [
+        0.7,
+        0.7
+      ],
+      "dmax_mm": 200.0,
+      "expected_result": "structural_rejection",
+      "gate": "actual_raster_exceeds_profile_maximum_tumor_burden",
+      "maximum_liver_volume_ml": 2300.0,
+      "maximum_population_tumor_volume_ml": 1610.0,
+      "morphology": "lobulated_confluent",
+      "observed_result": "actual_raster_exceeds_burden_gate",
+      "passed": true,
+      "primitive_count": 2
+    },
+    {
+      "actual_rasterized_volume_ml": 2098.499280175999,
+      "actual_recist_3d_mm": 214.93476177354927,
+      "axis_ratios": [
+        0.7,
+        0.7
+      ],
+      "dmax_mm": 215.0,
+      "expected_result": "structural_rejection",
+      "gate": "actual_raster_exceeds_profile_maximum_tumor_burden",
+      "maximum_liver_volume_ml": 2300.0,
+      "maximum_population_tumor_volume_ml": 1610.0,
+      "morphology": "lobulated_confluent",
+      "observed_result": "actual_raster_exceeds_burden_gate",
+      "passed": true,
+      "primitive_count": 2
+    }
+  ],
+  "canonical_config_hashes": {
+    "evidence_registry_sha256": "504b5b5db004f738244782e538de637fc24ca6c7fc6883068e08d69b589c2002",
+    "population_config_sha256": "3a0e9af3cafdd99e3ee8b6fe8752c0d307194bc5ea75e94c5decdf2807ad6248",
+    "scanner_config_sha256": "e5b59927df17f339ccd37aade6c148b0519036d4ed1d9d6013d31d17623ddae7",
+    "simind_ini_sha256": "48fe25fb626d8942d07d1d2d479b9373319993499aa7b803c18d6185cdb787bb"
+  },
+  "case_count": 3,
+  "case_results": [
+    {
+      "actual_liver_volume_ml": 1398.1935784959996,
+      "actual_recist_3d_mm": [
+        18.752471837067265
+      ],
+      "case_id": "case_00000",
+      "injection_territory": "whole_liver",
+      "liver_morphology": "normal",
+      "lobe_extent": "unilobar",
+      "mismatch_challenge": false,
+      "projection_weight_sum": 750112.4085432019,
+      "rr_seed": 7765,
+      "split": "train",
+      "status": "pass",
+      "target_dmax_mm": [
+        20.0
+      ]
+    },
+    {
+      "actual_liver_volume_ml": 1006.2468978639996,
+      "actual_recist_3d_mm": [
+        54.87449729458424
+      ],
+      "case_id": "case_00001",
+      "injection_territory": "right_lobar",
+      "liver_morphology": "cirrhotic",
+      "lobe_extent": "unilobar",
+      "mismatch_challenge": false,
+      "projection_weight_sum": 961086.1610051303,
+      "rr_seed": 5706,
+      "split": "test",
+      "status": "pass",
+      "target_dmax_mm": [
+        55.0
+      ]
+    },
+    {
+      "actual_liver_volume_ml": 1731.8534097279994,
+      "actual_recist_3d_mm": [
+        89.79578947368418,
+        25.696893197427606
+      ],
+      "case_id": "case_00002",
+      "injection_territory": "left_lobar",
+      "liver_morphology": "cirrhotic",
+      "lobe_extent": "bilobar",
+      "mismatch_challenge": true,
+      "projection_weight_sum": 776080.5006256178,
+      "rr_seed": 3647,
+      "split": "val",
+      "status": "pass",
+      "target_dmax_mm": [
+        90.0,
+        24.0
+      ]
+    }
+  ],
+  "contract_sha256": "9b4a2617d4c58553226a1319e24650f301021a0da12ef0eee37f4d656655e45b",
+  "dataset_id": "PAR-S-TARE-HCC-NoPVI-SYN-v2-pilot3",
+  "dataset_root": "D:\\PFE-U\\PAR\\outputs\\pars_v2_pilot3_r2",
+  "dataset_version": "2.0.0-pilot3",
+  "gates": [
+    "idempotent_dataset_freeze_reaudit",
+    "canonical_config_and_binary_binding",
+    "strict_payload_array_and_metadata_revalidation",
+    "retained_simind_input_hash_binding",
+    "simind_quartet_and_provenance_reaudit",
+    "small_medium_large_actual_recist",
+    "normal_cirrhotic_unilobar_bilobar_injection_and_mismatch_coverage",
+    "200_and_215_mm_expected_structural_rejection"
+  ],
+  "go_for_15_case_pilot": false,
+  "manifest_sha256": "900b3ec8dc71b388e8d5aa79a752677e755043b705b057ab57e9f2e1bc512dbd",
+  "reason": "PAR-S_2 loader and coordinate alignment gate still required",
+  "schema_version": "pars_v2_generator_pilot_gate_v1",
+  "simind_binary_sha256": "f984b8753f54b9f671f9fc1bcb2b45461e7cae8d027376b446dd1ed55a9a8319",
+  "status": "pass"
+}

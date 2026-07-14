@@ -1,0 +1,66 @@
+{
+  "case_count": 3,
+  "cases": [
+    {
+      "case_id": "case_00000",
+      "injection_territory": "whole_liver",
+      "liver_morphology": "normal",
+      "mismatch_challenge": false,
+      "projection_view_count": 60,
+      "projection_weight_sum": 750112.4085432014,
+      "recist_3d_mm": [
+        18.752471837067265
+      ],
+      "selected_voxel_zyx": [
+        56,
+        71,
+        56
+      ],
+      "split": "train"
+    },
+    {
+      "case_id": "case_00001",
+      "injection_territory": "right_lobar",
+      "liver_morphology": "cirrhotic",
+      "mismatch_challenge": false,
+      "projection_view_count": 60,
+      "projection_weight_sum": 961086.1610051303,
+      "recist_3d_mm": [
+        54.87449729458424
+      ],
+      "selected_voxel_zyx": [
+        58,
+        64,
+        76
+      ],
+      "split": "test"
+    },
+    {
+      "case_id": "case_00002",
+      "injection_territory": "left_lobar",
+      "liver_morphology": "cirrhotic",
+      "mismatch_challenge": true,
+      "projection_view_count": 60,
+      "projection_weight_sum": 776080.5006256178,
+      "recist_3d_mm": [
+        89.79578947368418,
+        25.696893197427606
+      ],
+      "selected_voxel_zyx": [
+        57,
+        67,
+        75
+      ],
+      "split": "val"
+    }
+  ],
+  "completion_contract_sha256": "9b4a2617d4c58553226a1319e24650f301021a0da12ef0eee37f4d656655e45b",
+  "dataset_id": "PAR-S-TARE-HCC-NoPVI-SYN-v2-pilot3",
+  "dataset_root": "D:\\PFE-U\\PAR\\outputs\\pars_v2_pilot3_r2",
+  "dataset_version": "2.0.0-pilot3",
+  "manifest_sha256": "900b3ec8dc71b388e8d5aa79a752677e755043b705b057ab57e9f2e1bc512dbd",
+  "output_png": "D:\\PFE-U\\PAR\\.worktrees\\PAR-S-Generator-task12\\docs\\reports\\v2_pilot3_overview.png",
+  "output_png_sha256": "908b577f84531ce4d2f422864008abf5350c4f168e03b8ba39dc1aae1c5d4489",
+  "schema_version": "pars_v2_pilot3_visual_summary_v1",
+  "status": "pass"
+}

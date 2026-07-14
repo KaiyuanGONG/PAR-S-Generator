@@ -94,7 +94,7 @@ def test_seed_tree_simind_rr_is_stable_unique_and_in_range() -> None:
 
 
 def test_seed_tree_rejects_numeric_case_index_outside_rr_permutation() -> None:
-    with pytest.raises(ValueError, match="below 10007"):
+    with pytest.raises(ValueError, match="below 5000"):
         SeedBundle.from_case(20260714, "case_10007")
 
 

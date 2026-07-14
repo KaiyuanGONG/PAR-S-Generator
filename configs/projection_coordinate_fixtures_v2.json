@@ -1,0 +1,57 @@
+{
+  "schema_version": "pars_projection_coordinate_fixtures_v2",
+  "shape_zyx": [128, 128, 128],
+  "expected_projection_shape_vyx": [60, 128, 128],
+  "base_histories_per_projection": 80000,
+  "nn_multiplier": 5,
+  "rr_maximum": 10007,
+  "timeout_seconds": 7200,
+  "smc_path": "simind/ge870_czt.smc",
+  "smc_sha256": "f3dac9777401701d57591eb78b432089ebb8781bd3852dc8d016eb351eea311c",
+  "simind_ini_path": "configs/simind_v2.ini",
+  "simind_ini_sha256": "48fe25fb626d8942d07d1d2d479b9373319993499aa7b803c18d6185cdb787bb",
+  "expected_simind_binary_sha256": "f984b8753f54b9f671f9fc1bcb2b45461e7cae8d027376b446dd1ed55a9a8319",
+  "projection_coordinates": {
+    "schema_version": "pars_projection_coordinates_v1",
+    "coordinate_contract_id": "pars_simind_v8_xcat_zyx_sar_v1",
+    "simind_starting_angle_deg": 180.0,
+    "projector_starting_angle_deg": 90.0,
+    "rotation_direction": "clockwise",
+    "simind_to_projector_angle_offset_deg": -90.0,
+    "detector_axis_contract": "pars_detector_v_plus_source_z__u_plus_rotated_source_y_v1",
+    "loader_transform_id": "simind_v8_xcat_v1_views_forward_roll000_det_v_flip_det_u_keep",
+    "source_index_order": "ZYX",
+    "source_positive_directions": "SAR",
+    "simind_basis_from_source": "Xsim=-Zsrc;Ysim=+Xsrc;Zsim=-Ysrc"
+  },
+  "cases": [
+    {
+      "case_id": "coord_spots_001",
+      "rr_seed": 101,
+      "spots": [
+        {"index_zyx": [19, 31, 47], "radius_vox": 4, "relative_weight": 0.53},
+        {"index_zyx": [71, 83, 29], "radius_vox": 3, "relative_weight": 0.31},
+        {"index_zyx": [104, 52, 96], "radius_vox": 5, "relative_weight": 0.16}
+      ]
+    },
+    {
+      "case_id": "coord_spots_002",
+      "rr_seed": 5003,
+      "spots": [
+        {"index_zyx": [23, 94, 17], "radius_vox": 5, "relative_weight": 0.47},
+        {"index_zyx": [65, 26, 109], "radius_vox": 3, "relative_weight": 0.34},
+        {"index_zyx": [112, 73, 58], "radius_vox": 4, "relative_weight": 0.19}
+      ]
+    },
+    {
+      "case_id": "coord_spots_003",
+      "rr_seed": 10007,
+      "spots": [
+        {"index_zyx": [13, 79, 102], "radius_vox": 3, "relative_weight": 0.43},
+        {"index_zyx": [54, 18, 67], "radius_vox": 5, "relative_weight": 0.29},
+        {"index_zyx": [87, 111, 36], "radius_vox": 4, "relative_weight": 0.18},
+        {"index_zyx": [119, 45, 91], "radius_vox": 3, "relative_weight": 0.10}
+      ]
+    }
+  ]
+}
