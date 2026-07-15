@@ -7,6 +7,7 @@ import json
 import os
 import subprocess
 import sys
+from dataclasses import replace
 from pathlib import Path
 from typing import Mapping
 
@@ -51,6 +52,13 @@ from core.provenance import (  # noqa: E402
     resolve_relative_path,
     sha256_file,
 )
+from core.reproducibility_v2 import (  # noqa: E402
+    FrozenPreflightInputV2,
+    capture_generator_source_binding,
+    capture_python_runtime,
+    load_and_validate_preflight_input_bundle,
+    prove_preflight_byte_identity,
+)
 from core.schemas_v2 import load_evidence_registry, load_profile  # noqa: E402
 from core.simind_exec import (  # noqa: E402
     SIMIND_PROTOCOL_NAME_V2,
@@ -80,6 +88,8 @@ REQUIRED_ARTIFACTS = (
     "pilot_plan",
     "pilot_runtime",
     "pilot_preflight",
+    "pilot_input_bundle",
+    "preflight_byte_identity",
 )
 
 
@@ -175,6 +185,8 @@ def _validate_preflight(
     paths: Mapping[str, Path],
     simind_exe: Path,
     smc_dir: Path,
+    python_runtime: Mapping[str, object],
+    generator_source: Mapping[str, object],
 ) -> dict[str, object]:
     report = _read_json(path, "pilot15 preflight report")
     if report.get("schema_version") != PILOT15_PREFLIGHT_SCHEMA:
@@ -204,6 +216,12 @@ def _validate_preflight(
         drifted.append("simind_executable")
     if runtime.get("smc_dir") != str(smc_dir.resolve()):
         drifted.append("smc_dir")
+    if report.get("python_runtime") != dict(python_runtime):
+        drifted.append("python_runtime")
+    if report.get("generator_source") != dict(generator_source):
+        drifted.append("generator_source")
+    if not isinstance(report.get("input_bundle"), Mapping):
+        drifted.append("input_bundle")
     observed_ids = [
         str(item.get("case_id"))
         for item in report.get("cases", [])
@@ -226,6 +244,9 @@ def _runtime_document(
     preflight_path: Path,
     coverage: Mapping[str, object],
     boundary_gates: object,
+    python_runtime: Mapping[str, object],
+    generator_source: Mapping[str, object],
+    input_bundle: Mapping[str, object],
 ) -> dict[str, object]:
     execution = plan["execution"]
     rr_by_case = {
@@ -252,6 +273,15 @@ def _runtime_document(
         "rr_by_case": rr_by_case,
         "timeout_seconds": float(execution["timeout_seconds"]),
         "boundary_gates": boundary_gates,
+        "python_runtime": dict(python_runtime),
+        "generator_source": dict(generator_source),
+        "preflight_input_bundle": dict(input_bundle),
+        "preflight_to_run_input_contract": {
+            "comparison": "sha256_and_size_exact",
+            "formal_simind_input": "frozen_preflight_bundle_bytes",
+            "regenerated_input_action": "prove_identity_then_discard",
+            "mismatch_action": "fail_before_simind_launch",
+        },
         "resume_contract": {
             "completed_case_action": "verify_hashes_and_skip",
             "completed_simind_action": "verify_provenance_and_reuse",
@@ -269,6 +299,29 @@ def _load_or_write_runtime(output_root: Path, expected: Mapping[str, object], st
     existing = _read_json(path, "pilot15 runtime")
     if existing != dict(expected):
         raise RuntimeError("pilot15 runtime binding changed; resume is forbidden")
+
+
+def _bind_preflight_inputs(
+    prepared: object,
+    frozen: FrozenPreflightInputV2,
+    *,
+    evidence_path: Path,
+) -> tuple[object, Path]:
+    prove_preflight_byte_identity(
+        generated_source=prepared.source_bin,
+        generated_density=prepared.density_bin,
+        frozen=frozen,
+        generated_arrays=prepared.arrays,
+        evidence_path=evidence_path,
+    )
+    return (
+        replace(
+            prepared,
+            source_bin=frozen.source_path,
+            density_bin=frozen.density_path,
+        ),
+        evidence_path,
+    )
 
 
 def _summary_from_record(record: object, output_root: Path) -> dict[str, object]:
@@ -385,6 +438,12 @@ def main(argv: list[str] | None = None) -> int:
     paths = _resolve_paths(plan)
     _validate_runtime_dependencies(args, plan)
     commit = _git_commit()
+    python_runtime = capture_python_runtime()
+    generator_source = capture_generator_source_binding(REPO_ROOT)
+    if generator_source.get("git_commit") != commit:
+        raise RuntimeError("generator source binding commit changed during runner startup")
+    if generator_source.get("worktree_clean") is not True:
+        raise RuntimeError("formal runner requires a clean bound Generator source tree")
     registry = load_evidence_registry(paths["evidence_registry_path"])
     profile = load_profile(paths["profile_path"], registry)
     scanner = load_profile(paths["scanner_path"], registry)
@@ -398,6 +457,8 @@ def main(argv: list[str] | None = None) -> int:
         paths=paths,
         simind_exe=args.simind_exe,
         smc_dir=args.smc_dir,
+        python_runtime=python_runtime,
+        generator_source=generator_source,
     )
     split_plan, generation_plan = build_generation_plan(
         dataset_id=str(plan["dataset_id"]),
@@ -420,6 +481,17 @@ def main(argv: list[str] | None = None) -> int:
     if configured_pairs != planned_pairs:
         raise RuntimeError("pilot15 case identities disagree with immutable generation plan")
     expected_ids = [case_id for case_id, _ in configured_pairs]
+    input_bundle_reference = preflight.get("input_bundle")
+    if not isinstance(input_bundle_reference, Mapping):
+        raise RuntimeError("pilot15 preflight input bundle binding is missing")
+    preflight_inputs = load_and_validate_preflight_input_bundle(
+        args.preflight_report.resolve(),
+        input_bundle_reference,
+        expected_case_ids=expected_ids,
+        case_summaries=[
+            item for item in preflight.get("cases", []) if isinstance(item, Mapping)
+        ],
+    )
     work_root = args.output_root.parent / f"{args.output_root.name}_work"
     state = classify_run_root(args.output_root, work_root, resume=args.resume)
     if state == "fresh":
@@ -435,6 +507,9 @@ def main(argv: list[str] | None = None) -> int:
         preflight_path=args.preflight_report.resolve(),
         coverage=coverage,
         boundary_gates=boundary_gates,
+        python_runtime=python_runtime,
+        generator_source=generator_source,
+        input_bundle=input_bundle_reference,
     )
     if runtime_document["pilot_preflight_sha256"] != sha256_file(args.preflight_report):
         raise RuntimeError("pilot15 preflight changed during runner initialization")
@@ -493,14 +568,20 @@ def main(argv: list[str] | None = None) -> int:
             current_case_id=case_id,
         )
         try:
+            attempt_dir = next_attempt_dir(work_root, case_id)
             prepared = prepare_pilot_case(
                 case,
                 profile,
                 grid,
                 global_seed=int(plan["global_seed"]),
                 base_histories=int(execution["base_histories_per_projection"]),
-                work_dir=next_attempt_dir(work_root, case_id),
+                work_dir=attempt_dir,
                 coverage_label=PILOT15_COVERAGE_LABEL,
+            )
+            prepared, byte_identity_path = _bind_preflight_inputs(
+                prepared,
+                preflight_inputs[case_id],
+                evidence_path=attempt_dir / "PREFLIGHT_BYTE_IDENTITY.json",
             )
             spec = SimindRunSpec(
                 case_id=case_id,
@@ -538,6 +619,10 @@ def main(argv: list[str] | None = None) -> int:
                     "pilot_plan": args.config.resolve(),
                     "pilot_runtime": args.output_root / "PILOT_RUNTIME.json",
                     "pilot_preflight": args.preflight_report.resolve(),
+                    "pilot_input_bundle": preflight_inputs[
+                        case_id
+                    ].bundle_manifest_path,
+                    "preflight_byte_identity": byte_identity_path,
                 }
             )
             record = write_case_v2(

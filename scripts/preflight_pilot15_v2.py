@@ -33,6 +33,12 @@ from core.pilot_v2 import (  # noqa: E402
     validate_boundary_rejections,
 )
 from core.provenance import atomic_write_bytes, atomic_write_json, sha256_file  # noqa: E402
+from core.reproducibility_v2 import (  # noqa: E402
+    array_manifest,
+    capture_generator_source_binding,
+    capture_python_runtime,
+    write_preflight_input_bundle,
+)
 from core.schemas_v2 import load_evidence_registry, load_profile  # noqa: E402
 from core.simind_exec import build_simind_command  # noqa: E402
 from core.smc_parser import parse_smc, validate_voxel_source_smc  # noqa: E402
@@ -197,6 +203,7 @@ def _case_summary(prepared: object) -> dict[str, object]:
         "source_weight_sum": float(source.sum()),
         "source_sha256": sha256_file(prepared.source_bin),
         "density_sha256": sha256_file(prepared.density_bin),
+        "array_manifest": array_manifest(prepared.arrays),
         "mu_true_input_mean_absolute_difference": float(
             np.mean(np.abs(mu_true.astype(np.float64) - mu_input.astype(np.float64)))
         ),
@@ -216,6 +223,9 @@ def _markdown(report: Mapping[str, object]) -> str:
         f"- Cases: `{report.get('case_count')}`",
         f"- Generator commit: `{report.get('generator_git_commit')}`",
         f"- Plan SHA-256: `{report.get('pilot_plan_sha256')}`",
+        f"- Python/Conda binding: `{report.get('python_runtime', {}).get('binding_sha256')}`",
+        f"- Generator source binding: `{report.get('generator_source', {}).get('binding_sha256')}`",
+        f"- Frozen input bundle: `{report.get('input_bundle', {}).get('manifest_sha256')}`",
         "",
         "| Case | Result | Liver ml | RECIST mm | Territory | Mismatch | /RR |",
         "|---|---|---:|---|---|---|---:|",
@@ -246,6 +256,12 @@ def main(argv: list[str] | None = None) -> int:
     scanner = load_profile(paths["scanner_path"], registry)
     coverage = require_pilot15_coverage(plan, profile)
     runtime = _runtime_preflight(args, plan, paths)
+    python_runtime = capture_python_runtime()
+    generator_source = capture_generator_source_binding(REPO_ROOT)
+    if generator_source["git_commit"] != commit:
+        raise RuntimeError("generator source binding commit changed during preflight")
+    if bool(generator_source["worktree_clean"]) != clean:
+        raise RuntimeError("generator source binding cleanliness changed during preflight")
     execution = plan["execution"]
     split_plan, generation_plan = build_generation_plan(
         dataset_id=str(plan["dataset_id"]),
@@ -285,6 +301,8 @@ def main(argv: list[str] | None = None) -> int:
         "generation_plan_sha256": generation_plan["sha256"],
         "coverage": coverage,
         "runtime": runtime,
+        "python_runtime": python_runtime,
+        "generator_source": generator_source,
         "boundary_gates": validate_boundary_rejections(plan, profile),
         "case_count": PILOT15_CASE_COUNT,
         "cases": [],
@@ -340,7 +358,16 @@ def main(argv: list[str] | None = None) -> int:
         report["status"] = (
             "pass" if all(item["status"] == "pass" for item in actual_gates) else "fail"
         )
-        report["formal_runner_eligible"] = report["status"] == "pass" and clean
+        if report["status"] == "pass":
+            report["input_bundle"] = write_preflight_input_bundle(
+                args.work_root,
+                summaries,
+            )
+        report["formal_runner_eligible"] = (
+            report["status"] == "pass"
+            and clean
+            and bool(generator_source["worktree_clean"])
+        )
     except Exception as exc:
         report["status"] = "fail"
         report["formal_runner_eligible"] = False

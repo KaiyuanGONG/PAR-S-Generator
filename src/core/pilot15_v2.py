@@ -14,8 +14,8 @@ from .seeds import SeedBundle
 
 PILOT15_CASE_COUNT = 15
 PILOT15_PROGRESS_SCHEMA = "pars_v2_pilot15_progress_v1"
-PILOT15_RUNTIME_SCHEMA = "pars_v2_pilot15_runtime_v1"
-PILOT15_PREFLIGHT_SCHEMA = "pars_v2_pilot15_preflight_v1"
+PILOT15_RUNTIME_SCHEMA = "pars_v2_pilot15_runtime_v2"
+PILOT15_PREFLIGHT_SCHEMA = "pars_v2_pilot15_preflight_v2"
 PILOT15_GATE_SCHEMA = "pars_v2_pilot15_gate_v1"
 PILOT15_COVERAGE_LABEL = "task12_fixed_visual_physics_qa_coverage"
 

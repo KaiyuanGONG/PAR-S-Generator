@@ -130,7 +130,7 @@ def test_runtime_resume_requires_exact_binding(tmp_path: Path) -> None:
     output = tmp_path / "pilot15"
     output.mkdir()
     expected = {
-        "schema_version": "pars_v2_pilot15_runtime_v1",
+        "schema_version": "pars_v2_pilot15_runtime_v2",
         "pilot_plan_sha256": "a" * 64,
     }
     runner._load_or_write_runtime(output, expected, "fresh")
