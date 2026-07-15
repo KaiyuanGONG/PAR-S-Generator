@@ -1,0 +1,96 @@
+{
+  "accepted_utc": "2026-07-15T18:55:11Z",
+  "decision": "approved_for_50_case_linux_generation_with_platform_scale_locked",
+  "evidence_bindings": {
+    "bundle_manifest_sha256": "70991be26808eaea050a08d3e942331b6efb2800dc626a95c085c5b6d897a37b",
+    "clinical_alignment_report_sha256": "1cb7f3a0f9bbe3b126b96432e92360076f597ce76d007e72f810c303343c88cb",
+    "generator_git_commit": "4d3e39deb2d24fcccc107122b52ec1ffea84fe32",
+    "linux_master_sha256": "ffe453f78a78d3987eb14c298556a9a829873e8486d4798bfa43ae625dd789fb",
+    "linux_simind_sha256": "e143e2e0b0315c9cd8b6bb187d6bd28448e096c255f8d16ee0c14787d1537f9d",
+    "pars2_git_commit": "7fc82ea65514fd990accecbfad7b4d0bd2a7a676",
+    "projection_coordinate_report_sha256": "12b83f5c0627d824cbb408c8042c159dfff9afdf39143a511dfb88f1c259108a",
+    "results_archive_sha256": "ba8090bb0de8031ce4806c3f5d5612976dd81b59adb47caec7814b62f74b99a1",
+    "smc_dir_manifest_sha256": "b8f773bf3c23e2e3f03f60abb076ef6e195a079e888bfc84cfcf914256a49184",
+    "task12e_complete_sha256": "921cb2bf3e0ece8dabd62a7ac79c9e6aa5ca896e2016a34e30f4fa073e700f74"
+  },
+  "gate_decisions": {
+    "linux_clinical_projection_quality_gate_v1": "pass",
+    "linux_environment_gate": "pass",
+    "linux_projection_coordinate_gate_v2": "pass",
+    "three_node_byte_gate": "pass"
+  },
+  "manual_findings": {
+    "clinical_projection_review": {
+      "centroid_rmse_pixels": 0.2302862364584204,
+      "composite_score": 0.8739513874385028,
+      "normalized_correlation": 0.9518658933756369,
+      "raw_case_failures": 0,
+      "raw_cases_passed": 3,
+      "scale_fit_nrmse": 0.3008022264542911,
+      "status": "pass"
+    },
+    "coordinate_review": {
+      "bootstrap_top1_frequency": 1.0,
+      "case_top1_frequency": 1.0,
+      "frozen_transform_rank": 1,
+      "preferred_transform_id": "simind_v8_xcat_v1_views_forward_roll000_det_v_flip_det_u_keep",
+      "required_minimum_score_margin": 0.005,
+      "score_margin": 0.007333679037336477,
+      "status": "pass"
+    },
+    "three_node_reproducibility": {
+      "clinical_fixture_count": 3,
+      "exact_artifacts": [
+        "a00",
+        "mhd",
+        "spe"
+      ],
+      "nodes": [
+        "cnc5",
+        "cnc7",
+        "cnc8"
+      ],
+      "normalized_res": "identical_after_dynamic_runtime_lines_removed",
+      "status": "pass"
+    }
+  },
+  "platform_diagnostic": {
+    "classification": "accepted_nonblocking_platform_divergence",
+    "linux_and_windows_byte_identical": false,
+    "linux_is_canonical_production_platform": true,
+    "observed_correlations": [
+      0.4739724573543673,
+      0.7535449770729664,
+      0.5584786902067043
+    ],
+    "observed_projection_sum_relative_differences": [
+      0.7034873525826251,
+      0.7881207224657348,
+      0.8570730311225729
+    ],
+    "review": "The Linux and Windows V8.0 executables are different platform builds and produce different absolute count scales despite bound fixture inputs and /NN:1 commands. This does not establish cross-platform equivalence. It is accepted only because the frozen contract makes Linux the sole production reference and forbids mixing Windows cases.",
+    "status": "non_blocking_by_frozen_task12e_contract"
+  },
+  "production_constraints": {
+    "absolute_projection_scale": "preserve Linux output scale; forbid per-case hidden renormalization",
+    "allowed_platform": "Linux x86_64 only",
+    "environment_binding": "reuse the accepted Task 12E Python, SIMIND and smc_dir hashes",
+    "manifest_policy": "split before generation; atomically publish immutable per-case results; freeze one final manifest",
+    "mix_windows_cases": false,
+    "required_50_case_postrun_checks": [
+      "manifest and artifact hash audit",
+      "projection count and view-sum distribution audit on the Linux cohort",
+      "projection_coordinate_gate_v2 on dedicated fixtures",
+      "clinical_projection_quality_gate_v1 on selected full-physics cases",
+      "statistical and visual morphology review"
+    ]
+  },
+  "release": {
+    "approved_next_stage": "50_case_linux_pilot_preparation_and_generation",
+    "go_for_50_case_generation": true,
+    "go_for_500_case_generation": false,
+    "reason_500_still_blocked": "The 50-case Linux cohort must pass its frozen manifest, statistical, visual and projection-quality acceptance before larger expansion."
+  },
+  "schema_version": "pars_v2_task12e_manual_acceptance_v1",
+  "source": "User supplied the completed Task 12E local-gate output for Codex manual review on 2026-07-15"
+}

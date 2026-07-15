@@ -52,3 +52,16 @@ the sole production reference.
 
 Task 12E completion may set `go_for_50_case_generation=true`. No worker or
 operator may infer this release from successful SIMIND exits alone.
+
+## Recorded completion
+
+Task 12E was manually accepted on 2026-07-15 after all automatic gates passed.
+The machine-readable decision is in
+`docs/reports/task12e_manual_acceptance.json`; the companion review is in
+`docs/reports/task12e_manual_acceptance.md`.
+
+This acceptance releases the 50-case Linux generation only. It does not
+release a 500-case expansion. The Windows/Linux count-scale difference is
+retained as a non-blocking diagnostic, and the release therefore requires the
+50-case run to use the accepted Linux runtime exclusively and to audit its own
+absolute projection-count distribution before dataset acceptance.

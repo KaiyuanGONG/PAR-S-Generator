@@ -183,3 +183,15 @@ Get-Content -Raw \
 
 Expected automatic status: `pass_awaiting_manual_review`. The 50-case release
 remains false until manual acceptance.
+
+## 7. Manual acceptance result
+
+Task 12E was manually accepted on 2026-07-15. The authoritative release record
+is `docs/reports/task12e_manual_acceptance.json` and sets
+`go_for_50_case_generation=true` while keeping
+`go_for_500_case_generation=false`.
+
+Do not modify the generated `TASK12E_COMPLETE.json`; its pending flag is an
+immutable record of the automatic stage. The separate acceptance record binds
+the human decision to its SHA256. All subsequent production cases must use the
+accepted Linux runtime and must not mix in Windows-generated projections.

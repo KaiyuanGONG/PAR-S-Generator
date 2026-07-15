@@ -54,6 +54,25 @@ def test_task12d_manual_acceptance_releases_linux_only() -> None:
     assert document["metadata_override"]["replacement_value"] == 50
 
 
+def test_task12e_manual_acceptance_releases_only_50_linux_cases() -> None:
+    document = json.loads(
+        (REPO_ROOT / "docs" / "reports" / "task12e_manual_acceptance.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert document["decision"] == (
+        "approved_for_50_case_linux_generation_with_platform_scale_locked"
+    )
+    assert all(value == "pass" for value in document["gate_decisions"].values())
+    assert document["release"]["go_for_50_case_generation"] is True
+    assert document["release"]["go_for_500_case_generation"] is False
+    assert document["production_constraints"]["allowed_platform"] == (
+        "Linux x86_64 only"
+    )
+    assert document["production_constraints"]["mix_windows_cases"] is False
+    assert document["platform_diagnostic"]["linux_and_windows_byte_identical"] is False
+
+
 def test_task12e_v1_failure_is_non_scientific_and_v2_only() -> None:
     document = json.loads(
         (
