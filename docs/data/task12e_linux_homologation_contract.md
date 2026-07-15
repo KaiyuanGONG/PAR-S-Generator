@@ -3,6 +3,10 @@
 Task 12E is the mandatory platform-change gate between the accepted Windows
 Task 12D engineering chain and the 50-case Linux production pilot.
 
+Bundle v2 supersedes v1 after the cluster revealed that `/home/kgong` resolves
+to `/export/work/ummisco/home/kgong`. Environment-prefix identity is therefore
+defined by resolved realpath while the logical prefix remains recorded.
+
 ## Immutable decisions
 
 - All 50-case and later production cases use Linux x86_64 SIMIND only.
@@ -16,6 +20,9 @@ Task 12D engineering chain and the 50-case Linux production pilot.
   results are published to the shared NFS hierarchy.
 - Workers never append to a common manifest. Each writes one node shard, and a
   single master validates and aggregates completed shards.
+- Each node runs inside GNU screen and may execute at most six isolated fixture
+  cases concurrently. V2 requests 6/3/3 processes on cnc5/cnc7/cnc8; this bound
+  is part of the immutable plan.
 
 ## Required gates
 

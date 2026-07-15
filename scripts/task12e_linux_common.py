@@ -12,11 +12,11 @@ from pathlib import Path
 from typing import Any, Mapping
 
 
-BUNDLE_SCHEMA = "pars_v2_task12e_linux_bundle_v1"
-PLAN_SCHEMA = "pars_v2_task12e_linux_plan_bound_v1"
-ENVIRONMENT_SCHEMA = "pars_v2_task12e_linux_environment_v1"
-NODE_COMPLETE_SCHEMA = "pars_v2_task12e_linux_node_complete_v1"
-MASTER_SCHEMA = "pars_v2_task12e_linux_master_v1"
+BUNDLE_SCHEMA = "pars_v2_task12e_linux_bundle_v2"
+PLAN_SCHEMA = "pars_v2_task12e_linux_plan_bound_v2"
+ENVIRONMENT_SCHEMA = "pars_v2_task12e_linux_environment_v2"
+NODE_COMPLETE_SCHEMA = "pars_v2_task12e_linux_node_complete_v2"
+MASTER_SCHEMA = "pars_v2_task12e_linux_master_v2"
 EXPECTED_PROJECTION_SHAPE = (60, 128, 128)
 EXPECTED_A00_BYTES = 60 * 128 * 128 * 4
 QUARTET_EXTENSIONS = ("a00", "mhd", "res", "spe")

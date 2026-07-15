@@ -5,6 +5,7 @@ import json
 import subprocess
 import sys
 import tarfile
+import threading
 from pathlib import Path
 
 import numpy as np
@@ -51,9 +52,23 @@ def test_task12d_manual_acceptance_releases_linux_only() -> None:
     assert document["metadata_override"]["replacement_value"] == 50
 
 
+def test_task12e_v1_failure_is_non_scientific_and_v2_only() -> None:
+    document = json.loads(
+        (
+            REPO_ROOT
+            / "docs"
+            / "reports"
+            / "task12e_v1_environment_preflight_failure.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert document["root_cause"]["scientific_environment_difference"] is False
+    assert document["release"]["accept_v1_worker_outputs"] is False
+    assert document["release"]["go_for_bundle_v2_environment_recapture"] is True
+
+
 def test_task12e_static_plan_freezes_three_homogeneous_nodes() -> None:
     plan = json.loads(
-        (REPO_ROOT / "configs" / "task12e_linux_homologation_v1.json").read_text(
+        (REPO_ROOT / "configs" / "task12e_linux_homologation_v2.json").read_text(
             encoding="utf-8"
         )
     )
@@ -63,6 +78,28 @@ def test_task12e_static_plan_freezes_three_homogeneous_nodes() -> None:
         "e143e2e0b0315c9cd8b6bb187d6bd28448e096c255f8d16ee0c14787d1537f9d"
     )
     assert plan["observed_resources_per_node"]["cpu_quota_equivalent"] == 55.0
+    assert plan["fixture_execution"]["initial_max_parallel_per_node"] == 6
+    assert plan["fixture_execution"]["requested_parallel_by_node"] == {
+        "cnc5": 6,
+        "cnc7": 3,
+        "cnc8": 3,
+    }
+    assert plan["environment"]["shared_prefix_comparison"] == "resolved_realpath"
+
+
+def test_environment_prefix_uses_realpath_alias_equivalence(monkeypatch) -> None:
+    module = _load_script("capture_task12e_linux_environment.py")
+    canonical = "/export/work/ummisco/home/kgong/conda-envs/pars-v2-linux-py311"
+    aliases = {
+        "/home/kgong/conda-envs/pars-v2-linux-py311": canonical,
+        canonical: canonical,
+    }
+    monkeypatch.setattr(module.os.path, "realpath", lambda value: aliases[str(value)])
+    logical = module._prefix_realpath(
+        "/home/kgong/conda-envs/pars-v2-linux-py311"
+    )
+    physical = module._prefix_realpath(canonical)
+    assert logical == physical
 
 
 def test_normalized_res_ignores_only_runtime_lines(tmp_path: Path) -> None:
@@ -161,10 +198,16 @@ def test_remote_scripts_are_headless_and_resume_aware() -> None:
     master = (SCRIPTS / "finalize_task12e_linux_master.py").read_text(
         encoding="utf-8"
     )
+    launcher = (SCRIPTS / "launch_task12e_linux_screen.sh").read_text(
+        encoding="utf-8"
+    )
     assert "PyQt" not in worker + master
     assert "--resume" in worker
     assert "/NN:" in worker and "/RR:" in worker
+    assert "ThreadPoolExecutor" in worker and "--max-parallel" in worker
     assert "normalized_res_sha256" in master
+    assert "screen -dmS" in launcher
+    assert "MAX_PARALLEL" in launcher and "tee -a" in launcher
 
 
 def test_worker_resource_gate_understands_cgroup_v1_quota() -> None:
@@ -231,6 +274,32 @@ def test_worker_resource_gate_understands_cgroup_v2_quota() -> None:
         )
 
 
+def test_worker_parallelism_is_bounded_by_frozen_plan() -> None:
+    worker = _load_script("run_task12e_linux_worker.py")
+    plan = {"execution": {"maximum_parallel_per_node": 6}}
+    assert worker._bounded_parallelism(plan, 6, 6) == 6
+    assert worker._bounded_parallelism(plan, 6, 3) == 3
+    with pytest.raises(ValueError, match="within 1..6"):
+        worker._bounded_parallelism(plan, 7, 6)
+
+
+def test_worker_actually_executes_three_cases_concurrently() -> None:
+    worker = _load_script("run_task12e_linux_worker.py")
+    barrier = threading.Barrier(3, timeout=3)
+    cases = tuple({"case_id": f"case_{index}"} for index in range(3))
+
+    def execute(case):
+        barrier.wait()
+        return case
+
+    completed = worker._execute_cases_concurrently(cases, 3, execute)
+    assert {item["case_id"] for item in completed} == {
+        "case_0",
+        "case_1",
+        "case_2",
+    }
+
+
 def test_linux_master_accepts_three_identical_node_shards(tmp_path: Path) -> None:
     bundle = tmp_path / "bundle"
     shared = tmp_path / "shared"
@@ -253,6 +322,14 @@ def test_linux_master_accepts_three_identical_node_shards(tmp_path: Path) -> Non
         "hostname_prefix_by_node": {node: f"{node}-" for node in nodes},
         "clinical_case_ids": clinical,
         "coordinate_case_ids": coordinate,
+        "execution": {
+            "maximum_parallel_per_node": 6,
+            "requested_parallel_by_node": {
+                "cnc5": 6,
+                "cnc7": 3,
+                "cnc8": 3,
+            },
+        },
         "cases": cases,
     }
     atomic_write_json(bundle / "TASK12E_PLAN.json", plan)
@@ -325,6 +402,7 @@ def test_linux_master_accepts_three_identical_node_shards(tmp_path: Path) -> Non
                     "environment_capture_sha256": environment_sha,
                     "dependency_hashes": {"libc.so.6": "same"},
                 },
+                "max_parallel": len(assigned),
                 "cases": [{"case_id": case_id} for case_id in assigned],
             },
         )

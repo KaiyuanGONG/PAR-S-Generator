@@ -48,9 +48,12 @@ _SOURCE_PATHSPECS = (
     "scripts/finalize_task12e_linux_local.py",
     "scripts/finalize_task12e_linux_master.py",
     "scripts/prepare_task12e_linux_environment.sh",
+    "scripts/launch_task12e_linux_screen.sh",
     "scripts/run_task12e_linux_node.sh",
     "scripts/run_task12e_linux_worker.py",
     "scripts/task12e_linux_common.py",
+    "configs/task12e_linux_environment.yml",
+    "configs/task12e_linux_homologation_v2.json",
 )
 
 

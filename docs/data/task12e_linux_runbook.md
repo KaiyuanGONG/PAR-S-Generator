@@ -1,24 +1,20 @@
-# PAR-S V2 Task 12E Linux three-node runbook
+# PAR-S V2 Task 12E Linux three-node runbook (bundle v2)
 
-This runbook uploads one immutable bundle through the `hpc` SSH alias, runs
-three isolated Linux node shards, downloads one result archive, and runs the
-local projection gates. It does not generate or release the 50-case dataset.
+Bundle v2 supersedes bundle v1. The v1 environment correctly froze all package
+versions but incorrectly compared the logical shared-home prefix with its
+resolved NFS realpath. V2 compares realpaths and adds a frozen maximum of six
+concurrent case-isolated SIMIND subprocesses per node.
 
-## Local prerequisites
+The upload is immutable and shared through NFS. Each node runs in a detached
+GNU screen session, computes under node-local `/tmp`, and publishes only
+completed case directories to its own node shard. A single master aggregates
+the shards after all screens finish.
 
-- Generator worktree commit: recorded by `BUILD_COMPLETE.json`.
-- PAR-S_2 worktree commit: `7fc82ea65514fd990accecbfad7b4d0bd2a7a676`.
-- Formal bundle root:
-  `D:\PFE-U\PAR\outputs\task12e_linux_upload`
-- SSH alias: `hpc`
-
-Both local worktrees must remain clean while the homologation is running.
-
-## 1. Upload once from local PowerShell
+## 1. Upload bundle v2 from local PowerShell
 
 ```powershell
-$upload = "D:\PFE-U\PAR\outputs\task12e_linux_upload"
-$archive = Join-Path $upload "pars_v2_task12e_linux_bundle_v1.tar.gz"
+$upload = "D:\PFE-U\PAR\outputs\task12e_linux_upload_v2"
+$archive = Join-Path $upload "pars_v2_task12e_linux_bundle_v2.tar.gz"
 $sidecar = "$archive.sha256"
 
 scp $archive "hpc:/home/kgong/scratch/"
@@ -26,74 +22,111 @@ scp $sidecar "hpc:/home/kgong/scratch/"
 ssh hpc
 ```
 
-## 2. Extract and create the shared Python 3.11 environment
+## 2. Verify, extract and recapture the existing environment
 
-Run on the `hpc` login node:
+Run once on the `hpc` login node. The existing Python environment is reused;
+it is not recreated when its Python executable already exists.
 
 ```bash
 cd "$HOME/scratch"
-sha256sum -c pars_v2_task12e_linux_bundle_v1.tar.gz.sha256
+sha256sum -c pars_v2_task12e_linux_bundle_v2.tar.gz.sha256
 
-mkdir -p "$HOME/scratch/pars_v2_task12e"
-tar -xzf pars_v2_task12e_linux_bundle_v1.tar.gz \
-    -C "$HOME/scratch/pars_v2_task12e"
+test ! -e "$HOME/scratch/pars_v2_task12e_v2" || {
+    echo "ERROR: pars_v2_task12e_v2 already exists"
+    exit 1
+}
 
-BUNDLE="$HOME/scratch/pars_v2_task12e/pars_v2_task12e_linux_bundle_v1"
-RUN="$HOME/scratch/pars_v2_task12e_run"
+mkdir -p "$HOME/scratch/pars_v2_task12e_v2"
+tar -xzf pars_v2_task12e_linux_bundle_v2.tar.gz \
+    -C "$HOME/scratch/pars_v2_task12e_v2"
+
+BUNDLE="$HOME/scratch/pars_v2_task12e_v2/pars_v2_task12e_linux_bundle_v2"
+RUN="$HOME/scratch/pars_v2_task12e_run_v2"
 ENV_PREFIX="$HOME/conda-envs/pars-v2-linux-py311"
 
 chmod +x "$BUNDLE/scripts/"*.sh
+bash -n "$BUNDLE/scripts/"*.sh
+
 bash "$BUNDLE/scripts/prepare_task12e_linux_environment.sh" \
     "$BUNDLE" "$RUN" "$ENV_PREFIX"
+
+"$ENV_PREFIX/bin/python" -m py_compile "$BUNDLE/scripts/"*.py
+cat "$RUN/LINUX_ENVIRONMENT.json"
 ```
 
-Required result: `status=pass` and Python `3.11.14`.
+Required environment result: `status=pass`, Python `3.11.14`, and the expected
+logical prefix resolving to `/export/work/ummisco/home/kgong/...`.
 
-## 3. Run one shard in each actual compute-node terminal
+## 3. Start one detached screen on each actual compute node
 
-The following commands must be pasted into the matching active node terminal,
-not the login node. Files are shared through NFS; each worker uses node-local
-`/tmp` for active SIMIND work.
+Run the matching block in each node terminal. The worker itself verifies the
+hostname prefix and refuses an incorrect node label. The plan permits at most
+six; this run requests 6/3/3 processes on cnc5/cnc7/cnc8.
 
-On the `cnc5-*` terminal:
-
-```bash
-BUNDLE="$HOME/scratch/pars_v2_task12e/pars_v2_task12e_linux_bundle_v1"
-RUN="$HOME/scratch/pars_v2_task12e_run"
-bash "$BUNDLE/scripts/run_task12e_linux_node.sh" cnc5 "$RUN" "$BUNDLE"
-```
-
-On the `cnc7-*` terminal:
+### cnc5
 
 ```bash
-BUNDLE="$HOME/scratch/pars_v2_task12e/pars_v2_task12e_linux_bundle_v1"
-RUN="$HOME/scratch/pars_v2_task12e_run"
-bash "$BUNDLE/scripts/run_task12e_linux_node.sh" cnc7 "$RUN" "$BUNDLE"
-```
-
-On the `cnc8-*` terminal:
-
-```bash
-BUNDLE="$HOME/scratch/pars_v2_task12e/pars_v2_task12e_linux_bundle_v1"
-RUN="$HOME/scratch/pars_v2_task12e_run"
-bash "$BUNDLE/scripts/run_task12e_linux_node.sh" cnc8 "$RUN" "$BUNDLE"
-```
-
-The commands are resumable. Rerun the identical command after a disconnect or
-node restart. `cnc5` runs six fixtures; `cnc7` and `cnc8` each run three.
-Each worker prints a JSON `case_started` and `case_complete` event, so a long
-SIMIND case does not look like a stalled shell. To retain a log, append
-`2>&1 | tee -a "$RUN/${HOSTNAME}_task12e.log"` to the relevant worker command
-after first running `set -o pipefail` in that terminal.
-
-## 4. Run the single master after all three workers complete
-
-Run on the login node or any one compute node:
-
-```bash
-BUNDLE="$HOME/scratch/pars_v2_task12e/pars_v2_task12e_linux_bundle_v1"
-RUN="$HOME/scratch/pars_v2_task12e_run"
+BUNDLE="$HOME/scratch/pars_v2_task12e_v2/pars_v2_task12e_linux_bundle_v2"
+RUN="$HOME/scratch/pars_v2_task12e_run_v2"
 ENV_PREFIX="$HOME/conda-envs/pars-v2-linux-py311"
+mkdir -p "$RUN/logs"
+
+bash "$BUNDLE/scripts/launch_task12e_linux_screen.sh" \
+    cnc5 "$RUN" "$BUNDLE" "$ENV_PREFIX" 6
+```
+
+### cnc7
+
+```bash
+BUNDLE="$HOME/scratch/pars_v2_task12e_v2/pars_v2_task12e_linux_bundle_v2"
+RUN="$HOME/scratch/pars_v2_task12e_run_v2"
+ENV_PREFIX="$HOME/conda-envs/pars-v2-linux-py311"
+mkdir -p "$RUN/logs"
+
+bash "$BUNDLE/scripts/launch_task12e_linux_screen.sh" \
+    cnc7 "$RUN" "$BUNDLE" "$ENV_PREFIX" 3
+```
+
+### cnc8
+
+```bash
+BUNDLE="$HOME/scratch/pars_v2_task12e_v2/pars_v2_task12e_linux_bundle_v2"
+RUN="$HOME/scratch/pars_v2_task12e_run_v2"
+ENV_PREFIX="$HOME/conda-envs/pars-v2-linux-py311"
+mkdir -p "$RUN/logs"
+
+bash "$BUNDLE/scripts/launch_task12e_linux_screen.sh" \
+    cnc8 "$RUN" "$BUNDLE" "$ENV_PREFIX" 3
+```
+
+Useful monitoring commands on the matching node:
+
+```bash
+screen -r pars12e_cnc5
+tail -f "$HOME/scratch/pars_v2_task12e_run_v2/logs/cnc5.log"
+```
+
+Detach without stopping the job with `Ctrl-a` then `d`. Replace `cnc5` with the
+matching node id for the other screens. If a screen exits early, inspect its
+log and rerun the same `screen -dmS ...` command; `--resume` validates and
+reuses completed cases.
+
+## 4. Master aggregation after all node markers exist
+
+Run on the login node:
+
+```bash
+BUNDLE="$HOME/scratch/pars_v2_task12e_v2/pars_v2_task12e_linux_bundle_v2"
+RUN="$HOME/scratch/pars_v2_task12e_run_v2"
+ENV_PREFIX="$HOME/conda-envs/pars-v2-linux-py311"
+
+for node in cnc5 cnc7 cnc8; do
+    test -f "$RUN/nodes/$node/NODE_COMPLETE.json" || {
+        echo "ERROR: $node is not complete"
+        exit 1
+    }
+    echo "$node complete"
+done
 
 "$ENV_PREFIX/bin/python" \
     "$BUNDLE/scripts/finalize_task12e_linux_master.py" \
@@ -101,37 +134,28 @@ ENV_PREFIX="$HOME/conda-envs/pars-v2-linux-py311"
     --shared-root "$RUN"
 
 cat "$RUN/master/TASK12E_LINUX_MASTER.json"
-cat "$RUN/master/RESULT_ARCHIVE.json"
+(cd "$RUN/master" && sha256sum -c task12e_linux_results.tar.gz.sha256)
 ```
 
-Required master status: `pass`. The 50-case flag deliberately remains false
-until the downloaded projections pass local coordinate and clinical gates.
+## 5. Download and run the local projection gates
 
-## 5. Download the result archive to Windows
-
-Exit the remote shell, then run in local PowerShell:
+Local PowerShell:
 
 ```powershell
-$download = "D:\PFE-U\PAR\outputs\task12e_linux_download"
+$download = "D:\PFE-U\PAR\outputs\task12e_linux_download_v2"
 New-Item -ItemType Directory -Force -Path $download | Out-Null
 
-scp "hpc:/home/kgong/scratch/pars_v2_task12e_run/master/task12e_linux_results.tar.gz" $download
-scp "hpc:/home/kgong/scratch/pars_v2_task12e_run/master/task12e_linux_results.tar.gz.sha256" $download
-```
+scp "hpc:/home/kgong/scratch/pars_v2_task12e_run_v2/master/task12e_linux_results.tar.gz" $download
+scp "hpc:/home/kgong/scratch/pars_v2_task12e_run_v2/master/task12e_linux_results.tar.gz.sha256" $download
 
-## 6. Run local Linux projection gates
-
-```powershell
 conda activate SPECT
 Set-Location "D:\PFE-U\PAR\.worktrees\PAR-S-Generator-task12"
-
 python scripts\finalize_task12e_linux_local.py
 
 Get-Content -Raw \
-    "D:\PFE-U\PAR\outputs\task12e_linux_qa\TASK12E_COMPLETE.json"
+    "D:\PFE-U\PAR\outputs\task12e_linux_qa_v2\TASK12E_COMPLETE.json"
 ```
 
-The expected automatic status is `pass_awaiting_manual_review`, while
-`go_for_50_case_generation` remains false. Send `TASK12E_COMPLETE.json` for the
-final platform-switch review. Only the subsequent manual acceptance may release
-the 50-case Linux run.
+The expected automatic status is `pass_awaiting_manual_review`.
+`go_for_50_case_generation` remains false until the result is manually
+accepted.

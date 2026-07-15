@@ -99,6 +99,12 @@ def main() -> int:
     if not isinstance(expected_nodes, list) or len(expected_nodes) != 3:
         raise ValueError("Task 12E requires exactly three expected nodes")
     canonical = str(plan.get("canonical_projection_node"))
+    execution = plan.get("execution")
+    if not isinstance(execution, Mapping) or not isinstance(
+        execution.get("requested_parallel_by_node"), Mapping
+    ):
+        raise ValueError("bound node parallelism contract is missing")
+    requested_parallel_by_node = execution["requested_parallel_by_node"]
     master_dir = shared_root / "master"
     completion_path = master_dir / "TASK12E_LINUX_MASTER.json"
     if completion_path.exists():
@@ -113,7 +119,7 @@ def main() -> int:
             atomic_write_json(
                 master_dir / "RESULT_ARCHIVE.json",
                 {
-                    "schema_version": "pars_v2_task12e_linux_result_archive_v1",
+                    "schema_version": "pars_v2_task12e_linux_result_archive_v2",
                     "archive": archive_path.name,
                     "sha256": archive_sha,
                     "size_bytes": archive_size,
@@ -144,6 +150,11 @@ def main() -> int:
         }
         if observed_cases != expected_cases:
             raise ValueError(f"node {node_id} case coverage mismatch")
+        expected_parallel = min(
+            int(requested_parallel_by_node.get(node_id, 0)), len(expected_cases)
+        )
+        if int(document.get("max_parallel", 0)) != expected_parallel:
+            raise ValueError(f"node {node_id} parallelism contract mismatch")
         node_documents[node_id] = document
         provenance_by_node[node_id] = {
             case_id: _verify_case(
@@ -250,7 +261,7 @@ def main() -> int:
     atomic_write_json(completion_path, master)
     archive_path, archive_sha, archive_size = _build_archive(shared_root, master_dir)
     archive_document = {
-        "schema_version": "pars_v2_task12e_linux_result_archive_v1",
+        "schema_version": "pars_v2_task12e_linux_result_archive_v2",
         "archive": archive_path.name,
         "sha256": archive_sha,
         "size_bytes": archive_size,

@@ -16,9 +16,10 @@ import sys
 import tempfile
 import time
 import uuid
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any, Callable, Mapping
 
 from task12e_linux_common import (
     ENVIRONMENT_SCHEMA,
@@ -160,6 +161,38 @@ def _audit_a00(path: Path) -> dict[str, object]:
     }
 
 
+def _bounded_parallelism(
+    plan: Mapping[str, Any], requested: int, case_count: int
+) -> int:
+    execution = plan.get("execution")
+    if not isinstance(execution, Mapping):
+        raise ValueError("bound execution contract missing")
+    bound = int(execution.get("maximum_parallel_per_node", 0))
+    if requested < 1 or requested > bound:
+        raise ValueError(
+            f"max_parallel must be within 1..{bound}; received {requested}"
+        )
+    if case_count < 1:
+        raise ValueError("node case count must be positive")
+    return min(requested, case_count)
+
+
+def _execute_cases_concurrently(
+    cases: tuple[Mapping[str, Any], ...],
+    max_parallel: int,
+    execute: Callable[[Mapping[str, Any]], Mapping[str, Any]],
+) -> list[Mapping[str, Any]]:
+    completed: list[Mapping[str, Any]] = []
+    with ThreadPoolExecutor(
+        max_workers=max_parallel,
+        thread_name_prefix="task12e-case",
+    ) as executor:
+        futures = [executor.submit(execute, case) for case in cases]
+        for future in as_completed(futures):
+            completed.append(future.result())
+    return completed
+
+
 def _validate_completed_case(
     case_dir: Path, case_id: str, bundle_manifest_sha256: str
 ) -> Mapping[str, Any]:
@@ -276,7 +309,7 @@ def _run_case(
             work_dir / f"{case_id}.res"
         )
         provenance: dict[str, object] = {
-            "schema_version": "pars_v2_task12e_linux_run_provenance_v1",
+            "schema_version": "pars_v2_task12e_linux_run_provenance_v2",
             "status": "complete",
             "case_id": case_id,
             "bundle_manifest_sha256": bundle_manifest_sha256,
@@ -327,6 +360,7 @@ def main() -> int:
     parser.add_argument("--node-id", required=True)
     parser.add_argument("--simind-exe", type=Path, required=True)
     parser.add_argument("--local-root", type=Path)
+    parser.add_argument("--max-parallel", type=int, default=1)
     parser.add_argument("--resume", action="store_true")
     args = parser.parse_args()
 
@@ -382,8 +416,21 @@ def main() -> int:
         print(json.dumps({"status": "complete", "node_id": args.node_id, "reused": True}))
         return 0
 
-    results: list[dict[str, object]] = []
-    for case in node_case_specs(plan, args.node_id):
+    cases = node_case_specs(plan, args.node_id)
+    actual_parallel = _bounded_parallelism(plan, args.max_parallel, len(cases))
+    print(
+        json.dumps(
+            {
+                "event": "worker_started",
+                "node_id": args.node_id,
+                "case_count": len(cases),
+                "max_parallel": actual_parallel,
+            }
+        ),
+        flush=True,
+    )
+
+    def execute(case: Mapping[str, Any]) -> Mapping[str, Any]:
         case_id = validate_case_id(case.get("case_id"))
         print(
             json.dumps(
@@ -418,20 +465,25 @@ def main() -> int:
             ),
             flush=True,
         )
-        results.append(
-            {
-                "case_id": provenance["case_id"],
-                "fixture_group": provenance["fixture_group"],
-                "elapsed_seconds": provenance["elapsed_seconds"],
-                "run_provenance_relative_path": (
-                    f"nodes/{args.node_id}/{provenance['case_id']}/run_provenance.json"
-                ),
-                "run_provenance_sha256": sha256_file(
-                    shared_node_root / str(provenance["case_id"]) / "run_provenance.json"
-                ),
-                "output_artifacts": provenance["output_artifacts"],
-            }
-        )
+        return provenance
+
+    provenances = _execute_cases_concurrently(cases, actual_parallel, execute)
+
+    results = [
+        {
+            "case_id": provenance["case_id"],
+            "fixture_group": provenance["fixture_group"],
+            "elapsed_seconds": provenance["elapsed_seconds"],
+            "run_provenance_relative_path": (
+                f"nodes/{args.node_id}/{provenance['case_id']}/run_provenance.json"
+            ),
+            "run_provenance_sha256": sha256_file(
+                shared_node_root / str(provenance["case_id"]) / "run_provenance.json"
+            ),
+            "output_artifacts": provenance["output_artifacts"],
+        }
+        for provenance in sorted(provenances, key=lambda item: str(item["case_id"]))
+    ]
     completion = {
         "schema_version": NODE_COMPLETE_SCHEMA,
         "status": "complete",
@@ -439,6 +491,7 @@ def main() -> int:
         "hostname": hostname,
         "bundle_manifest_sha256": bundle_manifest_sha256,
         "runtime_fingerprint": runtime_fingerprint,
+        "max_parallel": actual_parallel,
         "case_count": len(results),
         "cases": results,
         "completed_utc": _utc_now(),

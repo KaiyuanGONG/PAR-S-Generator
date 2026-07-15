@@ -27,6 +27,10 @@ CRITICAL_MODULES = {
 }
 
 
+def _prefix_realpath(value: str | Path) -> Path:
+    return Path(os.path.realpath(value))
+
+
 def _conda_records(prefix: Path) -> tuple[list[dict[str, object]], str]:
     command = ["conda", "list", "--json", "--prefix", str(prefix)]
     completed = subprocess.run(command, capture_output=True, text=True, check=False)
@@ -85,10 +89,16 @@ def capture(bundle_root: Path) -> dict[str, object]:
                 "module_file_sha256": sha256_file(module_file),
             }
         )
-    prefix = Path(sys.prefix).resolve()
-    expected_prefix = Path(str(expected.get("shared_prefix", "")))
+    prefix_logical = Path(sys.prefix)
+    prefix = _prefix_realpath(prefix_logical)
+    expected_prefix_logical = Path(str(expected.get("shared_prefix", "")))
+    expected_prefix = _prefix_realpath(expected_prefix_logical)
     if prefix != expected_prefix:
-        failures.append(f"prefix expected={expected_prefix} actual={prefix}")
+        failures.append(
+            "prefix realpath mismatch "
+            f"expected_logical={expected_prefix_logical} "
+            f"expected_realpath={expected_prefix} actual_realpath={prefix}"
+        )
     records, records_sha256 = _conda_records(prefix)
     return {
         "schema_version": ENVIRONMENT_SCHEMA,
@@ -99,7 +109,10 @@ def capture(bundle_root: Path) -> dict[str, object]:
             "version": actual_python,
             "executable": str(Path(sys.executable).resolve()),
             "executable_sha256": sha256_file(sys.executable),
+            "logical_prefix": str(prefix_logical),
             "prefix": str(prefix),
+            "expected_logical_prefix": str(expected_prefix_logical),
+            "expected_resolved_prefix": str(expected_prefix),
             "implementation": platform.python_implementation(),
         },
         "platform": {

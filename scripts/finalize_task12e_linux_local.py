@@ -30,12 +30,12 @@ from task12e_linux_common import (  # noqa: E402
 
 
 DEFAULT_BUNDLE_ROOT = Path(
-    r"D:\PFE-U\PAR\outputs\task12e_linux_upload\pars_v2_task12e_linux_bundle_v1"
+    r"D:\PFE-U\PAR\outputs\task12e_linux_upload_v2\pars_v2_task12e_linux_bundle_v2"
 )
 DEFAULT_RESULTS_ARCHIVE = Path(
-    r"D:\PFE-U\PAR\outputs\task12e_linux_download\task12e_linux_results.tar.gz"
+    r"D:\PFE-U\PAR\outputs\task12e_linux_download_v2\task12e_linux_results.tar.gz"
 )
-DEFAULT_QA_ROOT = Path(r"D:\PFE-U\PAR\outputs\task12e_linux_qa")
+DEFAULT_QA_ROOT = Path(r"D:\PFE-U\PAR\outputs\task12e_linux_qa_v2")
 DEFAULT_PARS2_ROOT = Path(r"D:\PFE-U\PAR\.worktrees\PAR-S_2-task12")
 DEFAULT_WINDOWS_ROOT = Path(r"D:\PFE-U\PAR\outputs\pars_v2_task12d3")
 FROZEN_TRANSFORM_ID = "simind_v8_xcat_v1_views_forward_roll000_det_v_flip_det_u_keep"
@@ -381,7 +381,7 @@ def main() -> int:
     )
     automatic_pass = coordinate_pass and clinical_pass
     document = {
-        "schema_version": "pars_v2_task12e_linux_complete_v1",
+        "schema_version": "pars_v2_task12e_linux_complete_v2",
         "status": "pass_awaiting_manual_review" if automatic_pass else "fail",
         "generated_utc": _utc_now(),
         "automatic_gate_passed": automatic_pass,

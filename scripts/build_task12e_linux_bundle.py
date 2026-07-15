@@ -33,8 +33,8 @@ DEFAULT_TASK12D_ROOT = Path(r"D:\PFE-U\PAR\outputs\pars_v2_task12d3")
 DEFAULT_TASK12D_WORK = Path(r"D:\PFE-U\PAR\outputs\pars_v2_task12d3_work")
 DEFAULT_TASK12D_QA = Path(r"D:\PFE-U\PAR\outputs\pars_v2_task12d3_qa")
 DEFAULT_COORDINATE_ROOT = Path(r"D:\PFE-U\PAR\outputs\projection_coordinate_fixtures_v2")
-DEFAULT_OUTPUT_ROOT = Path(r"D:\PFE-U\PAR\outputs\task12e_linux_upload")
-BUNDLE_NAME = "pars_v2_task12e_linux_bundle_v1"
+DEFAULT_OUTPUT_ROOT = Path(r"D:\PFE-U\PAR\outputs\task12e_linux_upload_v2")
+BUNDLE_NAME = "pars_v2_task12e_linux_bundle_v2"
 
 
 def _utc_now() -> str:
@@ -154,7 +154,7 @@ def build_bundle(
     bundle_root = staging / BUNDLE_NAME
     bundle_root.mkdir(parents=True, exist_ok=False)
     try:
-        config = read_json(REPO_ROOT / "configs" / "task12e_linux_homologation_v1.json")
+        config = read_json(REPO_ROOT / "configs" / "task12e_linux_homologation_v2.json")
         acceptance = read_json(REPO_ROOT / "docs" / "reports" / "task12d_manual_acceptance.json")
         if acceptance.get("release", {}).get("go_for_task12e_linux_homologation") is not True:
             raise ValueError("Task 12D acceptance does not release Task 12E")
@@ -170,6 +170,15 @@ def build_bundle(
         _copy(
             REPO_ROOT / "docs" / "reports" / "task12d_manual_acceptance.json",
             bundle_root / "evidence" / "task12d_manual_acceptance.json",
+        )
+        _copy(
+            REPO_ROOT
+            / "docs"
+            / "reports"
+            / "task12e_v1_environment_preflight_failure.json",
+            bundle_root
+            / "evidence"
+            / "task12e_v1_environment_preflight_failure.json",
         )
         _copy(
             task12d_work / "PROGRESS.json",
@@ -193,6 +202,7 @@ def build_bundle(
             "run_task12e_linux_worker.py",
             "finalize_task12e_linux_master.py",
             "prepare_task12e_linux_environment.sh",
+            "launch_task12e_linux_screen.sh",
             "run_task12e_linux_node.sh",
         ):
             _copy(
@@ -325,10 +335,24 @@ def build_bundle(
             "coordinate_case_ids": [
                 item["case_id"] for item in coordinate_cases
             ],
+            "execution": {
+                "maximum_parallel_per_node": int(
+                    config["fixture_execution"]["initial_max_parallel_per_node"]
+                ),
+                "requested_parallel_by_node": config["fixture_execution"][
+                    "requested_parallel_by_node"
+                ],
+            },
             "cases": clinical_cases + coordinate_cases,
             "source_binding": binding,
             "task12d_acceptance_sha256": sha256_file(
                 REPO_ROOT / "docs" / "reports" / "task12d_manual_acceptance.json"
+            ),
+            "task12e_v1_failure_sha256": sha256_file(
+                REPO_ROOT
+                / "docs"
+                / "reports"
+                / "task12e_v1_environment_preflight_failure.json"
             ),
             "pars2_required_commit": acceptance_bindings["pars2_git_commit"],
         }
@@ -363,7 +387,7 @@ def build_bundle(
         f"{archive_sha}  {archive_path.name}\n", encoding="utf-8"
     )
     result = {
-        "schema_version": "pars_v2_task12e_linux_bundle_build_v1",
+        "schema_version": "pars_v2_task12e_linux_bundle_build_v2",
         "status": "complete",
         "formal_eligible": binding["formal_eligible"],
         "bundle_root": str(final_bundle),

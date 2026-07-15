@@ -1,0 +1,69 @@
+{
+  "schema_version": "pars_v2_task12e_linux_plan_v2",
+  "purpose": "freeze_linux_runtime_and_prove_three_node_numeric_and_projection_contract_equivalence_before_50_cases",
+  "supersedes": "task12e_linux_homologation_v1_due_to_shared_home_realpath_alias",
+  "canonical_production_platform": "linux_x86_64",
+  "expected_linux_simind_sha256": "e143e2e0b0315c9cd8b6bb187d6bd28448e096c255f8d16ee0c14787d1537f9d",
+  "expected_nodes": ["cnc5", "cnc7", "cnc8"],
+  "canonical_projection_node": "cnc5",
+  "hostname_prefix_by_node": {
+    "cnc5": "cnc5-",
+    "cnc7": "cnc7-",
+    "cnc8": "cnc8-"
+  },
+  "minimum_resources_per_node": {
+    "cpu_quota_equivalent": 6.0,
+    "memory_bytes": 8589934592
+  },
+  "observed_resources_per_node": {
+    "cpu_quota_equivalent": 55.0,
+    "memory_limit_bytes": 262144000000,
+    "logical_cpus": 56
+  },
+  "runtime": {
+    "smc_relative_path": "runtime/ge870_czt.smc",
+    "simind_ini_relative_path": "runtime/simind.ini",
+    "expected_projection_shape_vvu": [60, 128, 128],
+    "timeout_seconds": 7200,
+    "local_work_root_template": "/tmp/pars_v2_task12e_{node_id}",
+    "shared_publish_policy": "one_node_one_shard_no_shared_manifest_writer"
+  },
+  "environment": {
+    "python_version": "3.11.14",
+    "numpy_version": "2.4.3",
+    "scipy_version": "1.17.1",
+    "scikit_image_version": "0.26.0",
+    "shared_prefix": "/home/kgong/conda-envs/pars-v2-linux-py311",
+    "shared_prefix_comparison": "resolved_realpath"
+  },
+  "fixture_execution": {
+    "clinical_cases_on_every_node": ["case_00000", "case_00001", "case_00002"],
+    "coordinate_cases_on_canonical_node": ["coord_spots_001", "coord_spots_002", "coord_spots_003"],
+    "initial_max_parallel_per_node": 6,
+    "requested_parallel_by_node": {
+      "cnc5": 6,
+      "cnc7": 3,
+      "cnc8": 3
+    },
+    "parallel_safety": "one_subprocess_and_local_work_directory_per_case",
+    "post_homologation_benchmark_parallelism": 4,
+    "candidate_50_case_parallelism_per_node": [6, 8]
+  },
+  "cross_node_byte_gate": {
+    "exact_artifacts": ["a00", "mhd", "spe"],
+    "res_comparison": "ignore_only_simulation_start_stop_elapsed_and_detector_hits_per_cpu_second",
+    "require_identical_dependency_hashes": true,
+    "windows_output_comparison": "diagnostic_only"
+  },
+  "projection_gates": {
+    "coordinate_candidate_count": 480,
+    "coordinate_minimum_score_margin": 0.005,
+    "coordinate_minimum_bootstrap_top1_frequency": 0.95,
+    "coordinate_minimum_case_top1_frequency": 1.0,
+    "clinical_transform_uniqueness_required": false,
+    "clinical_minimum_normalized_correlation": 0.7,
+    "clinical_maximum_scale_fit_nrmse": 0.7,
+    "clinical_minimum_composite_score": 0.5,
+    "clinical_maximum_centroid_rmse_pixels": 1.5
+  }
+}

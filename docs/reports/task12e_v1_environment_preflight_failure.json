@@ -1,0 +1,40 @@
+{
+  "schema_version": "pars_v2_task12e_v1_environment_preflight_failure_v1",
+  "observed_date": "2026-07-15",
+  "status": "superseded_by_task12e_bundle_v2",
+  "stage": "linux_environment_preflight_before_any_worker_release",
+  "v1_result": "fail",
+  "root_cause": {
+    "category": "shared_home_logical_path_vs_realpath_alias",
+    "expected_logical_prefix": "/home/kgong/conda-envs/pars-v2-linux-py311",
+    "observed_resolved_prefix": "/export/work/ummisco/home/kgong/conda-envs/pars-v2-linux-py311",
+    "scientific_environment_difference": false,
+    "explanation": "/home/kgong resolves to the shared NFS path /export/work/ummisco/home/kgong; bundle v1 compared unresolved expected text with resolved sys.prefix."
+  },
+  "verified_environment": {
+    "python": "3.11.14",
+    "numpy": "2.4.3",
+    "scipy": "1.17.1",
+    "scikit_image": "0.26.0",
+    "platform": "Linux x86_64",
+    "glibc": "2.39",
+    "conda_records_sha256": "67b699423cb8ac7798e63d7f77643538ca2829fc770522499510f1baea02b665"
+  },
+  "module_file_sha256": {
+    "numpy": "2e8da3e4385e79c4885b3f7324a8b957e6f01732b239e99e266a12c62a008b8d",
+    "scipy": "335bc6e0a9909dc7534f9569a3685a92dc8001cb8c63a6da4c239849ff02d4d0",
+    "skimage": "e620dbf41b92ba709cfa633c601b6316d5f02255fe80ee900a06636eab89d071"
+  },
+  "release": {
+    "accept_v1_environment": false,
+    "accept_v1_worker_outputs": false,
+    "go_for_bundle_v2_environment_recapture": true,
+    "go_for_50_case_generation": false
+  },
+  "v2_correction": {
+    "prefix_identity": "resolved_realpath_equality",
+    "logical_and_resolved_paths_both_recorded": true,
+    "existing_conda_environment_reused": true
+  },
+  "source": "User-provided LINUX_ENVIRONMENT.json excerpt in the Codex task"
+}
