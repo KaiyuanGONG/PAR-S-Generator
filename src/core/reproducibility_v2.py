@@ -92,12 +92,31 @@ def _distribution_snapshot() -> list[dict[str, str]]:
     return sorted(records, key=lambda item: (item["name"], item["version"]))
 
 
-def _conda_snapshot(prefix: Path | None) -> dict[str, object]:
+def _conda_snapshot(
+    prefix: Path | None,
+    *,
+    raw_prefix: str | None,
+    python_prefix: Path,
+) -> dict[str, object]:
     if prefix is None:
-        return {"detected": False, "records": [], "records_sha256": None}
+        return {
+            "detected": False,
+            "raw_prefix": None,
+            "resolved_prefix": None,
+            "prefix_matches_python_prefix": False,
+            "records": [],
+            "records_sha256": None,
+        }
     metadata_root = prefix / "conda-meta"
     if not metadata_root.is_dir():
-        return {"detected": False, "records": [], "records_sha256": None}
+        return {
+            "detected": False,
+            "raw_prefix": raw_prefix,
+            "resolved_prefix": str(prefix),
+            "prefix_matches_python_prefix": prefix == python_prefix,
+            "records": [],
+            "records_sha256": None,
+        }
     records: list[dict[str, object]] = []
     for path in sorted(metadata_root.glob("*.json"), key=lambda value: value.name.casefold()):
         try:
@@ -116,6 +135,9 @@ def _conda_snapshot(prefix: Path | None) -> dict[str, object]:
     history = metadata_root / "history"
     return {
         "detected": True,
+        "raw_prefix": raw_prefix,
+        "resolved_prefix": str(prefix),
+        "prefix_matches_python_prefix": prefix == python_prefix,
         "records": records,
         "records_sha256": canonical_json_sha256(records),
         "history_sha256": sha256_file(history) if history.is_file() else None,
@@ -144,18 +166,26 @@ def capture_python_runtime() -> dict[str, object]:
     """Capture a stable, path-aware Python/Conda runtime fingerprint."""
 
     executable = Path(sys.executable).resolve()
+    python_prefix = Path(sys.prefix).resolve()
     conda_prefix_value = os.environ.get("CONDA_PREFIX")
     conda_prefix = Path(conda_prefix_value).resolve() if conda_prefix_value else None
     distributions = _distribution_snapshot()
     document: dict[str, object] = {
         "schema_version": PYTHON_RUNTIME_SCHEMA,
         "python": {
+            "raw_executable": sys.executable,
             "executable": str(executable),
             "executable_sha256": sha256_file(executable),
             "version": platform.python_version(),
             "version_info": list(sys.version_info[:5]),
             "implementation": platform.python_implementation(),
             "cache_tag": sys.implementation.cache_tag,
+            "raw_prefix": sys.prefix,
+            "prefix": str(python_prefix),
+            "raw_base_prefix": sys.base_prefix,
+            "base_prefix": str(Path(sys.base_prefix).resolve()),
+            "raw_exec_prefix": sys.exec_prefix,
+            "exec_prefix": str(Path(sys.exec_prefix).resolve()),
         },
         "platform": {
             "os_name": os.name,
@@ -170,7 +200,11 @@ def capture_python_runtime() -> dict[str, object]:
         "critical_modules": _critical_module_snapshot(),
         "python_distributions": distributions,
         "python_distributions_sha256": canonical_json_sha256(distributions),
-        "conda": _conda_snapshot(conda_prefix),
+        "conda": _conda_snapshot(
+            conda_prefix,
+            raw_prefix=conda_prefix_value,
+            python_prefix=python_prefix,
+        ),
     }
     document["binding_sha256"] = canonical_json_sha256(document)
     return document

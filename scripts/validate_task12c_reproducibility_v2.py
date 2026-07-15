@@ -30,7 +30,7 @@ from core.schemas_v2 import load_evidence_registry, load_profile  # noqa: E402
 
 
 SCHEMA_VERSION = "pars_v2_task12c_reproducibility_fixture_v1"
-DEFAULT_OUTPUT_ROOT = Path(r"D:\PFE-U\PAR\outputs\pars_v2_task12c_fixture")
+DEFAULT_OUTPUT_ROOT = Path(r"D:\PFE-U\PAR\outputs\pars_v2_task12c_fixture_v2")
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -145,7 +145,14 @@ def main(argv: list[str] | None = None) -> int:
     generator_source_after = capture_generator_source_binding(REPO_ROOT)
     runtime_stable = python_runtime_before == python_runtime_after
     source_stable = generator_source_before == generator_source_after
-    formal_eligible = bool(generator_source_before["worktree_clean"]) and not args.allow_dirty
+    conda_prefix_aligned = bool(
+        python_runtime_before["conda"]["prefix_matches_python_prefix"]
+    )
+    formal_eligible = (
+        bool(generator_source_before["worktree_clean"])
+        and conda_prefix_aligned
+        and not args.allow_dirty
+    )
     status = (
         "pass"
         if byte_identity["status"] == "pass"
@@ -163,6 +170,7 @@ def main(argv: list[str] | None = None) -> int:
         "pilot_plan_sha256": sha256_file(args.config),
         "python_runtime": python_runtime_before,
         "python_runtime_stable_within_fixture": runtime_stable,
+        "conda_prefix_aligned_with_python_prefix": conda_prefix_aligned,
         "generator_source": generator_source_before,
         "generator_source_stable_within_fixture": source_stable,
         "input_bundle": input_bundle,

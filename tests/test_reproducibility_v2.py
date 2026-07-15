@@ -63,6 +63,8 @@ def test_python_conda_runtime_fingerprint_is_self_verifying() -> None:
 
     assert digest == canonical_json_sha256(runtime)
     assert runtime["python"]["executable_sha256"]
+    assert runtime["python"]["prefix"]
+    assert runtime["conda"]["prefix_matches_python_prefix"] is True
     assert runtime["python_distributions_sha256"] == canonical_json_sha256(
         runtime["python_distributions"]
     )

@@ -10,7 +10,7 @@ This contract applies to every formal V2 preflight, SIMIND run and resume. It is
 
 The preflight report now records and hashes:
 
-1. Python executable path, version and executable SHA-256.
+1. Raw and resolved Python executable/prefix paths, version and executable SHA-256; Conda and Python prefixes must resolve to the same environment even when Windows junction aliases differ.
 2. Conda prefix, Conda package records/builds and `conda-meta/history` SHA-256.
 3. All visible Python distribution names and versions.
 4. NumPy, SciPy and scikit-image versions, module paths and module-file SHA-256 values.
@@ -54,7 +54,7 @@ Set-Location "D:\PFE-U\PAR\.worktrees\PAR-S-Generator-task12"
 python scripts\validate_task12c_reproducibility_v2.py
 ```
 
-The fixture does not invoke SIMIND. Its default evidence root is `D:\PFE-U\PAR\outputs\pars_v2_task12c_fixture`.
+The fixture does not invoke SIMIND. Its current default evidence root is `D:\PFE-U\PAR\outputs\pars_v2_task12c_fixture_v2`.
 
 ## 50-case release gate
 
