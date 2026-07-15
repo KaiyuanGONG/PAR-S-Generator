@@ -41,6 +41,12 @@ printf -v command \
     "$LOG_PATH"
 
 screen -dmS "$SESSION" bash -lc "$command"
-printf '{"status":"started","session":"%s","node_id":"%s","max_parallel":%s,"log":"%s"}\n' \
+sleep 5
+if ! screen -ls | grep -Fq ".${SESSION}"; then
+    echo "screen exited during startup: $SESSION" >&2
+    tail -n 120 "$LOG_PATH" >&2 || true
+    exit 1
+fi
+printf '{"status":"running","session":"%s","node_id":"%s","max_parallel":%s,"log":"%s"}\n' \
     "$SESSION" "$NODE_ID" "$MAX_PARALLEL" "$LOG_PATH"
 screen -ls

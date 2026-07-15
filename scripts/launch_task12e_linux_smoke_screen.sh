@@ -41,6 +41,12 @@ printf -v command \
     "$LOG_PATH"
 
 screen -dmS "$SESSION" bash -lc "$command"
-printf '{"status":"started","session":"%s","log":"%s"}\n' \
+sleep 5
+if ! screen -ls | grep -Fq ".${SESSION}"; then
+    echo "smoke screen exited during startup: $SESSION" >&2
+    tail -n 120 "$LOG_PATH" >&2 || true
+    exit 1
+fi
+printf '{"status":"running","session":"%s","log":"%s"}\n' \
     "$SESSION" "$LOG_PATH"
 screen -ls

@@ -249,6 +249,7 @@ def test_remote_scripts_are_headless_and_resume_aware() -> None:
     assert "normalized_res_sha256" in master
     assert "screen -dmS" in launcher
     assert "MAX_PARALLEL" in launcher and "tee -a" in launcher
+    assert "screen exited during startup" in launcher
     assert "LINUX_SMOKE_COMPLETE.json" in launcher + worker
     assert 'environment["SMC_DIR"]' in worker + smoke
     assert "retained_work_dir" in worker
