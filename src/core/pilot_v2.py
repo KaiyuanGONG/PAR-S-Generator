@@ -47,16 +47,21 @@ from .tumor_generator_v2 import (
 
 PILOT_PLAN_SCHEMA_VERSION = "pars_v2_pilot3_plan_v1"
 PILOT15_PLAN_SCHEMA_VERSION = "pars_v2_pilot15_plan_v1"
+TASK12D_PLAN_SCHEMA_VERSION = "pars_v2_task12d_plan_v1"
 PILOT_GATE_SCHEMA_VERSION = "pars_v2_pilot3_gate_v1"
 _PLAN_CASE_COUNTS = {
     PILOT_PLAN_SCHEMA_VERSION: 3,
     PILOT15_PLAN_SCHEMA_VERSION: 15,
+    TASK12D_PLAN_SCHEMA_VERSION: 3,
 }
 _PLAN_PURPOSES = {
     PILOT_PLAN_SCHEMA_VERSION: (
         "deterministic_smoke_only_pending_task12_clinical_count_benchmark"
     ),
     PILOT15_PLAN_SCHEMA_VERSION: "visual_physics_qa_before_statistical_pilot",
+    TASK12D_PLAN_SCHEMA_VERSION: (
+        "runtime_bound_fullchain_verification_before_50_case_expansion"
+    ),
 }
 _SIMIND_VERSION = re.compile(r"SIMIND Monte Carlo Simulation Program\s+V([0-9.]+)")
 _MAX_INT63 = 2**63 - 1

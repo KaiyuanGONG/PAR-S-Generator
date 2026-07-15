@@ -39,7 +39,10 @@ _SOURCE_PATHSPECS = (
     "src/core",
     "scripts/generate_dataset_v2.py",
     "scripts/preflight_pilot15_v2.py",
+    "scripts/preflight_task12d_v2.py",
     "scripts/run_pilot15_v2.py",
+    "scripts/run_task12d_v2.py",
+    "scripts/finalize_task12d_v2.py",
 )
 
 

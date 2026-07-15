@@ -28,11 +28,16 @@ from core.case_writer_v2 import (  # noqa: E402
     validate_case_payload_v2,
 )
 from core.pilot_v2 import (  # noqa: E402
+    TASK12D_PLAN_SCHEMA_VERSION,
     load_pilot_plan,
     resolve_plan_path,
     validate_boundary_rejections,
 )
 from core.provenance import atomic_write_bytes, atomic_write_json, sha256_file  # noqa: E402
+from core.reproducibility_v2 import (  # noqa: E402
+    capture_generator_source_binding,
+    capture_python_runtime,
+)
 from core.schemas_v2 import load_evidence_registry, load_profile  # noqa: E402
 from core.seeds import SeedBundle  # noqa: E402
 
@@ -65,6 +70,11 @@ CORE_REQUIRED_ARTIFACTS = (
     "pilot_runtime",
 )
 PILOT15_REQUIRED_ARTIFACTS = CORE_REQUIRED_ARTIFACTS + ("pilot_preflight",)
+TASK12D_REQUIRED_ARTIFACTS = CORE_REQUIRED_ARTIFACTS + (
+    "pilot_preflight",
+    "pilot_input_bundle",
+    "preflight_byte_identity",
+)
 
 
 class PilotGateError(RuntimeError):
@@ -205,6 +215,36 @@ def _validate_case_bindings(
     quality = metadata["quality_control"]
     if quality.get("runtime_binding") != dict(frozen_runtime):
         raise PilotGateError(f"{record.case_id}: metadata runtime binding mismatch")
+    if "preflight_byte_identity" in required_artifacts:
+        preflight_hash = frozen_runtime.get("pilot_preflight_sha256")
+        if sha256_file(_artifact_path(root, record, "pilot_preflight")) != preflight_hash:
+            raise PilotGateError(f"{record.case_id}: frozen preflight artifact hash mismatch")
+        bundle = frozen_runtime.get("preflight_input_bundle")
+        if not isinstance(bundle, Mapping):
+            raise PilotGateError(f"{record.case_id}: runtime input-bundle binding is missing")
+        if (
+            sha256_file(_artifact_path(root, record, "pilot_input_bundle"))
+            != bundle.get("manifest_sha256")
+        ):
+            raise PilotGateError(f"{record.case_id}: frozen input-bundle hash mismatch")
+        identity = _read_json(_artifact_path(root, record, "preflight_byte_identity"))
+        if (
+            identity.get("status") != "pass"
+            or identity.get("case_id") != record.case_id
+            or identity.get("all_arrays_byte_identical") is not True
+            or identity.get("drifted") != []
+            or identity.get("input_bundle_manifest_sha256")
+            != bundle.get("manifest_sha256")
+        ):
+            raise PilotGateError(f"{record.case_id}: preflight byte-identity gate failed")
+        frozen_inputs = identity.get("frozen_preflight")
+        if not isinstance(frozen_inputs, Mapping) or (
+            frozen_inputs.get("source_sha256") != inputs["source"]
+            or frozen_inputs.get("density_sha256") != inputs["density"]
+        ):
+            raise PilotGateError(
+                f"{record.case_id}: byte-identity inputs disagree with SIMIND provenance"
+            )
     intended = [float(item["dmax_mm"]) for item in plan_case["lesions"]]
     actual = [
         float(item["recist_3d_mm"])
@@ -262,8 +302,11 @@ def validate(
         raise PilotGateError(
             f"generation plan case count differs from the {expected_count}-case pilot plan"
         )
+    is_task12d = plan.get("schema_version") == TASK12D_PLAN_SCHEMA_VERSION
     required_artifacts = (
-        PILOT15_REQUIRED_ARTIFACTS
+        TASK12D_REQUIRED_ARTIFACTS
+        if is_task12d
+        else PILOT15_REQUIRED_ARTIFACTS
         if expected_count == 15
         else CORE_REQUIRED_ARTIFACTS
     )
@@ -298,6 +341,15 @@ def validate(
         raise PilotGateError("PILOT_RUNTIME does not bind the current pilot plan")
     if runtime.get("simind_binary_sha256") != sha256_file(simind_exe):
         raise PilotGateError("PILOT_RUNTIME binary hash mismatch")
+    if is_task12d:
+        if runtime.get("schema_version") != "pars_v2_task12d_runtime_v1":
+            raise PilotGateError("Task 12D runtime schema mismatch")
+        if runtime.get("python_runtime") != capture_python_runtime():
+            raise PilotGateError("Task 12D Python/Conda runtime binding changed")
+        if runtime.get("generator_source") != capture_generator_source_binding(
+            REPO_ROOT
+        ):
+            raise PilotGateError("Task 12D Generator source binding changed")
     if (
         runtime.get("base_histories_per_projection")
         != int(execution["base_histories_per_projection"])
@@ -372,6 +424,25 @@ def validate(
         )
     if {item["mismatch_challenge"] for item in case_results} != {False, True}:
         raise PilotGateError("pilot does not cover matched and mismatch perfusion")
+    if is_task12d:
+        runtime_binding_status = "pass"
+        preflight_identity_status = "pass"
+        runtime_binding_impact = (
+            "Task 12D runtime and every case input/array identity are "
+            "independently revalidated"
+        )
+    elif expected_count == 15:
+        runtime_binding_status = "not_frozen_in_pilot15_v1"
+        preflight_identity_status = "not_established"
+        runtime_binding_impact = (
+            "blocks 50-case expansion but does not invalidate internal frozen-byte QA"
+        )
+    else:
+        runtime_binding_status = "legacy_pilot3"
+        preflight_identity_status = "not_applicable"
+        runtime_binding_impact = (
+            "Task 12B aggregate gates and manual methodology review are required"
+        )
     return {
         "schema_version": GATE_SCHEMA,
         "status": "pass",
@@ -397,18 +468,16 @@ def validate(
             "200_and_215_mm_expected_structural_rejection",
         ],
         "runtime_environment_binding": {
-            "status": "not_frozen_in_pilot15_v1" if expected_count == 15 else "legacy_pilot3",
-            "preflight_byte_identity": "not_established" if expected_count == 15 else "not_applicable",
-            "impact": (
-                "blocks 50-case expansion but does not invalidate internal frozen-byte QA"
-                if expected_count == 15
-                else "Task 12B aggregate gates and manual methodology review are required"
-            ),
+            "status": runtime_binding_status,
+            "preflight_byte_identity": preflight_identity_status,
+            "impact": runtime_binding_impact,
         },
         "go_for_15_case_pilot": False if expected_count == 3 else None,
         "go_for_50_case_pilot": False,
         "reason": (
-            "Task 12B aggregate gates and manual methodology review are required"
+            "Task 12D loader and projection gates are still required"
+            if is_task12d
+            else "Task 12B aggregate gates and manual methodology review are required"
             if expected_count == 3
             else "15-case visual/manual review and runtime-environment binding remediation are required"
         ),
