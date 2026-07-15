@@ -15,6 +15,7 @@ from core.activity_model_v2 import (  # noqa: E402
     necrosis_probability_for_diameter,
     sample_activity_target,
 )
+import core.activity_model_v2 as activity_model_v2  # noqa: E402
 from core.liver_geometry import GridSpecV2, LiverGeometryV2  # noqa: E402
 from core.measurements import measure_lesions  # noqa: E402
 from core.phantom_generator import PhantomConfig, PhantomGenerator  # noqa: E402
@@ -275,6 +276,72 @@ def test_necrosis_mapping_is_size_increasing_and_core_is_colder(profile) -> None
     metric = generated.lesion_metrics[0]
     assert 0.0 < metric.necrotic_fraction < 0.5
     assert metric.necrotic_core_mean < metric.viable_rim_mean
+
+
+def test_heterogeneity_exponentiates_only_inside_lesion_support(
+    profile, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    grid, liver = _liver()
+    tumors = _tumors(liver, grid, (("right", 36.0, (32, 28, 43), 4),))
+
+    def extreme_padding(
+        shape: tuple[int, int, int],
+        support: np.ndarray,
+        _sigma_voxels: float,
+        _rng: np.random.Generator,
+    ) -> np.ndarray:
+        values = np.zeros(shape, dtype=np.float32)
+        values[~support] = 1_000.0
+        return values
+
+    monkeypatch.setattr(
+        activity_model_v2,
+        "_standardized_low_frequency_field",
+        extreme_padding,
+    )
+    with np.errstate(over="raise"):
+        field = generate_activity_field(
+            _patient(),
+            liver,
+            tumors,
+            _target(tumors, heterogeneous=True),
+            profile,
+            np.random.default_rng(17),
+        )
+    assert np.isfinite(field.activity_relative).all()
+
+
+def test_background_exponentiates_only_inside_liver_support(
+    profile, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    grid, liver = _liver()
+    tumors = _tumors(liver, grid, (("right", 36.0, (32, 28, 43), 4),))
+
+    def extreme_padding(
+        shape: tuple[int, int, int],
+        support: np.ndarray,
+        _sigma_voxels: float,
+        _rng: np.random.Generator,
+    ) -> np.ndarray:
+        values = np.zeros(shape, dtype=np.float32)
+        values[~support] = 2_000.0
+        return values
+
+    monkeypatch.setattr(
+        activity_model_v2,
+        "_standardized_low_frequency_field",
+        extreme_padding,
+    )
+    with np.errstate(over="raise"):
+        field = generate_activity_field(
+            _patient(),
+            liver,
+            tumors,
+            _target(tumors, heterogeneous=False),
+            profile,
+            np.random.default_rng(23),
+        )
+    assert np.isfinite(field.activity_relative).all()
 
 
 def test_target_sampling_preserves_lesion_level_evidence_and_unknown_correlation(profile) -> None:

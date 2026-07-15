@@ -8,6 +8,7 @@ from typing import Mapping
 
 import numpy as np
 
+from .activity_model_v2 import sample_activity_target
 from .anatomy_v2 import build_torso_anatomy_v2
 from .interfile_writer import write_attenuation_map_v2, write_voxel_source
 from .liver_geometry import GridSpecV2
@@ -29,6 +30,7 @@ def prepare_population_case(
     work_dir: Path,
     max_liver_attempts: int = 16,
     max_tumor_attempts: int = 32,
+    mismatch_challenge: bool = False,
 ) -> PreparedPilotCaseV2:
     """Sample and rasterize one full population case before SIMIND execution."""
 
@@ -51,12 +53,22 @@ def prepare_population_case(
         tumor_seed=seeds.tumor,
         max_target_attempts=max_tumor_attempts,
     )
+    activity_rng = np.random.default_rng(seeds.activity)
+    activity_target = sample_activity_target(
+        liver_case.patient,
+        liver_case.geometry,
+        tumor_case.geometry,
+        profile,
+        activity_rng,
+        mismatch_challenge=mismatch_challenge,
+    )
     activity_case = generator.generate_activity_v2(
         liver_case.patient,
         liver_case.geometry,
         tumor_case.geometry,
         profile,
-        np.random.default_rng(seeds.activity),
+        activity_rng,
+        target=activity_target,
     )
     anatomy = build_torso_anatomy_v2(
         liver_case.geometry,

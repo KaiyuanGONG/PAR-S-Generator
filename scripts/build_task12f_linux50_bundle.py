@@ -47,10 +47,10 @@ from core.reproducibility_v2 import (  # noqa: E402
 from core.schemas_v2 import load_evidence_registry, load_profile  # noqa: E402
 
 
-DEFAULT_CONFIG = REPO_ROOT / "configs" / "task12f_linux50_v1.json"
-DEFAULT_PREFLIGHT = Path(r"D:\PFE-U\PAR\outputs\task12f_linux50_preflight_v1")
-DEFAULT_UPLOAD = Path(r"D:\PFE-U\PAR\outputs\task12f_linux50_upload_v1")
-BUNDLE_NAME = "pars_v2_task12f_linux50_bundle_v1"
+DEFAULT_CONFIG = REPO_ROOT / "configs" / "task12f_linux50_v2.json"
+DEFAULT_PREFLIGHT = Path(r"D:\PFE-U\PAR\outputs\task12f_linux50_preflight_v2")
+DEFAULT_UPLOAD = Path(r"D:\PFE-U\PAR\outputs\task12f_linux50_upload_v2")
+BUNDLE_NAME = "pars_v2_task12f_linux50_bundle_v2"
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -125,10 +125,65 @@ def _replace_directory_with_retry(
     raise AssertionError("atomic directory retry loop terminated unexpectedly")
 
 
-def _validate_case_dir(case_root: Path, case_id: str) -> Mapping[str, object]:
+def _apply_mismatch_challenge_design(
+    generation_plan: Mapping[str, object],
+    design: Mapping[str, object],
+) -> dict[str, object]:
+    """Freeze explicit zero-population-weight mismatch cases after split planning."""
+
+    raw_counts = design.get("mismatch_cases_per_split")
+    raw_entries = generation_plan.get("entries")
+    if not isinstance(raw_counts, Mapping) or not isinstance(raw_entries, list):
+        raise ValueError("mismatch challenge design is malformed")
+    expected_splits = ("train", "val", "test")
+    counts = {split: int(raw_counts.get(split, -1)) for split in expected_splits}
+    if set(raw_counts) != set(expected_splits) or any(value < 0 for value in counts.values()):
+        raise ValueError("mismatch challenge counts must cover train/val/test")
+
+    selected: set[str] = set()
+    for split in expected_splits:
+        candidates = sorted(
+            str(entry["case_id"])
+            for entry in raw_entries
+            if isinstance(entry, Mapping) and entry.get("split") == split
+        )
+        if len(candidates) < counts[split]:
+            raise ValueError(f"not enough {split} cases for mismatch challenges")
+        selected.update(candidates[: counts[split]])
+    population_count = len(raw_entries) - len(selected)
+    if population_count < 1:
+        raise ValueError("mismatch design leaves no population-weighted cases")
+
+    entries = []
+    for raw_entry in raw_entries:
+        if not isinstance(raw_entry, Mapping):
+            raise ValueError("generation plan entry must be an object")
+        entry = dict(raw_entry)
+        challenge = str(entry["case_id"]) in selected
+        entry["mismatch_challenge"] = challenge
+        entry["challenge_labels"] = ["perfusion_mismatch"] if challenge else []
+        entry["population_weight"] = 0.0 if challenge else 1.0
+        entry["sampling_probability"] = 0.0 if challenge else 1.0 / population_count
+        entries.append(entry)
+
+    content = {
+        key: value for key, value in generation_plan.items() if key != "sha256"
+    }
+    content["entries"] = entries
+    return {**content, "sha256": sha256_json(content)}
+
+
+def _validate_case_dir(
+    case_root: Path,
+    case_id: str,
+    *,
+    expected_mismatch_challenge: bool,
+) -> Mapping[str, object]:
     document = _read_object(case_root / "CASE_PREFLIGHT.json")
     if document.get("status") != "pass" or document.get("case_id") != case_id:
         raise ValueError(f"invalid completed preflight for {case_id}")
+    if bool(document.get("mismatch_challenge")) != expected_mismatch_challenge:
+        raise ValueError(f"{case_id} mismatch challenge policy drifted")
     for name, suffix, key in (
         ("source", "_act_av.bin", "source_sha256"),
         ("density", "_atn_av.bin", "density_sha256"),
@@ -164,6 +219,7 @@ def _prepare_case_job(
         global_seed=global_seed,
         base_histories=base_histories,
         work_dir=staging,
+        mismatch_challenge=bool(entry["mismatch_challenge"]),
     )
     raw = summarize_prepared_population_case(prepared)
     summary = {
@@ -176,6 +232,11 @@ def _prepare_case_job(
     }
     if summary["status"] != "pass":
         raise RuntimeError(f"{case_id}: {summary['failures']}")
+    expected_mismatch = bool(entry["mismatch_challenge"])
+    if bool(summary["mismatch_challenge"]) != expected_mismatch:
+        raise RuntimeError(f"{case_id}: mismatch challenge policy was not realized")
+    if expected_mismatch != (float(summary["population_weight"]) == 0.0):
+        raise RuntimeError(f"{case_id}: mismatch challenge population weight is invalid")
     atomic_write_json(staging / "CASE_PREFLIGHT.json", summary)
     final = Path(final_path)
     final.parent.mkdir(parents=True, exist_ok=True)
@@ -225,6 +286,13 @@ def _prepare_preflight(
             for key, value in dataset["split_ratios"].items()
         },
     )
+    challenge_design = config.get("challenge_design")
+    if not isinstance(challenge_design, Mapping):
+        raise ValueError("Task 12F challenge design is missing")
+    generation_plan = _apply_mismatch_challenge_design(
+        generation_plan,
+        challenge_design,
+    )
     if preflight_root.exists() and not resume:
         raise FileExistsError(
             f"preflight root exists; use --resume: {preflight_root}"
@@ -250,7 +318,11 @@ def _prepare_preflight(
         case_id = str(entry["case_id"])
         case_root = preflight_root / "cases" / case_id
         if case_root.is_dir():
-            summaries_by_id[case_id] = _validate_case_dir(case_root, case_id)
+            summaries_by_id[case_id] = _validate_case_dir(
+                case_root,
+                case_id,
+                expected_mismatch_challenge=bool(entry["mismatch_challenge"]),
+            )
         else:
             staging = preflight_root / ".staging" / f"{case_id}.{uuid.uuid4().hex}"
             staging.parent.mkdir(parents=True, exist_ok=True)
@@ -260,7 +332,7 @@ def _prepare_preflight(
         atomic_write_json(
             progress_path,
             {
-                "schema_version": "pars_v2_task12f_linux50_preflight_progress_v1",
+                "schema_version": "pars_v2_task12f_linux50_preflight_progress_v2",
                 "status": "running",
                 "completed_count": len(summaries_by_id),
                 "total_count": case_count,
@@ -309,7 +381,7 @@ def _prepare_preflight(
         raise RuntimeError(f"50-case deterministic cohort misses coverage: {missing}")
     input_bundle = write_preflight_input_bundle(preflight_root, summaries)
     report = {
-        "schema_version": "pars_v2_task12f_linux50_preflight_v1",
+        "schema_version": "pars_v2_task12f_linux50_preflight_v2",
         "status": "pass",
         "formal_runner_eligible": True,
         "generator_git_commit": commit,
@@ -336,7 +408,7 @@ def _prepare_preflight(
     atomic_write_json(
         progress_path,
         {
-            "schema_version": "pars_v2_task12f_linux50_preflight_progress_v1",
+            "schema_version": "pars_v2_task12f_linux50_preflight_progress_v2",
             "status": "complete",
             "completed_count": case_count,
             "total_count": case_count,
@@ -517,21 +589,34 @@ def main() -> int:
     args = _parser().parse_args()
     config_path = args.config.resolve()
     config = _read_object(config_path)
-    if config.get("schema_version") != "pars_v2_task12f_linux50_config_v1":
+    if config.get("schema_version") != "pars_v2_task12f_linux50_config_v2":
         raise ValueError("invalid Task 12F config schema")
     commit = _git_commit_and_clean()
-    report, generation_plan = _prepare_preflight(
-        config,
-        config_path,
-        args.preflight_root.resolve(),
-        commit=commit,
-        resume=args.resume,
-        local_max_parallel=args.local_max_parallel,
-    )
+    preflight_root = args.preflight_root.resolve()
+    try:
+        report, generation_plan = _prepare_preflight(
+            config,
+            config_path,
+            preflight_root,
+            commit=commit,
+            resume=args.resume,
+            local_max_parallel=args.local_max_parallel,
+        )
+    except Exception as exc:
+        preflight_root.mkdir(parents=True, exist_ok=True)
+        atomic_write_json(
+            preflight_root / "PROGRESS.json",
+            {
+                "schema_version": "pars_v2_task12f_linux50_preflight_progress_v2",
+                "status": "failed",
+                "error": f"{type(exc).__name__}: {exc}",
+            },
+        )
+        raise
     bundle, archive, archive_sha = _build_bundle(
         config,
         config_path,
-        args.preflight_root.resolve(),
+        preflight_root,
         report,
         generation_plan,
         args.upload_root.resolve(),

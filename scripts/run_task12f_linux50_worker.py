@@ -358,7 +358,7 @@ def main() -> int:
         atomic_write_json(
             node_root / "NODE_FAILED.json",
             {
-                "schema_version": "pars_v2_task12f_linux50_node_failed_v1",
+                "schema_version": "pars_v2_task12f_linux50_node_failed_v2",
                 "status": "failed",
                 "node_id": args.node_id,
                 "failures": failures,

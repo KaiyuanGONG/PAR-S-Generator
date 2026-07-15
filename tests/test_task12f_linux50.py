@@ -19,6 +19,7 @@ from task12f_linux50_common import (  # noqa: E402
     sha256_file,
     validate_bundle,
 )
+import build_task12f_linux50_bundle as task12f_builder  # noqa: E402
 from build_task12f_linux50_bundle import _replace_directory_with_retry  # noqa: E402
 from core.liver_geometry import GridSpecV2  # noqa: E402
 from core.production_v2 import (  # noqa: E402
@@ -31,11 +32,12 @@ from core.schemas_v2 import load_evidence_registry, load_profile  # noqa: E402
 
 def test_task12f_config_freezes_linux_only_50_case_release() -> None:
     config = json.loads(
-        (REPO_ROOT / "configs" / "task12f_linux50_v1.json").read_text(
+        (REPO_ROOT / "configs" / "task12f_linux50_v2.json").read_text(
             encoding="utf-8"
         )
     )
     assert config["dataset"]["case_count"] == 50
+    assert config["dataset"]["dataset_version"] == "2.0.0-linux50-v2"
     assert config["dataset"]["split_ratios"] == {
         "train": 0.8,
         "val": 0.1,
@@ -45,6 +47,11 @@ def test_task12f_config_freezes_linux_only_50_case_release() -> None:
         "cnc5": 17,
         "cnc7": 17,
         "cnc8": 16,
+    }
+    assert config["challenge_design"]["mismatch_cases_per_split"] == {
+        "train": 1,
+        "val": 1,
+        "test": 1,
     }
     acceptance = REPO_ROOT / config["paths"]["task12e_acceptance"]
     assert sha256_file(acceptance) == config["frozen_evidence"][
@@ -65,6 +72,37 @@ def test_task12f_round_robin_assignment_is_17_17_16() -> None:
         "cnc7": 17,
         "cnc8": 16,
     }
+
+
+def test_task12f_freezes_one_zero_weight_mismatch_challenge_per_split() -> None:
+    entries = [
+        {
+            "case_id": f"case_{index:05d}",
+            "split": split,
+            "population_weight": 1.0,
+            "sampling_probability": 1.0 / 6.0,
+        }
+        for index, split in enumerate(("train", "train", "val", "val", "test", "test"))
+    ]
+    generation_plan = {
+        "schema_version": "pars_generation_plan_v2",
+        "case_count": 6,
+        "entries": entries,
+        "sha256": "stale",
+    }
+    updated = task12f_builder._apply_mismatch_challenge_design(
+        generation_plan,
+        {"mismatch_cases_per_split": {"train": 1, "val": 1, "test": 1}},
+    )
+    challenges = [entry for entry in updated["entries"] if entry["mismatch_challenge"]]
+    population = [entry for entry in updated["entries"] if not entry["mismatch_challenge"]]
+    assert {entry["split"] for entry in challenges} == {"train", "val", "test"}
+    assert all(entry["population_weight"] == 0.0 for entry in challenges)
+    assert all(entry["sampling_probability"] == 0.0 for entry in challenges)
+    assert all(entry["challenge_labels"] == ["perfusion_mismatch"] for entry in challenges)
+    assert all(entry["population_weight"] == 1.0 for entry in population)
+    assert all(entry["sampling_probability"] == pytest.approx(1.0 / 3.0) for entry in population)
+    assert updated["sha256"] != "stale"
 
 
 def test_task12f_bundle_validation_binds_every_file(tmp_path: Path) -> None:
@@ -146,12 +184,14 @@ def test_population_case_preparation_passes_strict_preflight(tmp_path: Path) -> 
         global_seed=20260714,
         base_histories=80000,
         work_dir=tmp_path / "case_00000",
+        mismatch_challenge=True,
     )
     summary = summarize_prepared_population_case(prepared)
     assert summary["status"] == "pass"
     assert summary["source_weight_sum"] == pytest.approx(80000, abs=0.1)
     assert summary["array_manifest"]
-    assert population_coverage(summary)
+    assert "mismatch:true" in population_coverage(summary)
+    assert summary["injection_tumor_coverage_fraction"] < 1.0
 
 
 def test_task12f_launchers_freeze_threads_and_screen() -> None:

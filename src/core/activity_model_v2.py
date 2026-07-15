@@ -392,8 +392,9 @@ def generate_activity_field(
         background_sigma,
         rng,
     )
-    background = np.exp(
-        background_log_sd * background_z - 0.5 * background_log_sd**2
+    background = np.zeros(liver_mask.shape, dtype=np.float32)
+    background[liver_mask] = np.exp(
+        background_log_sd * background_z[liver_mask] - 0.5 * background_log_sd**2
     ).astype(np.float32)
     activity = np.zeros(liver_mask.shape, dtype=np.float32)
     activity[liver_mask] = residual * background[liver_mask]
@@ -433,8 +434,9 @@ def generate_activity_field(
                 tumor_sigma,
                 rng,
             )
-            local_field = np.exp(
-                tumor_log_sd * local_z - 0.5 * tumor_log_sd**2
+            local_field = np.zeros(lesion_crop.shape, dtype=np.float32)
+            local_field[lesion_crop] = np.exp(
+                tumor_log_sd * local_z[lesion_crop] - 0.5 * tumor_log_sd**2
             ).astype(np.float32)
         else:
             local_field = np.ones(lesion_crop.shape, dtype=np.float32)

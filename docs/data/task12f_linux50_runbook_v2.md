@@ -1,4 +1,4 @@
-# PAR-S V2 Task 12F Linux 50-case runbook
+# PAR-S V2 Task 12F Linux 50-case runbook v2
 
 Task 12F is the first population-sampled Linux full-physics cohort. It is a
 standalone 50-case pilot and must not be upgraded in place into the later
@@ -18,7 +18,7 @@ Set-Location "D:\PFE-U\PAR\.worktrees\PAR-S-Generator-task12"
 
 git status --short
 
-$log = "D:\PFE-U\PAR\outputs\task12f_linux50_build.log"
+$log = "D:\PFE-U\PAR\outputs\task12f_linux50_build_v2.log"
 New-Item -ItemType File -Force -Path $log | Out-Null
 
 python scripts\build_task12f_linux50_bundle.py 2>&1 |
@@ -36,14 +36,14 @@ python scripts\build_task12f_linux50_bundle.py --resume 2>&1 |
 The successful archive is:
 
 ```text
-D:\PFE-U\PAR\outputs\task12f_linux50_upload_v1\pars_v2_task12f_linux50_bundle_v1.tar.gz
+D:\PFE-U\PAR\outputs\task12f_linux50_upload_v2\pars_v2_task12f_linux50_bundle_v2.tar.gz
 ```
 
 ## 2. Upload once
 
 ```powershell
-$upload = "D:\PFE-U\PAR\outputs\task12f_linux50_upload_v1"
-$archive = Join-Path $upload "pars_v2_task12f_linux50_bundle_v1.tar.gz"
+$upload = "D:\PFE-U\PAR\outputs\task12f_linux50_upload_v2"
+$archive = Join-Path $upload "pars_v2_task12f_linux50_bundle_v2.tar.gz"
 $sidecar = "$archive.sha256"
 
 scp $archive "hpc:/home/kgong/scratch/"
@@ -57,23 +57,23 @@ Run on the login node before opening any worker screen:
 
 ```bash
 cd "$HOME/scratch"
-sha256sum -c pars_v2_task12f_linux50_bundle_v1.tar.gz.sha256
+sha256sum -c pars_v2_task12f_linux50_bundle_v2.tar.gz.sha256
 
-test ! -e "$HOME/scratch/pars_v2_task12f_v1" || {
+test ! -e "$HOME/scratch/pars_v2_task12f_v2" || {
     echo "ERROR: extraction root already exists"
     exit 1
 }
-test ! -e "$HOME/scratch/pars_v2_task12f_run_v1" || {
+test ! -e "$HOME/scratch/pars_v2_task12f_run_v2" || {
     echo "ERROR: run root already exists"
     exit 1
 }
 
-mkdir -p "$HOME/scratch/pars_v2_task12f_v1"
-tar -xzf pars_v2_task12f_linux50_bundle_v1.tar.gz \
-    -C "$HOME/scratch/pars_v2_task12f_v1"
+mkdir -p "$HOME/scratch/pars_v2_task12f_v2"
+tar -xzf pars_v2_task12f_linux50_bundle_v2.tar.gz \
+    -C "$HOME/scratch/pars_v2_task12f_v2"
 
-BUNDLE="$HOME/scratch/pars_v2_task12f_v1/pars_v2_task12f_linux50_bundle_v1"
-RUN="$HOME/scratch/pars_v2_task12f_run_v1"
+BUNDLE="$HOME/scratch/pars_v2_task12f_v2/pars_v2_task12f_linux50_bundle_v2"
+RUN="$HOME/scratch/pars_v2_task12f_run_v2"
 ENV_PREFIX="$HOME/conda-envs/pars-v2-linux-py311"
 
 chmod +x "$BUNDLE/scripts/"*.sh
@@ -102,8 +102,8 @@ frozen parallel count. Expected CPU utilization is about 30% per 56-core node.
 ### cnc5
 
 ```bash
-BUNDLE="$HOME/scratch/pars_v2_task12f_v1/pars_v2_task12f_linux50_bundle_v1"
-RUN="$HOME/scratch/pars_v2_task12f_run_v1"
+BUNDLE="$HOME/scratch/pars_v2_task12f_v2/pars_v2_task12f_linux50_bundle_v2"
+RUN="$HOME/scratch/pars_v2_task12f_run_v2"
 ENV_PREFIX="$HOME/conda-envs/pars-v2-linux-py311"
 
 bash "$BUNDLE/scripts/launch_task12f_linux50_screen.sh" \
@@ -113,8 +113,8 @@ bash "$BUNDLE/scripts/launch_task12f_linux50_screen.sh" \
 ### cnc7
 
 ```bash
-BUNDLE="$HOME/scratch/pars_v2_task12f_v1/pars_v2_task12f_linux50_bundle_v1"
-RUN="$HOME/scratch/pars_v2_task12f_run_v1"
+BUNDLE="$HOME/scratch/pars_v2_task12f_v2/pars_v2_task12f_linux50_bundle_v2"
+RUN="$HOME/scratch/pars_v2_task12f_run_v2"
 ENV_PREFIX="$HOME/conda-envs/pars-v2-linux-py311"
 
 bash "$BUNDLE/scripts/launch_task12f_linux50_screen.sh" \
@@ -124,8 +124,8 @@ bash "$BUNDLE/scripts/launch_task12f_linux50_screen.sh" \
 ### cnc8
 
 ```bash
-BUNDLE="$HOME/scratch/pars_v2_task12f_v1/pars_v2_task12f_linux50_bundle_v1"
-RUN="$HOME/scratch/pars_v2_task12f_run_v1"
+BUNDLE="$HOME/scratch/pars_v2_task12f_v2/pars_v2_task12f_linux50_bundle_v2"
+RUN="$HOME/scratch/pars_v2_task12f_run_v2"
 ENV_PREFIX="$HOME/conda-envs/pars-v2-linux-py311"
 
 bash "$BUNDLE/scripts/launch_task12f_linux50_screen.sh" \
@@ -138,7 +138,7 @@ On the corresponding node:
 
 ```bash
 screen -ls
-tail -f "$HOME/scratch/pars_v2_task12f_run_v1/logs/cnc5.log"
+tail -f "$HOME/scratch/pars_v2_task12f_run_v2/logs/cnc5.log"
 ```
 
 Replace `cnc5` as needed. Detach from an attached screen with `Ctrl-a`, then
@@ -158,8 +158,8 @@ recomputed.
 ## 6. Master aggregation on the login node
 
 ```bash
-BUNDLE="$HOME/scratch/pars_v2_task12f_v1/pars_v2_task12f_linux50_bundle_v1"
-RUN="$HOME/scratch/pars_v2_task12f_run_v1"
+BUNDLE="$HOME/scratch/pars_v2_task12f_v2/pars_v2_task12f_linux50_bundle_v2"
+RUN="$HOME/scratch/pars_v2_task12f_run_v2"
 ENV_PREFIX="$HOME/conda-envs/pars-v2-linux-py311"
 
 for node in cnc5 cnc7 cnc8; do
@@ -191,11 +191,11 @@ freeze; local case writing, statistics and visual acceptance remain required.
 Run in local PowerShell after master PASS:
 
 ```powershell
-$download = "D:\PFE-U\PAR\outputs\task12f_linux50_download_v1"
+$download = "D:\PFE-U\PAR\outputs\task12f_linux50_download_v2"
 New-Item -ItemType Directory -Force -Path $download | Out-Null
 
-scp "hpc:/home/kgong/scratch/pars_v2_task12f_run_v1/master/task12f_linux50_results.tar.gz" $download
-scp "hpc:/home/kgong/scratch/pars_v2_task12f_run_v1/master/task12f_linux50_results.tar.gz.sha256" $download
+scp "hpc:/home/kgong/scratch/pars_v2_task12f_run_v2/master/task12f_linux50_results.tar.gz" $download
+scp "hpc:/home/kgong/scratch/pars_v2_task12f_run_v2/master/task12f_linux50_results.tar.gz.sha256" $download
 ```
 
 Keep the remote run root until the downloaded archive, local case writer,

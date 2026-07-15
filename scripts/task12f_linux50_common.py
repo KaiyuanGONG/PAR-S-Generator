@@ -12,12 +12,12 @@ from pathlib import Path
 from typing import Any, Mapping
 
 
-BUNDLE_SCHEMA = "pars_v2_task12f_linux50_bundle_v1"
-PLAN_SCHEMA = "pars_v2_task12f_linux50_plan_v1"
-NODE_COMPLETE_SCHEMA = "pars_v2_task12f_linux50_node_complete_v1"
-MASTER_SCHEMA = "pars_v2_task12f_linux50_master_v1"
-CASE_SCHEMA = "pars_v2_task12f_linux50_case_v1"
-REMOTE_PREFLIGHT_SCHEMA = "pars_v2_task12f_linux50_remote_preflight_v1"
+BUNDLE_SCHEMA = "pars_v2_task12f_linux50_bundle_v2"
+PLAN_SCHEMA = "pars_v2_task12f_linux50_plan_v2"
+NODE_COMPLETE_SCHEMA = "pars_v2_task12f_linux50_node_complete_v2"
+MASTER_SCHEMA = "pars_v2_task12f_linux50_master_v2"
+CASE_SCHEMA = "pars_v2_task12f_linux50_case_v2"
+REMOTE_PREFLIGHT_SCHEMA = "pars_v2_task12f_linux50_remote_preflight_v2"
 EXPECTED_PROJECTION_SHAPE = (60, 128, 128)
 EXPECTED_A00_BYTES = 60 * 128 * 128 * 4
 QUARTET_EXTENSIONS = ("a00", "mhd", "res", "spe")

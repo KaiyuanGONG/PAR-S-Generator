@@ -30,7 +30,7 @@ ARGS=(
     --node-id "$NODE_ID"
     --simind-exe "$HOME/apps/simind/simind"
     --smc-dir "$HOME/apps/simind/smc_dir"
-    --local-root "/tmp/pars_v2_task12f_linux50_${NODE_ID}"
+    --local-root "/tmp/pars_v2_task12f_linux50_v2_${NODE_ID}"
     --max-parallel "$MAX_PARALLEL"
 )
 if [[ "$RESUME" == "--resume" ]]; then
