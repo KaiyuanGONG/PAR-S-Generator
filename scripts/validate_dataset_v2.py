@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+from collections import Counter
 import json
 import math
 import sys
@@ -36,7 +37,7 @@ from core.schemas_v2 import load_evidence_registry, load_profile  # noqa: E402
 from core.seeds import SeedBundle  # noqa: E402
 
 
-GATE_SCHEMA = "pars_v2_generator_pilot_gate_v1"
+GATE_SCHEMA = "pars_v2_generator_pilot_gate_v2"
 METADATA_FIELDS = {
     "seeds",
     "config_hashes",
@@ -50,7 +51,7 @@ METADATA_FIELDS = {
     "simulation",
     "quality_control",
 }
-REQUIRED_ARTIFACTS = (
+CORE_REQUIRED_ARTIFACTS = (
     "phantom_npz",
     "metadata_json",
     "projection_a00",
@@ -63,6 +64,7 @@ REQUIRED_ARTIFACTS = (
     "pilot_plan",
     "pilot_runtime",
 )
+PILOT15_REQUIRED_ARTIFACTS = CORE_REQUIRED_ARTIFACTS + ("pilot_preflight",)
 
 
 class PilotGateError(RuntimeError):
@@ -159,8 +161,9 @@ def _validate_case_bindings(
     canonical_smc_sha256: str,
     execution: Mapping[str, Any],
     frozen_runtime: Mapping[str, Any],
+    required_artifacts: tuple[str, ...],
 ) -> dict[str, Any]:
-    if set(REQUIRED_ARTIFACTS) - set(record.artifacts):
+    if set(required_artifacts) - set(record.artifacts):
         raise PilotGateError(f"{record.case_id}: retained artifact set is incomplete")
     if dict(metadata["config_hashes"]) != dict(canonical_hashes):
         raise PilotGateError(f"{record.case_id}: metadata does not bind canonical configs")
@@ -252,8 +255,18 @@ def validate(
     if not isinstance(execution, Mapping):
         raise PilotGateError("pilot execution contract is invalid")
     generation = load_generation_plan(root)
-    if int(generation["case_count"]) != 3:
-        raise PilotGateError("generation plan does not contain exactly three cases")
+    expected_count = len(plan["cases"])
+    if expected_count not in {3, 15}:
+        raise PilotGateError("generator pilot gate accepts only versioned 3- or 15-case plans")
+    if int(generation["case_count"]) != expected_count:
+        raise PilotGateError(
+            f"generation plan case count differs from the {expected_count}-case pilot plan"
+        )
+    required_artifacts = (
+        PILOT15_REQUIRED_ARTIFACTS
+        if expected_count == 15
+        else CORE_REQUIRED_ARTIFACTS
+    )
     records = [
         load_case_record_v2(
             root / "cases" / str(entry["case_id"]) / "case_record.json",
@@ -263,7 +276,7 @@ def validate(
         for entry in generation["entries"]
     ]
     marker = DatasetFreezeRecordV2.from_dict(_read_json(root / "DATASET_COMPLETE.json"))
-    if set(marker.required_artifact_names) != set(REQUIRED_ARTIFACTS):
+    if set(marker.required_artifact_names) != set(required_artifacts):
         raise PilotGateError("completion marker does not freeze the exact pilot artifact set")
     contract = DatasetContractV2(
         output_root=root,
@@ -273,7 +286,7 @@ def validate(
         expected_case_ids=tuple(str(entry["case_id"]) for entry in generation["entries"]),
         allowed_profile_ids=(str(generation["profile_id"]),),
         split_plan_sha256=str(generation["split_plan_sha256"]),
-        required_artifact_names=REQUIRED_ARTIFACTS,
+        required_artifact_names=required_artifacts,
     )
     reaudited = freeze_dataset(records, contract)
     if reaudited != marker:
@@ -330,6 +343,7 @@ def validate(
                 canonical_smc_sha,
                 execution,
                 runtime,
+                required_artifacts,
             )
         )
     if len(
@@ -341,16 +355,21 @@ def validate(
         {record.artifacts["pilot_plan"].sha256 for record in records}
     ) != 1:
         raise PilotGateError("per-case pilot plan/runtime artifacts are not identical")
-    if len({item["rr_seed"] for item in case_results}) != 3:
+    if len({item["rr_seed"] for item in case_results}) != expected_count:
         raise PilotGateError("pilot /RR values are not unique")
-    if {item["split"] for item in case_results} != {"train", "val", "test"}:
-        raise PilotGateError("three-case pilot must cover train, val and test exactly once")
+    observed_splits = Counter(item["split"] for item in case_results)
+    planned_splits = Counter(str(entry["split"]) for entry in generation["entries"])
+    if observed_splits != planned_splits or set(observed_splits) != {"train", "val", "test"}:
+        raise PilotGateError("pilot split assignments differ from the frozen generation plan")
     if {item["liver_morphology"] for item in case_results} != {"normal", "cirrhotic"}:
         raise PilotGateError("pilot does not cover normal and cirrhotic liver morphology")
     if {item["lobe_extent"] for item in case_results} != {"unilobar", "bilobar"}:
         raise PilotGateError("pilot does not cover unilobar and bilobar tumors")
-    if len({item["injection_territory"] for item in case_results}) != 3:
-        raise PilotGateError("pilot does not cover three distinct injection territories")
+    minimum_territories = 4 if expected_count == 15 else 3
+    if len({item["injection_territory"] for item in case_results}) < minimum_territories:
+        raise PilotGateError(
+            f"pilot does not cover {minimum_territories} distinct injection territories"
+        )
     if {item["mismatch_challenge"] for item in case_results} != {False, True}:
         raise PilotGateError("pilot does not cover matched and mismatch perfusion")
     return {
@@ -360,6 +379,7 @@ def validate(
         "dataset_id": marker.dataset_id,
         "dataset_version": marker.dataset_version,
         "case_count": marker.case_count,
+        "expected_case_count": expected_count,
         "manifest_sha256": marker.manifest_sha256,
         "contract_sha256": marker.contract_sha256,
         "canonical_config_hashes": canonical,
@@ -376,18 +396,33 @@ def validate(
             "normal_cirrhotic_unilobar_bilobar_injection_and_mismatch_coverage",
             "200_and_215_mm_expected_structural_rejection",
         ],
-        "go_for_15_case_pilot": False,
-        "reason": "Task 12B aggregate gates and manual methodology review are required",
+        "runtime_environment_binding": {
+            "status": "not_frozen_in_pilot15_v1" if expected_count == 15 else "legacy_pilot3",
+            "preflight_byte_identity": "not_established" if expected_count == 15 else "not_applicable",
+            "impact": (
+                "blocks 50-case expansion but does not invalidate internal frozen-byte QA"
+                if expected_count == 15
+                else "Task 12B aggregate gates and manual methodology review are required"
+            ),
+        },
+        "go_for_15_case_pilot": False if expected_count == 3 else None,
+        "go_for_50_case_pilot": False,
+        "reason": (
+            "Task 12B aggregate gates and manual methodology review are required"
+            if expected_count == 3
+            else "15-case visual/manual review and runtime-environment binding remediation are required"
+        ),
     }
 
 
 def _markdown(report: Mapping[str, Any]) -> str:
+    count = int(report.get("case_count", 0))
     lines = [
-        "# PAR-S V2 Task 12：首批 3 例 pilot 报告",
+        f"# PAR-S V2 {count} 例冻结数据 Generator 门禁报告",
         "",
         f"- Generator gate：**{str(report['status']).upper()}**",
         f"- Dataset：`{report.get('dataset_id', 'unknown')}` / `{report.get('dataset_version', 'unknown')}`",
-        f"- 冻结病例数：{report.get('case_count', 0)}",
+        f"- 冻结病例数：{count}",
         f"- Manifest SHA-256：`{report.get('manifest_sha256', 'n/a')}`",
         "- `/NN=1` 仅用于 deterministic smoke；不能据此声明临床计数标定完成。",
         "- 200 mm 与 215 mm 为预期结构性拒绝边界，不伪装成可完整 containment 的主人群病例。",
@@ -412,8 +447,8 @@ def _markdown(report: Mapping[str, Any]) -> str:
             "",
             "## 当前结论",
             "",
-            "Generator 端生成、SIMIND、原子 case writer 与 dataset freeze 均已通过。",
-            "本报告仅是上游证据，不能单独批准 15 例扩展；最终决定由 Task 12B 聚合门禁和人工方法学审核给出。",
+            "Generator 端冻结字节、SIMIND 溯源、保留输入、payload、RECIST、完整 containment 和覆盖检查均已通过。",
+            str(report.get("reason", "未记录发布决定。")),
             "",
         ]
     )
