@@ -1,0 +1,86 @@
+{
+  "schema_version": "pars_v2_task12f_linux50_config_v1",
+  "purpose": "population_sampled_50_case_linux_full_physics_pilot",
+  "dataset": {
+    "dataset_id": "PAR-S-TARE-HCC-NoPVI-SYN-v2-linux50",
+    "dataset_version": "2.0.0-linux50",
+    "dataset_role": "main",
+    "case_count": 50,
+    "family_size": 1,
+    "global_seed": 20260714,
+    "split_ratios": {
+      "train": 0.8,
+      "val": 0.1,
+      "test": 0.1
+    }
+  },
+  "paths": {
+    "profile": "configs/population_tare_hcc_nopvi_v2.json",
+    "scanner": "configs/scanner_ge870_tcmma_v1.json",
+    "evidence_registry": "configs/evidence_registry_v2.json",
+    "smc": "simind/ge870_czt.smc",
+    "simind_ini": "configs/simind_v2.ini",
+    "task12e_acceptance": "docs/reports/task12e_manual_acceptance.json"
+  },
+  "execution": {
+    "base_histories_per_projection": 80000,
+    "nn_multiplier": 1,
+    "timeout_seconds": 7200,
+    "local_preflight_max_parallel": 4,
+    "requested_parallel_by_node": {
+      "cnc5": 17,
+      "cnc7": 17,
+      "cnc8": 16
+    },
+    "maximum_parallel_per_node": 24,
+    "node_assignment": "round_robin_cnc5_cnc7_cnc8",
+    "active_work_policy": "node_local_tmp",
+    "publish_policy": "atomic_per_case_to_shared_nfs"
+  },
+  "linux_runtime": {
+    "simind_sha256": "e143e2e0b0315c9cd8b6bb187d6bd28448e096c255f8d16ee0c14787d1537f9d",
+    "smc_dir_file_count": 346,
+    "smc_dir_manifest_sha256": "b8f773bf3c23e2e3f03f60abb076ef6e195a079e888bfc84cfcf914256a49184",
+    "python_version": "3.11.14",
+    "critical_packages": {
+      "numpy": "2.4.3",
+      "scipy": "1.17.1",
+      "scikit-image": "0.26.0"
+    },
+    "minimum_cpu_quota_equivalent": 32.0,
+    "minimum_memory_bytes": 68719476736,
+    "minimum_shared_free_bytes": 8589934592
+  },
+  "nodes": {
+    "expected": ["cnc5", "cnc7", "cnc8"],
+    "hostname_prefix_by_node": {
+      "cnc5": "cnc5-",
+      "cnc7": "cnc7-",
+      "cnc8": "cnc8-"
+    }
+  },
+  "required_coverage": [
+    "sex:male",
+    "sex:female",
+    "morphology:normal",
+    "morphology:cirrhotic",
+    "count:1",
+    "count:2-5",
+    "count:>5",
+    "dmax:10-<80_mm",
+    "dmax:80-200_mm",
+    "lobe:unilobar",
+    "lobe:bilobar",
+    "territory:whole_liver",
+    "territory:right_lobar",
+    "territory:left_lobar",
+    "territory:sector_proxy",
+    "mismatch:true",
+    "mismatch:false"
+  ],
+  "frozen_evidence": {
+    "task12e_acceptance_sha256": "354b0eb4cb67c66c3e14a4ecd07cfaf4a5318481b30058f7d28e9c7f61ab4288",
+    "task12e_go_for_50_required": true,
+    "windows_cases_forbidden": true
+  }
+}
