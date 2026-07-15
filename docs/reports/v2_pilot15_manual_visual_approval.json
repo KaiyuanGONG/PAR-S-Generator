@@ -1,0 +1,15 @@
+{
+  "approved_utc": "2026-07-15T11:44:26Z",
+  "decision": "approved",
+  "evidence_bindings": {
+    "dataset_manifest_sha256": "cdaa87ded094bed74927ab91bd7bdcf3067eda17d3fed3625d034771aeab3678",
+    "direction_labelled_anterior_overview_sha256": "977ede75cf8dd31c0f6d6d9a1e4e5a090ad7c0633dc93ac71c09333e7002b474",
+    "generator_revision": "da6e12debd8a80a3a7b089e5dd9604341cc284ad",
+    "pilot15_statistics_sha256": "7cbbf0731dacfd847b0ab16c6c1fd7a502159fb611da84a34d53112c9af4abe2",
+    "task12b_gate_summary_sha256": "b2251b695196ef6e0e77ff382afc019ea008713aafb8b99acaef6af712addc44"
+  },
+  "release_constraint": "This approval closes the pilot15 visual acceptance gate only. The 50-case expansion remains blocked until runtime environment binding and preflight-to-run source-byte identity are implemented and verified.",
+  "scope": "Approve the frozen 15-case dataset's statistical and visual acceptance after review of the direction-labelled standard anterior overview and its associated QA evidence.",
+  "schema_version": "pars_v2_pilot15_manual_visual_approval_v1",
+  "source": "Explicit user approval in the Codex task on 2026-07-15"
+}

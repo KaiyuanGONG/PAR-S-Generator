@@ -15,8 +15,8 @@ Manifest SHA-256: `cdaa87ded094bed74927ab91bd7bdcf3067eda17d3fed3625d034771aeab3
 - `clinical_projection_quality_gate_v1`: **PASS** on all 15 full-physics cases.
 - `clinical_alignment_exploratory_report_v1`: **diagnostic non-unique**, non-blocking by contract.
 - Agent visual review: **PASS WITH NOTES** after direction-corrected anterior rendering.
-- User manual visual review: **PENDING**.
-- 50-case expansion: **NOT APPROVED**.
+- User manual visual review: **APPROVED** and evidence-bound in `docs/reports/v2_pilot15_manual_visual_approval.json`.
+- 50-case expansion: **NOT YET APPROVED**; runtime environment binding and preflight-to-run source-byte identity remain mandatory first.
 
 ## Dataset coverage
 
