@@ -1,0 +1,9 @@
+name: pars-v2-linux-py311
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11.14
+  - numpy=2.4.3
+  - scipy=1.17.1
+  - scikit-image=0.26.0
+  - pip

@@ -43,6 +43,14 @@ _SOURCE_PATHSPECS = (
     "scripts/run_pilot15_v2.py",
     "scripts/run_task12d_v2.py",
     "scripts/finalize_task12d_v2.py",
+    "scripts/build_task12e_linux_bundle.py",
+    "scripts/capture_task12e_linux_environment.py",
+    "scripts/finalize_task12e_linux_local.py",
+    "scripts/finalize_task12e_linux_master.py",
+    "scripts/prepare_task12e_linux_environment.sh",
+    "scripts/run_task12e_linux_node.sh",
+    "scripts/run_task12e_linux_worker.py",
+    "scripts/task12e_linux_common.py",
 )
 
 

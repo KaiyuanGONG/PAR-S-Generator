@@ -1,0 +1,44 @@
+{
+  "accepted_utc": "2026-07-15T14:29:43Z",
+  "decision": "approved_with_linux_platform_homologation_required",
+  "evidence_bindings": {
+    "dataset_complete_sha256": "078e1b00a5b620196e0cd77ad0228a1dbc5a8783a814790715b5854c93ff2b95",
+    "dataset_manifest_sha256": "47f06110d624bbc83822941fbf5188001354a56bacb6463adbbda95d912f593e",
+    "generator_git_commit": "fe85f788b352c71a7a04f47a056c8d368e508850",
+    "pars2_git_commit": "7fc82ea65514fd990accecbfad7b4d0bd2a7a676",
+    "progress_sha256": "cba1352e9792aa846cdf95aceab4f05dc6a238916686b386799bc325f62ce02e",
+    "task12b_gate_summary_sha256": "d571cf4ad89080f191d816a6056cd9775911d8844ba84469fa1afb189d795ca3",
+    "task12d_complete_sha256": "c50044a24159f99be9ab84211f8b7d434175625cdfc1a4ef7bd87d31b6b53edf"
+  },
+  "manual_findings": {
+    "artifact_hash_audit": "42_of_42_pass",
+    "clinical_alignment_exploratory_report_v1": "non_blocking_diagnostic_nonunique",
+    "clinical_projection_quality_gate_v1": "pass",
+    "cross_run_numeric_projection_reproducibility": "Task12D and pilot15 .a00 bytes identical for all three shared cases",
+    "generator_gate": "pass",
+    "pars2_loader_gate": "pass",
+    "projection_coordinate_gate_v2": "pass",
+    "visual_projection_review": "pass"
+  },
+  "metadata_override": {
+    "obsolete_value": 15,
+    "replacement_value": 50,
+    "source_field": "task12b_gate_summary.manual_review.next_expansion_case_count",
+    "status": "superseded_for_task12d",
+    "why": "The reused Task 12B evaluator retained its former 15-case label. Task 12D follows the already accepted pilot15 and therefore targets the 50-case expansion."
+  },
+  "platform_decision": {
+    "canonical_production_platform": "Linux x86_64",
+    "linux_simind_candidate_sha256": "e143e2e0b0315c9cd8b6bb187d6bd28448e096c255f8d16ee0c14787d1537f9d",
+    "windows_outputs_role": "engineering evidence only; never mixed into the Linux production dataset",
+    "why_task12e_is_required": "Changing the SIMIND operating-system binary invalidates an automatic carry-over of byte and projection-coordinate claims."
+  },
+  "release": {
+    "approved_next_stage": "task12e_linux_three_node_homologation",
+    "go_for_50_case_generation": false,
+    "go_for_task12e_linux_homologation": true,
+    "reason_50_still_blocked": "All three Linux nodes must agree on numeric SIMIND bytes and the Linux coordinate/clinical projection gates must pass."
+  },
+  "schema_version": "pars_v2_task12d_manual_acceptance_v1",
+  "source": "Explicit user-requested manual review in the Codex task on 2026-07-15"
+}
