@@ -1,0 +1,34 @@
+{
+  "accepted_utc": "2026-07-15T12:26:53Z",
+  "decision": "pass",
+  "evidence_bindings": {
+    "byte_identity_report_sha256": "94a5e374561032a69a446e62d08a65341da873476ad41e41492a3cb92705a9c3",
+    "fixture_report_sha256": "74974699b5571f24596453d15a8b92acdc32acc06e64e536ceb0737c7469f87f",
+    "generator_git_commit": "b640fc15f22673c64254bef4f61008e0ee92c1f4",
+    "generator_source_binding_sha256": "f35271ccb5d7955c8a89f2948defc076a09846109cfbe0af1a78e82ef690c744",
+    "input_bundle_manifest_sha256": "e274ccceb033c9fec039e01d7548acc531e09233da8dc2654fccca05005f4c1c",
+    "python_conda_runtime_binding_sha256": "58db0b8d4afbb2df00d87a32f1941877cdb0e33eb543cedac8b378c336c63e52"
+  },
+  "fixture": {
+    "all_phantom_and_gt_arrays_byte_identical": true,
+    "case_id": "case_00000",
+    "conda_prefix_aligned_with_python_prefix": true,
+    "formal_eligible": true,
+    "simind_launched": false,
+    "source_and_density_byte_identity": "pass",
+    "status": "pass"
+  },
+  "release": {
+    "approved_next_stage": "one_to_three_case_full_simind_chain_verification",
+    "go_for_50_case_generation": false,
+    "reason": "Task 12C is closed, but the frozen-bundle handoff must still be exercised through a complete SIMIND run and final case write before the 50-case expansion."
+  },
+  "schema_version": "pars_v2_task12c_acceptance_v1",
+  "tests": {
+    "command": "conda run -n SPECT python -m pytest -q",
+    "passed": 220,
+    "warnings": 13,
+    "warnings_classification": "existing matplotlib/pyparsing deprecations",
+    "wall_seconds": 462.5
+  }
+}
