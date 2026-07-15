@@ -14,7 +14,7 @@ Manifest SHA-256: `cdaa87ded094bed74927ab91bd7bdcf3067eda17d3fed3625d034771aeab3
 - `projection_coordinate_gate_v2`: **PASS** on the dedicated fixture.
 - `clinical_projection_quality_gate_v1`: **PASS** on all 15 full-physics cases.
 - `clinical_alignment_exploratory_report_v1`: **diagnostic non-unique**, non-blocking by contract.
-- Agent visual review: **PASS WITH NOTES**.
+- Agent visual review: **PASS WITH NOTES** after direction-corrected anterior rendering.
 - User manual visual review: **PENDING**.
 - 50-case expansion: **NOT APPROVED**.
 
@@ -44,6 +44,8 @@ Manifest SHA-256: `cdaa87ded094bed74927ab91bd7bdcf3067eda17d3fed3625d034771aeab3
 
 The tumor-centred axial contact sheet and the 3D sheet show one connected liver envelope per case, visible dome/visceral shaping, no dumbbell separation, no internal cavity and no tumor outside the liver. Normal and cirrhotic cases remain distinguishable through the intended volume, lobe-ratio and surface perturbations, while retaining the common simplified liver construction.
 
+The acceptance evidence now includes a standard patient-anatomical anterior projection. It maps source `ZYX/SAR` to screen horizontal `L→R` and vertical `I→S`, uses equal physical scale, and prints LR, SI and LR/SI for every case. The former unlabeled oblique 3D view is retained only as a surface overview and is not used as directional evidence.
+
 The 22 lesions cover small, medium, large, unilobar, bilobar, multifocal, smooth and lobulated cases. The mismatch cases show the intended separation between perfusion territory and at least part of the tumor burden. The SIMIND sinograms are continuous in view angle, remain inside detector support and show no isolated discontinuity or clipping band. Per-view curves vary smoothly and satisfy the engineering bounds.
 
 ## Mandatory review notes
@@ -60,12 +62,13 @@ The 22 lesions cover small, medium, large, unilobar, bilobar, multifocal, smooth
 - Human-readable statistics: `D:\PFE-U\PAR\outputs\pars_v2_pilot15_qa\pilot15_statistics.md`
 - Axial contact sheet: `D:\PFE-U\PAR\outputs\pars_v2_pilot15_qa\pilot15_contact_sheet.png`
 - 3D morphology sheet: `D:\PFE-U\PAR\outputs\pars_v2_pilot15_qa\pilot15_3d_overview.png`
+- Direction-labelled anterior sheet: `D:\PFE-U\PAR\outputs\pars_v2_pilot15_qa\pilot15_directional_anterior_overview.png`
 - Complete projection sheet: `D:\PFE-U\PAR\outputs\pars_v2_pilot15_qa\pilot15_projection_overview.png`
 - Per-case detailed boards: `D:\PFE-U\PAR\outputs\pars_v2_pilot15_qa\cases\case_00000.png` through `case_00014.png`
 - Manual checklist: `D:\PFE-U\PAR\outputs\pars_v2_pilot15_qa\pilot15_manual_review.json`
 
 ## Test evidence
 
-- Generator focused tests: 19 passed.
+- Generator focused tests: 19 passed before the directional correction; 6/6 direction and audit tests passed after correction.
 - Generator full suite: 210 passed on the first run; one Windows atomic-rename setup error (`WinError 5`) was isolated and passed immediately on focused rerun.
 - PAR-S_2 full suite: 47 passed.

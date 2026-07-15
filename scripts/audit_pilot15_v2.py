@@ -56,6 +56,7 @@ class CaseOverview:
     mismatch: bool
     bmi: float
     liver_volume_ml: float
+    extent_mm_zyx: tuple[float, float, float]
     left_fraction: float
     roughness: float
     tumor_count: int
@@ -255,17 +256,33 @@ def _draw_anatomy(
     axis.set_yticks([])
 
 
+def _zyx_to_xyz(values: np.ndarray) -> np.ndarray:
+    array = np.asarray(values)
+    if array.shape[-1] != 3:
+        raise ValueError("coordinate values must end in a ZYX axis of length three")
+    return array[..., (2, 1, 0)]
+
+
+def _anterior_projection(mask_zyx: np.ndarray) -> np.ndarray:
+    mask = np.asarray(mask_zyx, dtype=bool)
+    if mask.ndim != 3:
+        raise ValueError("anterior projection requires a three-dimensional ZYX mask")
+    return mask.any(axis=1)
+
+
 def _draw_surface(axis: Any, liver: np.ndarray, tumor: np.ndarray, title: str) -> None:
     for mask, color, alpha in ((liver, "#c6a15b", 0.22), (tumor, "#d83b5d", 0.95)):
         if not mask.any():
             continue
         try:
-            vertices, faces, _, _ = marching_cubes(
+            vertices_zyx, faces, _, _ = marching_cubes(
                 np.pad(mask.astype(np.uint8), 1), 0.5, step_size=2
             )
-            vertices -= 1.0
+            vertices_zyx -= 1.0
+            vertices = _zyx_to_xyz(vertices_zyx)
         except (RuntimeError, ValueError):
-            center = np.argwhere(mask).mean(axis=0)
+            center_zyx = np.argwhere(mask).mean(axis=0)
+            center = _zyx_to_xyz(center_zyx)
             axis.scatter(
                 center[0], center[1], center[2], color=color, s=22, alpha=alpha
             )
@@ -274,13 +291,15 @@ def _draw_surface(axis: Any, liver: np.ndarray, tumor: np.ndarray, title: str) -
         mesh.set_facecolor(color)
         axis.add_collection3d(mesh)
     coordinates = np.argwhere(liver | tumor)
-    lower = np.maximum(coordinates.min(axis=0) - 2, 0)
-    upper = np.minimum(coordinates.max(axis=0) + 3, liver.shape)
+    lower_zyx = np.maximum(coordinates.min(axis=0) - 2, 0)
+    upper_zyx = np.minimum(coordinates.max(axis=0) + 3, liver.shape)
+    lower = _zyx_to_xyz(lower_zyx)
+    upper = _zyx_to_xyz(upper_zyx)
     axis.set_xlim(float(lower[0]), float(upper[0]))
     axis.set_ylim(float(lower[1]), float(upper[1]))
     axis.set_zlim(float(lower[2]), float(upper[2]))
     axis.set_box_aspect(np.maximum(upper - lower, 1))
-    axis.view_init(elev=24, azim=-55)
+    axis.view_init(elev=18, azim=90)
     axis.set_title(title, fontsize=8)
     axis.set_axis_off()
 
@@ -532,6 +551,7 @@ def _case_audit(
         mismatch=bool(metadata["activity"]["mismatch_challenge"]),
         bmi=float(metadata["patient"]["bmi"]),
         liver_volume_ml=float(liver_metrics["volume_ml"]),
+        extent_mm_zyx=tuple(float(value) for value in liver_metrics["extent_mm_zyx"]),
         left_fraction=float(liver_metrics["left_fraction"]),
         roughness=float(liver_metrics["surface_roughness"]),
         tumor_count=len(lesion_rows),
@@ -592,6 +612,83 @@ def _render_3d_sheet(cases: Sequence[CaseOverview], output: Path) -> str:
         )
     figure.suptitle("PAR-S V2 pilot15: 3D liver/tumor morphology overview", fontsize=15, fontweight="bold")
     atomic_write_bytes(output, _png_bytes(figure, dpi=150))
+    return sha256_file(output)
+
+
+def _render_directional_anterior_sheet(
+    cases: Sequence[CaseOverview], output: Path
+) -> str:
+    """Render patient-anatomical anterior projections with explicit SAR labels."""
+
+    figure, axes = plt.subplots(3, 5, figsize=(18, 12))
+    figure.subplots_adjust(
+        left=0.025,
+        right=0.995,
+        bottom=0.04,
+        top=0.88,
+        wspace=0.08,
+        hspace=0.38,
+    )
+    for axis, case in zip(axes.flat, cases):
+        liver = _anterior_projection(case.liver_small)
+        tumor = _anterior_projection(case.tumor_small)
+        coordinates = np.argwhere(liver | tumor)
+        lower = np.maximum(coordinates.min(axis=0) - 2, 0)
+        upper = np.minimum(coordinates.max(axis=0) + 3, liver.shape)
+        crop = (slice(int(lower[0]), int(upper[0])), slice(int(lower[1]), int(upper[1])))
+        liver_crop = liver[crop]
+        tumor_crop = tumor[crop]
+        axis.imshow(
+            np.ma.masked_where(~liver_crop, liver_crop),
+            cmap=ListedColormap(("#e8cf9b",)),
+            origin="lower",
+            interpolation="nearest",
+            aspect="equal",
+            vmin=1,
+            vmax=1,
+        )
+        if liver_crop.any() and not liver_crop.all():
+            axis.contour(
+                liver_crop,
+                levels=(0.5,),
+                colors=("#8b6b32",),
+                linewidths=(0.9,),
+            )
+        if tumor_crop.any():
+            axis.imshow(
+                np.ma.masked_where(~tumor_crop, tumor_crop),
+                cmap=ListedColormap(("#d94b62",)),
+                origin="lower",
+                interpolation="nearest",
+                alpha=0.88,
+                vmin=1,
+                vmax=1,
+            )
+        si_mm, _, lr_mm = case.extent_mm_zyx
+        axis.set_title(
+            f"{case.case_id} | {case.morphology}\n"
+            f"LR {lr_mm:.1f} mm × SI {si_mm:.1f} mm | LR/SI {lr_mm / si_mm:.3f}",
+            fontsize=8,
+        )
+        axis.set_xlabel("L  ←  LR  →  R", fontsize=8)
+        axis.set_ylabel("I  ←  SI  →  S", fontsize=8)
+        axis.set_xticks([])
+        axis.set_yticks([])
+    figure.suptitle(
+        "PAR-S V2 pilot15: standard anatomical anterior view (A → P)",
+        fontsize=15,
+        fontweight="bold",
+        y=0.985,
+    )
+    figure.text(
+        0.5,
+        0.945,
+        "Patient coordinates: screen left=L, screen right=R, top=S (head), bottom=I (foot); equal physical scale; tan=liver, red=tumor",
+        ha="center",
+        va="top",
+        fontsize=10,
+    )
+    atomic_write_bytes(output, _png_bytes(figure, dpi=160))
     return sha256_file(output)
 
 
@@ -822,11 +919,19 @@ def audit_pilot15(dataset_root: Path, output_dir: Path) -> dict[str, Any]:
     three_d = output / "pilot15_3d_overview.png"
     statistics = output / "pilot15_statistics_overview.png"
     projections = output / "pilot15_projection_overview.png"
+    directional = output / "pilot15_directional_anterior_overview.png"
     visual_artifacts = {
         "contact_sheet": {"path": str(contact), "sha256": _render_contact_sheet(overviews, contact)},
         "three_d_overview": {"path": str(three_d), "sha256": _render_3d_sheet(overviews, three_d)},
         "statistics_overview": {"path": str(statistics), "sha256": _render_statistics(overviews, statistics)},
         "projection_overview": {"path": str(projections), "sha256": _render_projection_sheet(overviews, projections)},
+        "directional_anterior_overview": {
+            "path": str(directional),
+            "sha256": _render_directional_anterior_sheet(overviews, directional),
+            "view_direction": "anterior_to_posterior",
+            "screen_axes": {"horizontal": "L_to_R", "vertical": "I_to_S"},
+            "physical_scale": "equal",
+        },
     }
     all_case_gates = all(case["status"] == "pass" for case in case_reports)
     global_gates = {

@@ -12,9 +12,11 @@ sys.path.insert(0, str(REPO_ROOT / "scripts"))
 
 from audit_pilot15_v2 import (  # noqa: E402
     Pilot15AuditError,
+    _anterior_projection,
     _numeric_summary,
     _outside_dataset,
     _projection_metrics,
+    _zyx_to_xyz,
 )
 
 
@@ -59,3 +61,20 @@ def test_numeric_summary_is_deterministic() -> None:
         "p75": 3.25,
         "max": 4.0,
     }
+
+
+def test_anatomical_coordinate_mapping_is_zyx_to_xyz() -> None:
+    points_zyx = np.asarray([[3.0, 2.0, 4.0], [7.0, 6.0, 8.0]])
+    assert _zyx_to_xyz(points_zyx).tolist() == [
+        [4.0, 2.0, 3.0],
+        [8.0, 6.0, 7.0],
+    ]
+
+
+def test_anterior_projection_preserves_si_vertical_and_lr_horizontal() -> None:
+    mask = np.zeros((6, 5, 7), dtype=bool)
+    mask[3, 2, 4] = True
+    projection = _anterior_projection(mask)
+    assert projection.shape == (6, 7)
+    assert projection[3, 4]
+    assert projection.sum() == 1
