@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-BUNDLE_ROOT="${1:-$HOME/scratch/pars_v2_task12e_v2/pars_v2_task12e_linux_bundle_v2}"
-SHARED_ROOT="${2:-$HOME/scratch/pars_v2_task12e_run_v2}"
+BUNDLE_ROOT="${1:-$HOME/scratch/pars_v2_task12e_v3/pars_v2_task12e_linux_bundle_v3}"
+SHARED_ROOT="${2:-$HOME/scratch/pars_v2_task12e_run_v3}"
 ENV_PREFIX="${3:-$HOME/conda-envs/pars-v2-linux-py311}"
 
 if [[ ! -x "$ENV_PREFIX/bin/python" ]]; then

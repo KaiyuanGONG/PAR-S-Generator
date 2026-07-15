@@ -72,6 +72,10 @@ def _build_archive(shared_root: Path, master_dir: Path) -> tuple[Path, str, int]
             arcname="task12e_linux_results/LINUX_ENVIRONMENT.json",
         )
         stream.add(
+            shared_root / "LINUX_SMOKE_COMPLETE.json",
+            arcname="task12e_linux_results/LINUX_SMOKE_COMPLETE.json",
+        )
+        stream.add(
             shared_root / "nodes",
             arcname="task12e_linux_results/nodes",
         )
@@ -119,7 +123,7 @@ def main() -> int:
             atomic_write_json(
                 master_dir / "RESULT_ARCHIVE.json",
                 {
-                    "schema_version": "pars_v2_task12e_linux_result_archive_v2",
+                    "schema_version": "pars_v2_task12e_linux_result_archive_v3",
                     "archive": archive_path.name,
                     "sha256": archive_sha,
                     "size_bytes": archive_size,
@@ -168,6 +172,17 @@ def main() -> int:
         for node, document in node_documents.items()
     }
     expected_simind = plan.get("expected_linux_simind_sha256")
+    runtime = plan.get("runtime")
+    if not isinstance(runtime, Mapping) or not isinstance(
+        runtime.get("linux_simind_runtime"), Mapping
+    ):
+        raise ValueError("bound Linux SIMIND runtime is missing")
+    expected_smc_manifest = runtime["linux_simind_runtime"].get(
+        "smc_dir_manifest_sha256"
+    )
+    smoke_completion_sha256 = sha256_file(
+        shared_root / "LINUX_SMOKE_COMPLETE.json"
+    )
     environment_capture_sha256 = sha256_file(environment_path)
     dependency_sets: list[Mapping[str, Any]] = []
     for node, fingerprint in runtime_fingerprints.items():
@@ -175,6 +190,10 @@ def main() -> int:
             raise ValueError(f"node {node} runtime fingerprint missing")
         if fingerprint.get("simind_sha256") != expected_simind:
             raise ValueError(f"node {node} SIMIND hash mismatch")
+        if fingerprint.get("smc_dir_manifest_sha256") != expected_smc_manifest:
+            raise ValueError(f"node {node} SMC_DIR manifest mismatch")
+        if fingerprint.get("smoke_completion_sha256") != smoke_completion_sha256:
+            raise ValueError(f"node {node} smoke completion binding mismatch")
         if fingerprint.get("environment_capture_sha256") != environment_capture_sha256:
             raise ValueError(f"node {node} environment capture binding mismatch")
         dependencies = fingerprint.get("dependency_hashes")
@@ -236,6 +255,8 @@ def main() -> int:
         "bundle_manifest_sha256": bundle_manifest_sha256,
         "environment_capture_sha256": environment_capture_sha256,
         "expected_linux_simind_sha256": expected_simind,
+        "smc_dir_manifest_sha256": expected_smc_manifest,
+        "smoke_completion_sha256": smoke_completion_sha256,
         "expected_nodes": expected_nodes,
         "canonical_projection_node": canonical,
         "node_completion_sha256": {
@@ -261,7 +282,7 @@ def main() -> int:
     atomic_write_json(completion_path, master)
     archive_path, archive_sha, archive_size = _build_archive(shared_root, master_dir)
     archive_document = {
-        "schema_version": "pars_v2_task12e_linux_result_archive_v2",
+        "schema_version": "pars_v2_task12e_linux_result_archive_v3",
         "archive": archive_path.name,
         "sha256": archive_sha,
         "size_bytes": archive_size,

@@ -21,7 +21,9 @@ from task12e_linux_common import (  # noqa: E402
     ENVIRONMENT_SCHEMA,
     NODE_COMPLETE_SCHEMA,
     PLAN_SCHEMA,
+    SMOKE_SCHEMA,
     atomic_write_json,
+    directory_manifest,
     node_case_specs,
     normalized_res_sha256,
     safe_extract_tar,
@@ -66,9 +68,33 @@ def test_task12e_v1_failure_is_non_scientific_and_v2_only() -> None:
     assert document["release"]["go_for_bundle_v2_environment_recapture"] is True
 
 
+def test_task12e_v2_failure_and_v3_wsl_smoke_are_audited() -> None:
+    v2_failure = json.loads(
+        (
+            REPO_ROOT
+            / "docs"
+            / "reports"
+            / "task12e_v2_simind_runtime_preflight_failure.json"
+        ).read_text(encoding="utf-8")
+    )
+    wsl = json.loads(
+        (
+            REPO_ROOT
+            / "docs"
+            / "reports"
+            / "task12e_v3_wsl_smoke_acceptance.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert v2_failure["observed_execution"]["published_case_count"] == 0
+    assert v2_failure["root_cause"]["required_environment_variable"] == "SMC_DIR"
+    assert wsl["status"] == "pass"
+    assert wsl["fixture"]["projection_shape_vvu"] == [60, 128, 128]
+    assert wsl["gate"]["release_remote_parallel_workers"] is False
+
+
 def test_task12e_static_plan_freezes_three_homogeneous_nodes() -> None:
     plan = json.loads(
-        (REPO_ROOT / "configs" / "task12e_linux_homologation_v2.json").read_text(
+        (REPO_ROOT / "configs" / "task12e_linux_homologation_v3.json").read_text(
             encoding="utf-8"
         )
     )
@@ -85,6 +111,8 @@ def test_task12e_static_plan_freezes_three_homogeneous_nodes() -> None:
         "cnc8": 3,
     }
     assert plan["environment"]["shared_prefix_comparison"] == "resolved_realpath"
+    assert plan["runtime"]["linux_simind_runtime"]["smc_dir_file_count"] == 346
+    assert plan["fixture_execution"]["required_smoke_case"] == "coord_spots_001"
 
 
 def test_environment_prefix_uses_realpath_alias_equivalence(monkeypatch) -> None:
@@ -116,6 +144,18 @@ def test_normalized_res_ignores_only_runtime_lines(tmp_path: Path) -> None:
     assert normalized_res_sha256(first) == normalized_res_sha256(second)
     second.write_text(second.read_text(encoding="utf-8").replace("value=5", "value=6"))
     assert normalized_res_sha256(first) != normalized_res_sha256(second)
+
+
+def test_directory_manifest_binds_paths_sizes_and_bytes(tmp_path: Path) -> None:
+    runtime = tmp_path / "smc_dir"
+    runtime.mkdir()
+    (runtime / "a.dat").write_bytes(b"one")
+    (runtime / "b.dat").write_bytes(b"two")
+    rows, first = directory_manifest(runtime)
+    assert [row["relative_path"] for row in rows] == ["a.dat", "b.dat"]
+    (runtime / "b.dat").write_bytes(b"changed")
+    _, second = directory_manifest(runtime)
+    assert first != second
 
 
 def test_bundle_validation_and_node_assignment(tmp_path: Path) -> None:
@@ -201,6 +241,7 @@ def test_remote_scripts_are_headless_and_resume_aware() -> None:
     launcher = (SCRIPTS / "launch_task12e_linux_screen.sh").read_text(
         encoding="utf-8"
     )
+    smoke = (SCRIPTS / "run_task12e_linux_smoke.py").read_text(encoding="utf-8")
     assert "PyQt" not in worker + master
     assert "--resume" in worker
     assert "/NN:" in worker and "/RR:" in worker
@@ -208,6 +249,9 @@ def test_remote_scripts_are_headless_and_resume_aware() -> None:
     assert "normalized_res_sha256" in master
     assert "screen -dmS" in launcher
     assert "MAX_PARALLEL" in launcher and "tee -a" in launcher
+    assert "LINUX_SMOKE_COMPLETE.json" in launcher + worker
+    assert 'environment["SMC_DIR"]' in worker + smoke
+    assert "retained_work_dir" in worker
 
 
 def test_worker_resource_gate_understands_cgroup_v1_quota() -> None:
@@ -283,6 +327,44 @@ def test_worker_parallelism_is_bounded_by_frozen_plan() -> None:
         worker._bounded_parallelism(plan, 7, 6)
 
 
+def test_worker_smoke_gate_rejects_development_marker(tmp_path: Path) -> None:
+    worker = _load_script("run_task12e_linux_worker.py")
+    plan = {"fixture_execution": {"required_smoke_case": "coord_spots_001"}}
+    shared = tmp_path / "shared"
+    shared.mkdir()
+    marker = {
+        "schema_version": SMOKE_SCHEMA,
+        "status": "pass",
+        "case_id": "coord_spots_001",
+        "bundle_manifest_sha256": "bundle",
+        "simind_sha256": "simind",
+        "canonical_hostname_verified": True,
+        "development_override": False,
+        "smc_dir_file_count": 346,
+        "smc_dir_manifest_sha256": "smc",
+    }
+    atomic_write_json(shared / "LINUX_SMOKE_COMPLETE.json", marker)
+    assert worker._validate_smoke_gate(
+        plan=plan,
+        shared_root=shared,
+        bundle_manifest_sha256="bundle",
+        simind_sha256="simind",
+        smc_dir_file_count=346,
+        smc_dir_manifest_sha256="smc",
+    ) == shared / "LINUX_SMOKE_COMPLETE.json"
+    marker["development_override"] = True
+    atomic_write_json(shared / "LINUX_SMOKE_COMPLETE.json", marker)
+    with pytest.raises(ValueError, match="development smoke"):
+        worker._validate_smoke_gate(
+            plan=plan,
+            shared_root=shared,
+            bundle_manifest_sha256="bundle",
+            simind_sha256="simind",
+            smc_dir_file_count=346,
+            smc_dir_manifest_sha256="smc",
+        )
+
+
 def test_worker_actually_executes_three_cases_concurrently() -> None:
     worker = _load_script("run_task12e_linux_worker.py")
     barrier = threading.Barrier(3, timeout=3)
@@ -298,6 +380,59 @@ def test_worker_actually_executes_three_cases_concurrently() -> None:
         "case_1",
         "case_2",
     }
+
+
+def test_worker_retains_failed_case_directory_and_logs(tmp_path: Path) -> None:
+    worker = _load_script("run_task12e_linux_worker.py")
+    bundle = tmp_path / "bundle"
+    bundle.mkdir()
+    source = bundle / "source.bin"
+    density = bundle / "density.bin"
+    smc = bundle / "ge870_czt.smc"
+    ini = bundle / "simind.ini"
+    source.write_bytes(b"source")
+    density.write_bytes(b"density")
+    smc.write_text("smc\n", encoding="utf-8")
+    ini.write_text("ini\n", encoding="utf-8")
+    runtime = {
+        "smc_relative_path": "ge870_czt.smc",
+        "simind_ini_relative_path": "simind.ini",
+        "smc_sha256": sha256_file(smc),
+        "simind_ini_sha256": sha256_file(ini),
+        "timeout_seconds": 10,
+    }
+    case = {
+        "case_id": "case_failure",
+        "fixture_group": "clinical",
+        "nn_multiplier": 1,
+        "rr_seed": 1,
+        "inputs": {
+            "source_relative_path": "source.bin",
+            "source_sha256": sha256_file(source),
+            "density_relative_path": "density.bin",
+            "density_sha256": sha256_file(density),
+        },
+    }
+    local_root = tmp_path / "local"
+    with pytest.raises(RuntimeError, match="retained_work_dir"):
+        worker._run_case(
+            bundle_root=bundle,
+            shared_node_root=tmp_path / "shared" / "cnc5",
+            local_root=local_root,
+            simind_exe=Path(sys.executable),
+            smc_dir=tmp_path,
+            runtime=runtime,
+            runtime_fingerprint={},
+            bundle_manifest_sha256="bundle",
+            case=case,
+            resume=False,
+        )
+    retained = [path for path in local_root.iterdir() if path.is_dir()]
+    assert len(retained) == 1
+    failure = json.loads((retained[0] / "FAILURE.json").read_text(encoding="utf-8"))
+    assert failure["status"] == "failed"
+    assert (retained[0] / "stdout.log").is_file()
+    assert (retained[0] / "stderr.log").is_file()
 
 
 def test_linux_master_accepts_three_identical_node_shards(tmp_path: Path) -> None:
@@ -319,6 +454,11 @@ def test_linux_master_accepts_three_identical_node_shards(tmp_path: Path) -> Non
         "expected_nodes": nodes,
         "canonical_projection_node": "cnc5",
         "expected_linux_simind_sha256": "simhash",
+        "runtime": {
+            "linux_simind_runtime": {
+                "smc_dir_manifest_sha256": "smchash"
+            }
+        },
         "hostname_prefix_by_node": {node: f"{node}-" for node in nodes},
         "clinical_case_ids": clinical,
         "coordinate_case_ids": coordinate,
@@ -354,8 +494,13 @@ def test_linux_master_accepts_three_identical_node_shards(tmp_path: Path) -> Non
         shared / "LINUX_ENVIRONMENT.json",
         {"schema_version": ENVIRONMENT_SCHEMA, "status": "pass"},
     )
+    atomic_write_json(
+        shared / "LINUX_SMOKE_COMPLETE.json",
+        {"schema_version": SMOKE_SCHEMA, "status": "pass"},
+    )
     bundle_sha = sha256_file(bundle / "BUNDLE_MANIFEST.json")
     environment_sha = sha256_file(shared / "LINUX_ENVIRONMENT.json")
+    smoke_sha = sha256_file(shared / "LINUX_SMOKE_COMPLETE.json")
     for node in nodes:
         assigned = clinical + (coordinate if node == "cnc5" else [])
         node_root = shared / "nodes" / node
@@ -399,6 +544,8 @@ def test_linux_master_accepts_three_identical_node_shards(tmp_path: Path) -> Non
                 "bundle_manifest_sha256": bundle_sha,
                 "runtime_fingerprint": {
                     "simind_sha256": "simhash",
+                    "smc_dir_manifest_sha256": "smchash",
+                    "smoke_completion_sha256": smoke_sha,
                     "environment_capture_sha256": environment_sha,
                     "dependency_hashes": {"libc.so.6": "same"},
                 },

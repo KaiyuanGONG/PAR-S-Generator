@@ -7,8 +7,8 @@ if [[ $# -lt 1 ]]; then
 fi
 
 NODE_ID="$1"
-SHARED_ROOT="${2:-$HOME/scratch/pars_v2_task12e_run_v2}"
-BUNDLE_ROOT="${3:-$HOME/scratch/pars_v2_task12e_v2/pars_v2_task12e_linux_bundle_v2}"
+SHARED_ROOT="${2:-$HOME/scratch/pars_v2_task12e_run_v3}"
+BUNDLE_ROOT="${3:-$HOME/scratch/pars_v2_task12e_v3/pars_v2_task12e_linux_bundle_v3}"
 ENV_PREFIX="${4:-$HOME/conda-envs/pars-v2-linux-py311}"
 MAX_PARALLEL="${5:-6}"
 SESSION="pars12e_${NODE_ID}"
@@ -17,6 +17,10 @@ LOG_PATH="$LOG_ROOT/${NODE_ID}.log"
 
 command -v screen >/dev/null 2>&1 || {
     echo "GNU screen is required but was not found" >&2
+    exit 1
+}
+test -f "$SHARED_ROOT/LINUX_SMOKE_COMPLETE.json" || {
+    echo "Linux SIMIND smoke gate is missing; run smoke before node workers" >&2
     exit 1
 }
 

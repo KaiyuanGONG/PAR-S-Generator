@@ -7,8 +7,8 @@ if [[ $# -lt 1 ]]; then
 fi
 
 NODE_ID="$1"
-SHARED_ROOT="${2:-$HOME/scratch/pars_v2_task12e_run_v2}"
-BUNDLE_ROOT="${3:-$HOME/scratch/pars_v2_task12e_v2/pars_v2_task12e_linux_bundle_v2}"
+SHARED_ROOT="${2:-$HOME/scratch/pars_v2_task12e_run_v3}"
+BUNDLE_ROOT="${3:-$HOME/scratch/pars_v2_task12e_v3/pars_v2_task12e_linux_bundle_v3}"
 ENV_PREFIX="${4:-$HOME/conda-envs/pars-v2-linux-py311}"
 MAX_PARALLEL="${5:-6}"
 export PYTHONUNBUFFERED=1
@@ -19,6 +19,7 @@ export PYTHONUNBUFFERED=1
     --shared-root "$SHARED_ROOT" \
     --node-id "$NODE_ID" \
     --simind-exe "$HOME/apps/simind/simind" \
+    --smc-dir "$HOME/apps/simind/smc_dir" \
     --local-root "/tmp/pars_v2_task12e_$NODE_ID" \
     --max-parallel "$MAX_PARALLEL" \
     --resume

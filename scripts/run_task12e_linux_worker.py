@@ -27,7 +27,9 @@ from task12e_linux_common import (
     EXPECTED_PROJECTION_SHAPE,
     NODE_COMPLETE_SCHEMA,
     QUARTET_EXTENSIONS,
+    SMOKE_SCHEMA,
     atomic_write_json,
+    directory_manifest,
     node_case_specs,
     normalized_res_sha256,
     read_json,
@@ -85,7 +87,14 @@ def _resource_snapshot() -> dict[str, object]:
     }
 
 
-def _runtime_fingerprint(simind_exe: Path, environment_path: Path) -> dict[str, object]:
+def _runtime_fingerprint(
+    simind_exe: Path,
+    environment_path: Path,
+    smc_dir: Path,
+    smc_dir_file_count: int,
+    smc_dir_manifest_sha256: str,
+    smoke_path: Path,
+) -> dict[str, object]:
     ldd_output, dependency_hashes = _dependency_hashes(simind_exe)
     environment = read_json(environment_path)
     if environment.get("schema_version") != ENVIRONMENT_SCHEMA or environment.get(
@@ -104,11 +113,49 @@ def _runtime_fingerprint(simind_exe: Path, environment_path: Path) -> dict[str, 
         "python_version": ".".join(str(value) for value in sys.version_info[:3]),
         "simind_executable": str(simind_exe),
         "simind_sha256": sha256_file(simind_exe),
+        "smc_dir": str(smc_dir),
+        "smc_dir_environment_value": f"{smc_dir}{os.sep}",
+        "smc_dir_file_count": smc_dir_file_count,
+        "smc_dir_manifest_sha256": smc_dir_manifest_sha256,
+        "smoke_completion_sha256": sha256_file(smoke_path),
         "ldd_output": ldd_output,
         "dependency_hashes": dependency_hashes,
         "environment_capture_sha256": sha256_file(environment_path),
         "resources": _resource_snapshot(),
     }
+
+
+def _validate_smoke_gate(
+    *,
+    plan: Mapping[str, Any],
+    shared_root: Path,
+    bundle_manifest_sha256: str,
+    simind_sha256: str,
+    smc_dir_file_count: int,
+    smc_dir_manifest_sha256: str,
+) -> Path:
+    smoke_path = shared_root / "LINUX_SMOKE_COMPLETE.json"
+    smoke = read_json(smoke_path)
+    if smoke.get("schema_version") != SMOKE_SCHEMA or smoke.get("status") != "pass":
+        raise ValueError("Linux SIMIND smoke gate is not passing")
+    if smoke.get("bundle_manifest_sha256") != bundle_manifest_sha256:
+        raise ValueError("Linux smoke bundle binding mismatch")
+    if smoke.get("simind_sha256") != simind_sha256:
+        raise ValueError("Linux smoke SIMIND hash mismatch")
+    if smoke.get("canonical_hostname_verified") is not True:
+        raise ValueError("Linux smoke did not run on the canonical node")
+    if smoke.get("development_override") is not False:
+        raise ValueError("development smoke cannot release remote workers")
+    if int(smoke.get("smc_dir_file_count", -1)) != smc_dir_file_count:
+        raise ValueError("Linux smoke SMC_DIR file-count mismatch")
+    if smoke.get("smc_dir_manifest_sha256") != smc_dir_manifest_sha256:
+        raise ValueError("Linux smoke SMC_DIR manifest mismatch")
+    fixture_execution = plan.get("fixture_execution")
+    if not isinstance(fixture_execution, Mapping) or smoke.get("case_id") != (
+        fixture_execution.get("required_smoke_case")
+    ):
+        raise ValueError("Linux smoke case does not match the bound plan")
+    return smoke_path
 
 
 def _validate_minimum_resources(
@@ -223,6 +270,7 @@ def _run_case(
     shared_node_root: Path,
     local_root: Path,
     simind_exe: Path,
+    smc_dir: Path,
     runtime: Mapping[str, Any],
     runtime_fingerprint: Mapping[str, Any],
     bundle_manifest_sha256: str,
@@ -256,6 +304,7 @@ def _run_case(
     work_dir = Path(tempfile.mkdtemp(prefix=f"{case_id}-", dir=local_root))
     started = _utc_now()
     started_monotonic = time.monotonic()
+    succeeded = False
     try:
         local_smc = work_dir / smc.name
         local_ini = work_dir / "simind.ini"
@@ -265,12 +314,6 @@ def _run_case(
         shutil.copy2(ini, local_ini)
         shutil.copy2(source, local_source)
         shutil.copy2(density, local_density)
-        simind_data = simind_exe.parent / "smc_dir"
-        if simind_data.is_dir():
-            try:
-                (work_dir / "smc_dir").symlink_to(simind_data, target_is_directory=True)
-            except OSError:
-                pass
         command = [
             str(simind_exe),
             local_smc.stem,
@@ -280,9 +323,12 @@ def _run_case(
             f"/NN:{int(case.get('nn_multiplier'))}",
             f"/RR:{int(case.get('rr_seed'))}",
         ]
+        environment = os.environ.copy()
+        environment["SMC_DIR"] = f"{smc_dir}{os.sep}"
         completed = subprocess.run(
             command,
             cwd=work_dir,
+            env=environment,
             capture_output=True,
             text=True,
             errors="replace",
@@ -299,7 +345,10 @@ def _run_case(
         for extension in QUARTET_EXTENSIONS:
             path = work_dir / f"{case_id}.{extension}"
             if not path.is_file() or path.stat().st_size <= 0:
-                raise FileNotFoundError(f"missing SIMIND output: {path}")
+                observed = sorted(item.name for item in work_dir.iterdir())
+                raise FileNotFoundError(
+                    f"missing SIMIND output: {path}; observed={observed}"
+                )
             output_artifacts[extension] = {
                 "size_bytes": path.stat().st_size,
                 "sha256": sha256_file(path),
@@ -309,7 +358,7 @@ def _run_case(
             work_dir / f"{case_id}.res"
         )
         provenance: dict[str, object] = {
-            "schema_version": "pars_v2_task12e_linux_run_provenance_v2",
+            "schema_version": "pars_v2_task12e_linux_run_provenance_v3",
             "status": "complete",
             "case_id": case_id,
             "bundle_manifest_sha256": bundle_manifest_sha256,
@@ -348,9 +397,40 @@ def _run_case(
         finally:
             if publish_dir.exists():
                 shutil.rmtree(publish_dir, ignore_errors=True)
-        return _validate_completed_case(final_dir, case_id, bundle_manifest_sha256)
+        result = _validate_completed_case(final_dir, case_id, bundle_manifest_sha256)
+        succeeded = True
+        return result
+    except Exception as exc:
+        stdout_path = work_dir / "stdout.log"
+        stderr_path = work_dir / "stderr.log"
+        failure = {
+            "schema_version": "pars_v2_task12e_linux_case_failure_v1",
+            "status": "failed",
+            "case_id": case_id,
+            "hostname": socket.gethostname(),
+            "failed_utc": _utc_now(),
+            "error_type": type(exc).__name__,
+            "error": str(exc),
+            "retained_work_dir": str(work_dir),
+            "observed_files": sorted(item.name for item in work_dir.iterdir()),
+            "stdout_tail": (
+                stdout_path.read_text(encoding="utf-8", errors="replace")[-4000:]
+                if stdout_path.is_file()
+                else ""
+            ),
+            "stderr_tail": (
+                stderr_path.read_text(encoding="utf-8", errors="replace")[-4000:]
+                if stderr_path.is_file()
+                else ""
+            ),
+        }
+        atomic_write_json(work_dir / "FAILURE.json", failure)
+        raise RuntimeError(
+            f"{case_id} failed; retained_work_dir={work_dir}; {exc}"
+        ) from exc
     finally:
-        shutil.rmtree(work_dir, ignore_errors=True)
+        if succeeded:
+            shutil.rmtree(work_dir, ignore_errors=True)
 
 
 def main() -> int:
@@ -359,6 +439,7 @@ def main() -> int:
     parser.add_argument("--shared-root", type=Path, required=True)
     parser.add_argument("--node-id", required=True)
     parser.add_argument("--simind-exe", type=Path, required=True)
+    parser.add_argument("--smc-dir", type=Path, required=True)
     parser.add_argument("--local-root", type=Path)
     parser.add_argument("--max-parallel", type=int, default=1)
     parser.add_argument("--resume", action="store_true")
@@ -375,14 +456,43 @@ def main() -> int:
     if not simind_exe.is_file() or sha256_file(simind_exe) != expected_simind:
         raise ValueError("Linux SIMIND binary hash does not match the bound plan")
     shared_root = args.shared_root.expanduser().resolve()
-    environment_path = shared_root / "LINUX_ENVIRONMENT.json"
-    runtime_fingerprint = _runtime_fingerprint(simind_exe, environment_path)
-    _validate_minimum_resources(plan, runtime_fingerprint)
-    if runtime_fingerprint["simind_sha256"] != expected_simind:
-        raise ValueError("runtime SIMIND hash drift")
     runtime = plan.get("runtime")
     if not isinstance(runtime, Mapping):
         raise ValueError("bound runtime missing")
+    simind_runtime = runtime.get("linux_simind_runtime")
+    if not isinstance(simind_runtime, Mapping):
+        raise ValueError("bound Linux SIMIND runtime missing")
+    smc_dir = args.smc_dir.expanduser().resolve()
+    smc_records, smc_dir_manifest_sha256 = directory_manifest(smc_dir)
+    smc_dir_file_count = len(smc_records)
+    if smc_dir_file_count != int(simind_runtime.get("smc_dir_file_count", -1)):
+        raise ValueError("runtime SMC_DIR file-count mismatch")
+    if sum(int(item["size_bytes"]) for item in smc_records) != int(
+        simind_runtime.get("smc_dir_total_size_bytes", -1)
+    ):
+        raise ValueError("runtime SMC_DIR total-size mismatch")
+    if smc_dir_manifest_sha256 != simind_runtime.get("smc_dir_manifest_sha256"):
+        raise ValueError("runtime SMC_DIR content-manifest mismatch")
+    smoke_path = _validate_smoke_gate(
+        plan=plan,
+        shared_root=shared_root,
+        bundle_manifest_sha256=bundle_manifest_sha256,
+        simind_sha256=str(expected_simind),
+        smc_dir_file_count=smc_dir_file_count,
+        smc_dir_manifest_sha256=smc_dir_manifest_sha256,
+    )
+    environment_path = shared_root / "LINUX_ENVIRONMENT.json"
+    runtime_fingerprint = _runtime_fingerprint(
+        simind_exe,
+        environment_path,
+        smc_dir,
+        smc_dir_file_count,
+        smc_dir_manifest_sha256,
+        smoke_path,
+    )
+    _validate_minimum_resources(plan, runtime_fingerprint)
+    if runtime_fingerprint["simind_sha256"] != expected_simind:
+        raise ValueError("runtime SIMIND hash drift")
     local_root = (
         args.local_root.expanduser().resolve()
         if args.local_root
@@ -448,6 +558,7 @@ def main() -> int:
             shared_node_root=shared_node_root,
             local_root=local_root,
             simind_exe=simind_exe,
+            smc_dir=smc_dir,
             runtime=runtime,
             runtime_fingerprint=runtime_fingerprint,
             bundle_manifest_sha256=bundle_manifest_sha256,

@@ -12,11 +12,12 @@ from pathlib import Path
 from typing import Any, Mapping
 
 
-BUNDLE_SCHEMA = "pars_v2_task12e_linux_bundle_v2"
-PLAN_SCHEMA = "pars_v2_task12e_linux_plan_bound_v2"
-ENVIRONMENT_SCHEMA = "pars_v2_task12e_linux_environment_v2"
-NODE_COMPLETE_SCHEMA = "pars_v2_task12e_linux_node_complete_v2"
-MASTER_SCHEMA = "pars_v2_task12e_linux_master_v2"
+BUNDLE_SCHEMA = "pars_v2_task12e_linux_bundle_v3"
+PLAN_SCHEMA = "pars_v2_task12e_linux_plan_bound_v3"
+ENVIRONMENT_SCHEMA = "pars_v2_task12e_linux_environment_v3"
+NODE_COMPLETE_SCHEMA = "pars_v2_task12e_linux_node_complete_v3"
+MASTER_SCHEMA = "pars_v2_task12e_linux_master_v3"
+SMOKE_SCHEMA = "pars_v2_task12e_linux_smoke_v1"
 EXPECTED_PROJECTION_SHAPE = (60, 128, 128)
 EXPECTED_A00_BYTES = 60 * 128 * 128 * 4
 QUARTET_EXTENSIONS = ("a00", "mhd", "res", "spe")
@@ -38,6 +39,32 @@ def sha256_file(path: str | Path) -> str:
 
 def sha256_bytes(payload: bytes) -> str:
     return hashlib.sha256(payload).hexdigest()
+
+
+def directory_manifest(root: str | Path) -> tuple[list[dict[str, object]], str]:
+    directory = Path(root).resolve()
+    if not directory.is_dir():
+        raise FileNotFoundError(f"runtime directory is missing: {directory}")
+    records: list[dict[str, object]] = []
+    for path in sorted(directory.rglob("*"), key=lambda item: item.as_posix()):
+        if path.is_symlink():
+            raise ValueError(f"runtime directory links are forbidden: {path}")
+        if not path.is_file():
+            continue
+        records.append(
+            {
+                "relative_path": path.relative_to(directory).as_posix(),
+                "size_bytes": path.stat().st_size,
+                "sha256": sha256_file(path),
+            }
+        )
+    if not records:
+        raise ValueError(f"runtime directory contains no files: {directory}")
+    payload = (
+        json.dumps(records, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+        + "\n"
+    ).encode("utf-8")
+    return records, sha256_bytes(payload)
 
 
 def read_json(path: str | Path) -> Mapping[str, Any]:

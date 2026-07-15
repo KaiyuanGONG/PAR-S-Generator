@@ -1,0 +1,43 @@
+{
+  "schema_version": "pars_v2_task12e_v3_wsl_smoke_acceptance_v1",
+  "observed_date": "2026-07-15",
+  "status": "pass",
+  "role": "development_smoke_before_remote_bundle_v3_release",
+  "platform": {
+    "distribution": "Ubuntu 24.04.1 LTS",
+    "kernel": "5.15.167.4-microsoft-standard-WSL2",
+    "machine": "x86_64",
+    "hostname": "KaiyuanGONG"
+  },
+  "runtime": {
+    "simind_sha256": "e143e2e0b0315c9cd8b6bb187d6bd28448e096c255f8d16ee0c14787d1537f9d",
+    "smc_dir_file_count": 346,
+    "smc_dir_manifest_sha256": "b8f773bf3c23e2e3f03f60abb076ef6e195a079e888bfc84cfcf914256a49184",
+    "smc_dir_trailing_separator_set": true
+  },
+  "fixture": {
+    "case_id": "coord_spots_001",
+    "nn_multiplier": 5,
+    "rr_seed": 101,
+    "elapsed_seconds": 294.069813417,
+    "return_code": 0,
+    "projection_shape_vvu": [60, 128, 128],
+    "projection_size_bytes": 3932160,
+    "projection_sum": 602337.7577697039,
+    "projection_minimum": 0.0,
+    "projection_maximum": 646.7561645507812
+  },
+  "artifact_sha256": {
+    "a00": "c573ceb42fa5dd2b454fbd930219c55c3227a9a253c3755afb399d2f6e497bc3",
+    "mhd": "f97084facb185c35bd266c311f23e84527cb53b86941958c176b5442a1022156",
+    "res": "f30eff21c712d0691c8d9217528dafb4a697727a534f438a169e0f358120af86",
+    "spe": "9c44d0a216b4cc03c3a57278d00799131ec0f03f4d00a9bb283ab2d75c2db243"
+  },
+  "gate": {
+    "formal_smoke_script_passed": true,
+    "development_hostname_override": true,
+    "release_remote_single_fixture_smoke": true,
+    "release_remote_parallel_workers": false,
+    "reason_workers_still_blocked": "Remote cnc5 must create a canonical-host smoke PASS marker bound to the formal v3 bundle."
+  }
+}

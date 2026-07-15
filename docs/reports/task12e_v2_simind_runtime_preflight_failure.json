@@ -1,0 +1,46 @@
+{
+  "schema_version": "pars_v2_task12e_v2_simind_runtime_preflight_failure_v1",
+  "observed_date": "2026-07-15",
+  "status": "superseded_by_task12e_bundle_v3",
+  "stage": "first_cnc5_worker_before_any_case_publication",
+  "v2_result": "fail",
+  "root_cause": {
+    "category": "linux_simind_smc_dir_environment_not_explicitly_bound",
+    "required_environment_variable": "SMC_DIR",
+    "required_trailing_separator": true,
+    "observed_value": "",
+    "simind_exit_code_on_configuration_error": 0,
+    "detected_by": "missing expected a00 output despite zero process exit code"
+  },
+  "observed_execution": {
+    "node": "cnc5",
+    "requested_parallel": 6,
+    "all_six_cases_started": true,
+    "published_case_count": 0,
+    "node_complete_written": false,
+    "screen_session_exited": true
+  },
+  "wsl_reproduction": {
+    "platform": "Ubuntu 24.04.1 LTS WSL2 x86_64",
+    "same_simind_sha256": "e143e2e0b0315c9cd8b6bb187d6bd28448e096c255f8d16ee0c14787d1537f9d",
+    "fixture": "coord_spots_001",
+    "nn_multiplier": 5,
+    "rr_seed": 101,
+    "explicit_smc_dir": true,
+    "elapsed_seconds_approx": 288,
+    "exit_code": 0,
+    "expected_quartet_observed": true
+  },
+  "release": {
+    "accept_v2_worker_outputs": false,
+    "go_for_bundle_v3_smoke": true,
+    "go_for_50_case_generation": false
+  },
+  "v3_correction": {
+    "explicit_smc_dir_environment": true,
+    "smc_dir_content_manifest_required": true,
+    "remote_single_fixture_smoke_required_before_workers": true,
+    "worker_requires_smoke_pass_marker": true,
+    "failed_local_work_directories_retained": true
+  }
+}

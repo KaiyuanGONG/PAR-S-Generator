@@ -3,9 +3,10 @@
 Task 12E is the mandatory platform-change gate between the accepted Windows
 Task 12D engineering chain and the 50-case Linux production pilot.
 
-Bundle v2 supersedes v1 after the cluster revealed that `/home/kgong` resolves
-to `/export/work/ummisco/home/kgong`. Environment-prefix identity is therefore
-defined by resolved realpath while the logical prefix remains recorded.
+Bundle v3 supersedes v2. V2 fixed the shared-home realpath alias but omitted
+Linux SIMIND's mandatory `SMC_DIR` environment variable. V3 binds the complete
+346-file runtime manifest, always sets `SMC_DIR` with a trailing separator, and
+requires a canonical-node single-fixture smoke PASS before parallel workers.
 
 ## Immutable decisions
 
@@ -21,22 +22,26 @@ defined by resolved realpath while the logical prefix remains recorded.
 - Workers never append to a common manifest. Each writes one node shard, and a
   single master validates and aggregates completed shards.
 - Each node runs inside GNU screen and may execute at most six isolated fixture
-  cases concurrently. V2 requests 6/3/3 processes on cnc5/cnc7/cnc8; this bound
+  cases concurrently. V3 requests 6/3/3 processes on cnc5/cnc7/cnc8; this bound
   is part of the immutable plan.
+- Failed case work directories, stdout and stderr remain under node-local
+  `/tmp` for diagnosis instead of being deleted.
 
 ## Required gates
 
 1. The uploaded bundle manifest, Task 12D acceptance and all input hashes pass.
 2. The frozen Python 3.11 Linux environment is captured and matches the exact
    critical package versions.
-3. All nodes use the expected SIMIND binary and identical hashed dynamic
-   dependencies.
-4. For every clinical fixture, `.a00`, `.mhd` and `.spe` are byte-identical on
+3. The full `smc_dir` tree matches its frozen file count, total size and content
+   manifest. A single coordinate fixture must pass on cnc5 before any worker.
+4. All nodes use the expected SIMIND binary, smoke marker and identical hashed
+   dynamic dependencies.
+5. For every clinical fixture, `.a00`, `.mhd` and `.spe` are byte-identical on
    all three nodes. `.res` may differ only in runtime timestamp and throughput
    lines.
-5. The Linux coordinate fixtures uniquely recover the frozen 480-candidate
+6. The Linux coordinate fixtures uniquely recover the frozen 480-candidate
    storage transform at the existing thresholds.
-6. The three Linux clinical fixtures pass the existing absolute projection
+7. The three Linux clinical fixtures pass the existing absolute projection
    quality thresholds. Their 480-transform uniqueness remains diagnostic.
 
 Windows-versus-Linux numeric equality is reported but is not a gate. If the
