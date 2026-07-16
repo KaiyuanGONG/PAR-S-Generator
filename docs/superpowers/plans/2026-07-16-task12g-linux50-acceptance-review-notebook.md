@@ -320,7 +320,9 @@ git commit -m "feat: audit and visualize Task 12G Linux50"
   - PAR-S_2 `build_projection_alignment_descriptor.py`
   - PAR-S_2 `search_projection_transform.py --report-role clinical-exploratory`
   - PAR-S_2 `evaluate_task12b_gates.py`
-  - accepted Task 12E Linux `projection_coordinate_gate_v2` report
+  - accepted Task 12E Linux `projection_coordinate_gate_v2` report, its
+    `TASK12E_COMPLETE.json`, and the frozen hash-bound
+    `task12e_acceptance.json`
 
 - [ ] **Step 1: Write failing command-contract test**
 

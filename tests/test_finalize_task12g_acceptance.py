@@ -41,6 +41,12 @@ def _config(tmp_path: Path) -> AcceptanceConfig:
     dataset = tmp_path / "dataset"
     qa = tmp_path / "qa"
     coordinate = tmp_path / "coordinate.json"
+    coordinate_acceptance = dataset / "cases" / "case_00000" / "artifacts"
+    coordinate_acceptance.mkdir(parents=True)
+    (coordinate_acceptance / "task12e_acceptance.json").write_text(
+        "{}\n",
+        encoding="utf-8",
+    )
     for path in (generator / "scripts", pars2 / "scripts", dataset):
         path.mkdir(parents=True, exist_ok=True)
     for path in (
@@ -92,6 +98,19 @@ def test_stage_commands_use_exact_cross_repository_contract(tmp_path: Path) -> N
         == "clinical-exploratory"
     )
     assert str(config.coordinate_report.resolve()) in stages[4].command
+    assert "--coordinate-acceptance" in stages[4].command
+    assert (
+        stages[4].command[stages[4].command.index("--coordinate-acceptance") + 1]
+        == str(
+            (
+                config.dataset_root
+                / "cases"
+                / "case_00000"
+                / "artifacts"
+                / "task12e_acceptance.json"
+            ).resolve()
+        )
+    )
     assert all(stage.cwd in {config.generator_root, config.pars2_root} for stage in stages)
     assert stages[0].accepted_return_codes == (0, 1)
     assert stages[1].accepted_return_codes == (0, 1)

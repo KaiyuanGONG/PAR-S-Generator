@@ -127,6 +127,13 @@ def build_stage_commands(config: AcceptanceConfig) -> list[StageCommand]:
     exploratory = cfg.qa_root / "clinical_alignment_exploratory.json"
     task12b_json = cfg.qa_root / "task12b_gate_summary.json"
     task12b_markdown = cfg.qa_root / "task12b_gate_summary.md"
+    coordinate_acceptance = (
+        cfg.dataset_root
+        / "cases"
+        / "case_00000"
+        / "artifacts"
+        / "task12e_acceptance.json"
+    )
     return [
         StageCommand(
             name="generator_statistics_visual_gate",
@@ -220,6 +227,8 @@ def build_stage_commands(config: AcceptanceConfig) -> list[StageCommand]:
                 str(loader_gate),
                 "--coordinate-report",
                 str(cfg.coordinate_report),
+                "--coordinate-acceptance",
+                str(coordinate_acceptance),
                 "--clinical-report",
                 str(exploratory),
                 "--output-json",
@@ -277,6 +286,14 @@ def _validate_config(config: AcceptanceConfig) -> AcceptanceConfig:
         (cfg.pars2_root, "PAR-S_2 root"),
         (cfg.dataset_root, "dataset root"),
         (cfg.coordinate_report, "coordinate report"),
+        (
+            cfg.dataset_root
+            / "cases"
+            / "case_00000"
+            / "artifacts"
+            / "task12e_acceptance.json",
+            "Task 12E coordinate acceptance",
+        ),
     ):
         if not path.exists():
             raise Task12GAcceptanceError(f"{label} does not exist: {path}")
