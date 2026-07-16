@@ -17,6 +17,7 @@ from finalize_task12g_acceptance import (  # noqa: E402
     Task12GAcceptanceError,
     _run_stage,
     _stage_can_resume,
+    _stage_state,
     build_final_summary,
     build_stage_commands,
 )
@@ -83,6 +84,9 @@ def test_stage_commands_use_exact_cross_repository_contract(tmp_path: Path) -> N
     )
     assert str(config.coordinate_report.resolve()) in stages[4].command
     assert all(stage.cwd in {config.generator_root, config.pars2_root} for stage in stages)
+    assert stages[0].accepted_return_codes == (0, 1)
+    assert stages[1].accepted_return_codes == (0, 1)
+    assert stages[4].accepted_return_codes == (0, 2)
 
 
 def test_stage_resume_requires_matching_command_script_and_output_hashes(
@@ -98,6 +102,7 @@ def test_stage_resume_requires_matching_command_script_and_output_hashes(
         "command": list(stage.command),
         "script_sha256": _sha256(stage.script_path),
         "return_code": 0,
+        "formal_result_status": "pass",
         "outputs": {str(output.resolve()): _sha256(output)},
     }
 
@@ -105,6 +110,52 @@ def test_stage_resume_requires_matching_command_script_and_output_hashes(
 
     output.write_text('{"status":"fail"}\n', encoding="utf-8")
     assert _stage_can_resume(stage, state) is False
+
+
+def test_formal_gate_failure_is_a_completed_stage_with_fresh_fail_report(
+    tmp_path: Path,
+) -> None:
+    script = tmp_path / "formal_gate.py"
+    output = tmp_path / "formal_gate.json"
+    script.write_text("# script\n", encoding="utf-8")
+    output.write_text('{"status":"fail"}\n', encoding="utf-8")
+    stage = StageCommand(
+        name="formal_gate",
+        command=(sys.executable, str(script)),
+        cwd=tmp_path,
+        script_path=script,
+        output_paths=(output,),
+        accepted_return_codes=(0, 1),
+        expected_status_by_return_code=((0, "pass"), (1, "fail")),
+    )
+
+    state = _stage_state(stage, 1)
+
+    assert state["status"] == "complete"
+    assert state["return_code"] == 1
+    assert state["formal_result_status"] == "fail"
+    assert state["outputs"][str(output.resolve())] == _sha256(output)
+    assert _stage_can_resume(stage, state) is True
+
+
+def test_formal_gate_failure_without_required_report_is_execution_failure(
+    tmp_path: Path,
+) -> None:
+    script = tmp_path / "formal_gate.py"
+    output = tmp_path / "formal_gate.json"
+    script.write_text("# script\n", encoding="utf-8")
+    stage = StageCommand(
+        name="formal_gate",
+        command=(sys.executable, str(script)),
+        cwd=tmp_path,
+        script_path=script,
+        output_paths=(output,),
+        accepted_return_codes=(0, 1),
+        expected_status_by_return_code=((0, "pass"), (1, "fail")),
+    )
+
+    with pytest.raises(Task12GAcceptanceError, match="required output"):
+        _stage_state(stage, 1)
 
 
 def test_run_stage_streams_stdout_and_stderr_to_logs(tmp_path: Path) -> None:

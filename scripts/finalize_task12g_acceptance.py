@@ -77,6 +77,8 @@ class StageCommand:
     cwd: Path
     script_path: Path
     output_paths: tuple[Path, ...]
+    accepted_return_codes: tuple[int, ...] = (0,)
+    expected_status_by_return_code: tuple[tuple[int, str], ...] = ()
 
 
 def _utc_now() -> str:
@@ -138,6 +140,8 @@ def build_stage_commands(config: AcceptanceConfig) -> list[StageCommand]:
             cwd=cfg.generator_root,
             script_path=generator_audit,
             output_paths=(generator_gate,),
+            accepted_return_codes=(0, 1),
+            expected_status_by_return_code=((0, "pass"), (1, "fail")),
         ),
         StageCommand(
             name="pars2_manifest_loader_gate",
@@ -158,6 +162,8 @@ def build_stage_commands(config: AcceptanceConfig) -> list[StageCommand]:
             cwd=cfg.pars2_root,
             script_path=loader_script,
             output_paths=(loader_gate,),
+            accepted_return_codes=(0, 1),
+            expected_status_by_return_code=((0, "pass"), (1, "fail")),
         ),
         StageCommand(
             name="clinical_alignment_descriptor",
@@ -218,6 +224,8 @@ def build_stage_commands(config: AcceptanceConfig) -> list[StageCommand]:
             cwd=cfg.pars2_root,
             script_path=task12b_script,
             output_paths=(task12b_json,),
+            accepted_return_codes=(0, 2),
+            expected_status_by_return_code=((0, "pass"), (2, "fail")),
         ),
     ]
 
@@ -227,10 +235,16 @@ def _stage_can_resume(stage: StageCommand, state: Mapping[str, object]) -> bool:
 
     if (
         state.get("status") != "complete"
-        or state.get("return_code") != 0
+        or state.get("return_code") not in stage.accepted_return_codes
         or state.get("command") != list(stage.command)
         or not stage.script_path.is_file()
         or state.get("script_sha256") != sha256_file(stage.script_path)
+    ):
+        return False
+    expected_statuses = dict(stage.expected_status_by_return_code)
+    return_code = state.get("return_code")
+    if return_code in expected_statuses and (
+        state.get("formal_result_status") != expected_statuses[return_code]
     ):
         return False
     outputs = state.get("outputs")
@@ -493,15 +507,29 @@ def _markdown(summary: Mapping[str, Any]) -> str:
 
 def _stage_state(stage: StageCommand, return_code: int) -> dict[str, Any]:
     outputs: dict[str, str] = {}
-    if return_code == 0:
+    accepted = return_code in stage.accepted_return_codes
+    formal_result_status: str | None = None
+    if accepted:
         for path in stage.output_paths:
             if not path.is_file():
                 raise Task12GAcceptanceError(
                     f"{stage.name} did not create required output: {path}"
                 )
             outputs[str(path.resolve())] = sha256_file(path)
-    return {
-        "status": "complete" if return_code == 0 else "failed",
+        expected_status = dict(stage.expected_status_by_return_code).get(return_code)
+        if expected_status is not None:
+            primary_report = _read_json(
+                stage.output_paths[0],
+                f"{stage.name} formal report",
+            )
+            formal_result_status = primary_report.get("status")
+            if formal_result_status != expected_status:
+                raise Task12GAcceptanceError(
+                    f"{stage.name} exit code {return_code} requires formal report "
+                    f"status {expected_status!r}, got {formal_result_status!r}"
+                )
+    state = {
+        "status": "complete" if accepted else "failed",
         "command": list(stage.command),
         "command_sha256": _json_sha256(list(stage.command)),
         "cwd": str(stage.cwd),
@@ -510,6 +538,21 @@ def _stage_state(stage: StageCommand, return_code: int) -> dict[str, Any]:
         "return_code": return_code,
         "outputs": outputs,
     }
+    if formal_result_status is not None:
+        state["formal_result_status"] = formal_result_status
+    return state
+
+
+def _remove_stage_outputs(stage: StageCommand) -> None:
+    """Remove only declared report files so an accepted result must be fresh."""
+
+    for path in stage.output_paths:
+        try:
+            path.unlink(missing_ok=True)
+        except OSError as exc:
+            raise Task12GAcceptanceError(
+                f"cannot remove stale {stage.name} output {path}: {exc}"
+            ) from exc
 
 
 def _run_stage(stage: StageCommand, logs_root: Path) -> int:
@@ -600,10 +643,11 @@ def run_acceptance_pipeline(
             status="running",
             current_stage=stage.name,
         )
+        _remove_stage_outputs(stage)
         return_code = _run_stage(stage, logs_root)
         state = _stage_state(stage, return_code)
         stage_states[stage.name] = state
-        if return_code != 0:
+        if return_code not in stage.accepted_return_codes:
             error = (
                 f"{stage.name} failed with exit code {return_code}; "
                 f"see {logs_root}"
@@ -618,7 +662,14 @@ def run_acceptance_pipeline(
             )
             raise Task12GAcceptanceError(error)
         print(
-            json.dumps({"stage": stage.name, "status": "complete"}),
+            json.dumps(
+                {
+                    "stage": stage.name,
+                    "status": "complete",
+                    "return_code": return_code,
+                    "formal_result_status": state.get("formal_result_status"),
+                }
+            ),
             flush=True,
         )
 
