@@ -13,7 +13,9 @@ sys.path.insert(0, str(REPO_ROOT / "scripts"))
 
 from finalize_task12g_acceptance import (  # noqa: E402
     AcceptanceConfig,
+    StageCommand,
     Task12GAcceptanceError,
+    _run_stage,
     _stage_can_resume,
     build_final_summary,
     build_stage_commands,
@@ -103,6 +105,32 @@ def test_stage_resume_requires_matching_command_script_and_output_hashes(
 
     output.write_text('{"status":"fail"}\n', encoding="utf-8")
     assert _stage_can_resume(stage, state) is False
+
+
+def test_run_stage_streams_stdout_and_stderr_to_logs(tmp_path: Path) -> None:
+    script = tmp_path / "emit.py"
+    script.write_text(
+        "import sys\nprint('progress-line', flush=True)\n"
+        "print('warning-line', file=sys.stderr, flush=True)\n",
+        encoding="utf-8",
+    )
+    stage = StageCommand(
+        name="emit",
+        command=(sys.executable, str(script)),
+        cwd=tmp_path,
+        script_path=script,
+        output_paths=(),
+    )
+
+    return_code = _run_stage(stage, tmp_path / "logs")
+
+    assert return_code == 0
+    assert (tmp_path / "logs" / "emit.stdout.log").read_text(
+        encoding="utf-8"
+    ) == "progress-line\n"
+    assert (tmp_path / "logs" / "emit.stderr.log").read_text(
+        encoding="utf-8"
+    ) == "warning-line\n"
 
 
 def _write_summary_inputs(

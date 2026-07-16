@@ -512,6 +512,25 @@ def _stage_state(stage: StageCommand, return_code: int) -> dict[str, Any]:
     }
 
 
+def _run_stage(stage: StageCommand, logs_root: Path) -> int:
+    """Run a stage while streaming child output to tail-able UTF-8 log files."""
+
+    logs_root.mkdir(parents=True, exist_ok=True)
+    stdout_path = logs_root / f"{stage.name}.stdout.log"
+    stderr_path = logs_root / f"{stage.name}.stderr.log"
+    with stdout_path.open("wb") as stdout_stream, stderr_path.open(
+        "wb"
+    ) as stderr_stream:
+        completed = subprocess.run(
+            list(stage.command),
+            cwd=stage.cwd,
+            stdout=stdout_stream,
+            stderr=stderr_stream,
+            check=False,
+        )
+    return completed.returncode
+
+
 def _write_progress(
     path: Path,
     config: AcceptanceConfig,
@@ -581,26 +600,12 @@ def run_acceptance_pipeline(
             status="running",
             current_stage=stage.name,
         )
-        completed = subprocess.run(
-            list(stage.command),
-            cwd=stage.cwd,
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-        atomic_write_bytes(
-            logs_root / f"{stage.name}.stdout.log",
-            completed.stdout.encode("utf-8", errors="replace"),
-        )
-        atomic_write_bytes(
-            logs_root / f"{stage.name}.stderr.log",
-            completed.stderr.encode("utf-8", errors="replace"),
-        )
-        state = _stage_state(stage, completed.returncode)
+        return_code = _run_stage(stage, logs_root)
+        state = _stage_state(stage, return_code)
         stage_states[stage.name] = state
-        if completed.returncode != 0:
+        if return_code != 0:
             error = (
-                f"{stage.name} failed with exit code {completed.returncode}; "
+                f"{stage.name} failed with exit code {return_code}; "
                 f"see {logs_root}"
             )
             _write_progress(
