@@ -77,6 +77,15 @@ def test_stage_commands_use_exact_cross_repository_contract(tmp_path: Path) -> N
     ]
     assert "--expected-count" in stages[1].command
     assert stages[1].command[stages[1].command.index("--expected-count") + 1] == "50"
+    descriptor_case_ids = [
+        stages[2].command[index + 1]
+        for index, value in enumerate(stages[2].command)
+        if value == "--case-id"
+    ]
+    assert descriptor_case_ids == [
+        f"case_{index:05d}"
+        for index in range(15)
+    ]
     assert "--report-role" in stages[3].command
     assert (
         stages[3].command[stages[3].command.index("--report-role") + 1]

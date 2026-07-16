@@ -325,8 +325,11 @@ git commit -m "feat: audit and visualize Task 12G Linux50"
 - [ ] **Step 1: Write failing command-contract test**
 
 Assert exact stage order and arguments. The coordinate report is read-only
-inherited evidence and is not regenerated. The clinical descriptor/search uses
-the current 50-case frozen manifest.
+inherited evidence and is not regenerated. The clinical descriptor builder
+verifies the complete current 50-case frozen manifest, then explicitly selects
+`case_00000` through `case_00014` for the 3--15-case exploratory alignment
+search required by the frozen coordinate contract. Full-cohort loading,
+statistics, and projection-quality gates still cover all 50 cases.
 
 - [ ] **Step 2: Run and verify RED**
 
@@ -539,4 +542,3 @@ Confirm:
 Use `superpowers:verification-before-completion`. Report exact test counts,
 pipeline status, Notebook path, QA root, manifest digest before/after, and all
 remaining blockers/caveats.
-

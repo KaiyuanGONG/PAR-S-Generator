@@ -42,6 +42,7 @@ EXPECTED_MANIFEST_SHA256 = (
     "d44a77f4604bc1df192c6af0674341c704d4e069d1665e1fe159832adfeae722"
 )
 PROGRESS_SCHEMA = "pars_v2_task12g_acceptance_progress_v1"
+TASK12G_ALIGNMENT_CASE_IDS = tuple(f"case_{index:05d}" for index in range(15))
 
 
 class Task12GAcceptanceError(RuntimeError):
@@ -172,6 +173,11 @@ def build_stage_commands(config: AcceptanceConfig) -> list[StageCommand]:
                 str(descriptor_script),
                 "--dataset-root",
                 str(cfg.dataset_root),
+                *tuple(
+                    value
+                    for case_id in TASK12G_ALIGNMENT_CASE_IDS
+                    for value in ("--case-id", case_id)
+                ),
                 "--output",
                 str(descriptor),
             ),
