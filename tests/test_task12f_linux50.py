@@ -45,6 +45,55 @@ def test_preflight_pool_failure_is_case_bound_and_pickle_safe(
     assert str(restored) == str(caught.value)
 
 
+def test_negative_role_requires_zero_weight_without_mismatch(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    summary = {
+        "case_id": "negative_00000",
+        "status": "pass",
+        "failures": [],
+        "mismatch_challenge": False,
+        "population_weight": 0.0,
+    }
+
+    class Prepared:
+        pass
+
+    monkeypatch.setattr(task12f_builder, "load_evidence_registry", lambda _: object())
+    monkeypatch.setattr(task12f_builder, "load_profile", lambda *_: object())
+    monkeypatch.setattr(task12f_builder, "prepare_negative_case", lambda *_, **__: Prepared())
+    monkeypatch.setattr(
+        task12f_builder, "summarize_prepared_negative_case", lambda _: dict(summary)
+    )
+    staging = tmp_path / "staging"
+    final = tmp_path / "final"
+    observed = task12f_builder._prepare_case_job(
+        case_id="negative_00000",
+        entry={
+            "case_family_id": "negative_family_00000",
+            "split": "test",
+            "profile_id": "negative_control_v2",
+            "population_weight": 0.0,
+            "sampling_probability": 0.0,
+            "mismatch_challenge": False,
+        },
+        generation_profile_path="profile.json",
+        dataset_role="negative",
+        registry_path="registry.json",
+        grid_shape=(16, 16, 16),
+        voxel_size_mm=1.0,
+        global_seed=1,
+        base_histories=1,
+        max_tumor_attempts=64,
+        staging_path=str(staging),
+        final_path=str(final),
+    )
+    assert observed["population_weight"] == 0.0
+    assert observed["mismatch_challenge"] is False
+    assert (final / "CASE_PREFLIGHT.json").is_file()
+
+
 def test_task12f_config_freezes_linux_only_50_case_release() -> None:
     config = json.loads(
         (REPO_ROOT / "configs" / "task12f_linux50_v2.json").read_text(

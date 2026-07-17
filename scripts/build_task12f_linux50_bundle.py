@@ -254,8 +254,11 @@ def _prepare_case_job(
     expected_mismatch = bool(entry.get("mismatch_challenge", False))
     if bool(summary["mismatch_challenge"]) != expected_mismatch:
         raise RuntimeError(f"{case_id}: mismatch challenge policy was not realized")
-    if expected_mismatch != (float(summary["population_weight"]) == 0.0):
+    zero_weight = float(summary["population_weight"]) == 0.0
+    if dataset_role == "main" and expected_mismatch != zero_weight:
         raise RuntimeError(f"{case_id}: mismatch challenge population weight is invalid")
+    if dataset_role == "negative" and (expected_mismatch or not zero_weight):
+        raise RuntimeError(f"{case_id}: negative-control population weight is invalid")
     atomic_write_json(staging / "CASE_PREFLIGHT.json", summary)
     final = Path(final_path)
     final.parent.mkdir(parents=True, exist_ok=True)
