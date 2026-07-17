@@ -26,14 +26,12 @@ from build_task12f_linux50_bundle import (  # noqa: E402
     _resolve,
 )
 from core.provenance import sha256_json  # noqa: E402
-from task13_formal550_runtime import patch_runtime_contract  # noqa: E402
-
-
-patch_runtime_contract()
+from task13_formal550_runtime import (  # noqa: E402
+    patch_runtime_contract,
+    restore_runtime_contract,
+)
 
 from task12f_linux50_common import (  # noqa: E402
-    BUNDLE_SCHEMA,
-    PLAN_SCHEMA,
     atomic_write_json,
     sha256_file,
     validate_bundle,
@@ -45,6 +43,16 @@ DEFAULT_PREFLIGHT = Path(r"D:\PFE-U\PAR\outputs\task13_formal550_preflight_v1")
 DEFAULT_UPLOAD = Path(r"D:\PFE-U\PAR\outputs\task13_formal550_upload_v1")
 BUNDLE_NAME = "pars_v2_task13_formal550_bundle_v1"
 PLAN_FILENAME = "TASK13_PLAN.json"
+BUNDLE_SCHEMA = "pars_v2_task13_formal550_bundle_v1"
+PLAN_SCHEMA = "pars_v2_task13_formal550_plan_v1"
+
+
+def _validate_formal_bundle(bundle_root: Path) -> Mapping[str, object]:
+    previous = patch_runtime_contract()
+    try:
+        return validate_bundle(bundle_root)
+    finally:
+        restore_runtime_contract(previous)
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -199,7 +207,7 @@ def _build_bundle(
     if final_root.is_dir():
         if not resume:
             raise FileExistsError(f"bundle exists; use --resume: {final_root}")
-        validate_bundle(final_root)
+        _validate_formal_bundle(final_root)
         if not archive.is_file():
             with tarfile.open(archive, "w:gz", compresslevel=6) as stream:
                 stream.add(final_root, arcname=BUNDLE_NAME)
@@ -338,7 +346,7 @@ def _build_bundle(
     finally:
         if staging.exists():
             shutil.rmtree(staging, ignore_errors=True)
-    validate_bundle(final_root)
+    _validate_formal_bundle(final_root)
     with tarfile.open(archive, "w:gz", compresslevel=6) as stream:
         stream.add(final_root, arcname=BUNDLE_NAME)
     archive_sha = sha256_file(archive)

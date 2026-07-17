@@ -11,7 +11,7 @@ import sys
 import tarfile
 import time
 import uuid
-from concurrent.futures import ProcessPoolExecutor, as_completed
+from concurrent.futures import FIRST_COMPLETED, ProcessPoolExecutor, wait
 from pathlib import Path
 from typing import Mapping
 
@@ -390,8 +390,15 @@ def _prepare_preflight(
     write_progress()
     if pending_jobs:
         with ProcessPoolExecutor(max_workers=requested_local_parallel) as executor:
-            futures = {
-                executor.submit(
+            jobs = iter(pending_jobs)
+            futures: dict[object, str] = {}
+
+            def submit_next() -> bool:
+                try:
+                    entry, staging, case_root = next(jobs)
+                except StopIteration:
+                    return False
+                future = executor.submit(
                     _prepare_case_job,
                     case_id=str(entry["case_id"]),
                     entry=dict(entry),
@@ -404,13 +411,26 @@ def _prepare_preflight(
                     base_histories=int(execution["base_histories_per_projection"]),
                     staging_path=str(staging),
                     final_path=str(case_root),
-                ): str(entry["case_id"])
-                for entry, staging, case_root in pending_jobs
-            }
-            for future in as_completed(futures):
-                case_id = futures[future]
-                summaries_by_id[case_id] = future.result()
-                write_progress()
+                )
+                futures[future] = str(entry["case_id"])
+                return True
+
+            for _ in range(min(len(pending_jobs), requested_local_parallel * 2)):
+                submit_next()
+            try:
+                while futures:
+                    completed, _ = wait(
+                        tuple(futures), return_when=FIRST_COMPLETED
+                    )
+                    for future in completed:
+                        case_id = futures.pop(future)
+                        summaries_by_id[case_id] = future.result()
+                        write_progress()
+                        submit_next()
+            except BaseException:
+                for future in futures:
+                    future.cancel()
+                raise
     summaries = [
         summaries_by_id[str(entry["case_id"])]
         for entry in generation_plan["entries"]

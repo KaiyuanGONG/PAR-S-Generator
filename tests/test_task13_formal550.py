@@ -14,7 +14,7 @@ from build_task12f_linux50_bundle import _apply_mismatch_challenge_design
 from build_task13_formal550_bundle import _role_config
 from core.seeds import SeedBundle
 from generate_dataset_v2 import build_generation_plan
-from task13_formal550_runtime import patch_runtime_contract
+from task13_formal550_runtime import patch_runtime_contract, restore_runtime_contract
 
 
 def _config() -> dict:
@@ -90,9 +90,12 @@ def test_formal_split_plans_and_rr_seeds_are_exact_and_disjoint() -> None:
 def test_task13_runtime_patch_uses_formal_marker_and_archive_names() -> None:
     import task12f_linux50_common as common
 
-    patch_runtime_contract()
-    assert common.BUNDLE_SCHEMA == "pars_v2_task13_formal550_bundle_v1"
-    assert common.PLAN_SCHEMA == "pars_v2_task13_formal550_plan_v1"
-    assert common.CASE_MARKER_FILENAME == "TASK13_CASE.json"
-    assert common.MASTER_FILENAME == "TASK13_FORMAL550_MASTER.json"
-    assert common.RESULT_ARCHIVE_NAME == "task13_formal550_results.tar.gz"
+    previous = patch_runtime_contract()
+    try:
+        assert common.BUNDLE_SCHEMA == "pars_v2_task13_formal550_bundle_v1"
+        assert common.PLAN_SCHEMA == "pars_v2_task13_formal550_plan_v1"
+        assert common.CASE_MARKER_FILENAME == "TASK13_CASE.json"
+        assert common.MASTER_FILENAME == "TASK13_FORMAL550_MASTER.json"
+        assert common.RESULT_ARCHIVE_NAME == "task13_formal550_results.tar.gz"
+    finally:
+        restore_runtime_contract(previous)
