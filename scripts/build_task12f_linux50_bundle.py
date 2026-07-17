@@ -261,6 +261,19 @@ def _prepare_case_job(
     return summary
 
 
+def _prepare_case_job_for_pool(**kwargs: object) -> Mapping[str, object]:
+    """Make every worker failure pickle-safe and bind it to one case ID."""
+
+    case_id = str(kwargs.get("case_id", "<unknown>"))
+    try:
+        return _prepare_case_job(**kwargs)
+    except BaseException as exc:
+        detail = str(exc).strip() or repr(exc)
+        raise RuntimeError(
+            f"{case_id}: {type(exc).__name__}: {detail}"
+        ) from None
+
+
 def _prepare_preflight(
     config: Mapping[str, object],
     config_path: Path,
@@ -399,7 +412,7 @@ def _prepare_preflight(
                 except StopIteration:
                     return False
                 future = executor.submit(
-                    _prepare_case_job,
+                    _prepare_case_job_for_pool,
                     case_id=str(entry["case_id"]),
                     entry=dict(entry),
                     generation_profile_path=str(generation_profile_path),

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import pickle
 import sys
 from pathlib import Path
 
@@ -22,12 +23,26 @@ from task12f_linux50_common import (  # noqa: E402
 import build_task12f_linux50_bundle as task12f_builder  # noqa: E402
 from build_task12f_linux50_bundle import _replace_directory_with_retry  # noqa: E402
 from core.liver_geometry import GridSpecV2  # noqa: E402
+from core.phantom_generator import TumorTargetRetryExhaustedError  # noqa: E402
 from core.production_v2 import (  # noqa: E402
     population_coverage,
     prepare_population_case,
     summarize_prepared_population_case,
 )
 from core.schemas_v2 import load_evidence_registry, load_profile  # noqa: E402
+
+
+def test_preflight_pool_failure_is_case_bound_and_pickle_safe(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def fail(**_: object) -> object:
+        raise TumorTargetRetryExhaustedError("case_00009", 32, ())
+
+    monkeypatch.setattr(task12f_builder, "_prepare_case_job", fail)
+    with pytest.raises(RuntimeError, match="case_00009.*exhausted 32") as caught:
+        task12f_builder._prepare_case_job_for_pool(case_id="case_00009")
+    restored = pickle.loads(pickle.dumps(caught.value))
+    assert str(restored) == str(caught.value)
 
 
 def test_task12f_config_freezes_linux_only_50_case_release() -> None:
