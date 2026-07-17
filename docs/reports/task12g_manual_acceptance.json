@@ -1,0 +1,49 @@
+{
+  "schema_version": "pars_v2_task12g_manual_acceptance_v1",
+  "status": "pass",
+  "dataset": {
+    "dataset_id": "PAR-S-TARE-HCC-NoPVI-SYN-v2-linux50",
+    "dataset_version": "2.0.0-linux50-v2",
+    "case_count": 50,
+    "manifest_sha256": "d44a77f4604bc1df192c6af0674341c704d4e069d1665e1fe159832adfeae722",
+    "dataset_complete_sha256": "ba0d384b33753470e2bae47eafb224a0d34752625ba28c9d4fc5565fb8ab2b04"
+  },
+  "automatic_acceptance": {
+    "status": "pass_awaiting_manual_review",
+    "automatic_gate_passed": true,
+    "sha256": "3e81bc365cd88325c2cca40af75233a5550b0025102c006bf06f43378f1541a9"
+  },
+  "manual_review": {
+    "status": "complete",
+    "decision_source": "explicit_user_instruction_after_notebook_review",
+    "projection_max_min_ratio_upper_limit": 80.0,
+    "projection_max_min_ratio_reason": "The former limit of 50 rejected otherwise valid full-physics angular modulation; the reviewed cohort supports 80 while retaining a finite hard upper bound.",
+    "angle_calibration": {
+      "status": "pass",
+      "geometry_supported_correction_from_legacy_views": 15,
+      "rejected_brightness_only_candidate_views": 18,
+      "method": "dicom_iop_lps_to_pars_projector_v1",
+      "formula": "projector_angle=(270-dicom_camera_angle)%360",
+      "clinical_case_count": 16,
+      "maximum_iop_basis_error_deg": 0.00002532243922814814,
+      "pars2_git_commit": "fda37796f45adc41cba957e910aaeda478811fb9",
+      "clinical_geometry_source_sha256": "7085645c7e8783f40f128d2cf1b768da385031382e94d011450f6a891a3dd80d",
+      "evidence_notebook_sha256": "103f15e3f210394280c5a513a41dca90a5ac6629040d11b1b97c6a39d9cf3937"
+    },
+    "generator_logic_changed_by_angle_calibration": false,
+    "existing_linux50_regeneration_required": false
+  },
+  "release": {
+    "go_for_formal_500_plus_50_generation": true,
+    "main_case_count": 500,
+    "negative_case_count": 50,
+    "main_split_counts": {
+      "train": 400,
+      "val": 50,
+      "test": 50
+    },
+    "negative_policy": "independent_test_only_population_weight_zero",
+    "production_platform": "linux_x86_64",
+    "server_execution_requires_frozen_bundle_and_passing_remote_preflight": true
+  }
+}

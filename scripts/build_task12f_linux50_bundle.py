@@ -34,8 +34,10 @@ from task12f_linux50_common import (  # noqa: E402
 from core.case_writer_v2 import write_split_plan  # noqa: E402
 from core.liver_geometry import GridSpecV2  # noqa: E402
 from core.production_v2 import (  # noqa: E402
+    prepare_negative_case,
     population_coverage,
     prepare_population_case,
+    summarize_prepared_negative_case,
     summarize_prepared_population_case,
 )
 from core.provenance import sha256_json  # noqa: E402
@@ -198,7 +200,8 @@ def _prepare_case_job(
     *,
     case_id: str,
     entry: Mapping[str, object],
-    profile_path: str,
+    generation_profile_path: str,
+    dataset_role: str,
     registry_path: str,
     grid_shape: tuple[int, int, int],
     voxel_size_mm: float,
@@ -210,18 +213,32 @@ def _prepare_case_job(
     """Process-isolated case preparation used by the Windows preflight."""
 
     registry = load_evidence_registry(Path(registry_path))
-    profile = load_profile(Path(profile_path), registry)
+    profile = load_profile(Path(generation_profile_path), registry)
     staging = Path(staging_path)
-    prepared = prepare_population_case(
-        case_id,
-        profile,
-        GridSpecV2(shape=grid_shape, voxel_size_mm=voxel_size_mm),
-        global_seed=global_seed,
-        base_histories=base_histories,
-        work_dir=staging,
-        mismatch_challenge=bool(entry["mismatch_challenge"]),
-    )
-    raw = summarize_prepared_population_case(prepared)
+    grid = GridSpecV2(shape=grid_shape, voxel_size_mm=voxel_size_mm)
+    if dataset_role == "negative":
+        prepared = prepare_negative_case(
+            case_id,
+            profile,
+            grid,
+            global_seed=global_seed,
+            base_histories=base_histories,
+            work_dir=staging,
+        )
+        raw = summarize_prepared_negative_case(prepared)
+    elif dataset_role == "main":
+        prepared = prepare_population_case(
+            case_id,
+            profile,
+            grid,
+            global_seed=global_seed,
+            base_histories=base_histories,
+            work_dir=staging,
+            mismatch_challenge=bool(entry["mismatch_challenge"]),
+        )
+        raw = summarize_prepared_population_case(prepared)
+    else:
+        raise ValueError(f"unsupported dataset role: {dataset_role}")
     summary = {
         **raw,
         "case_family_id": entry["case_family_id"],
@@ -232,7 +249,7 @@ def _prepare_case_job(
     }
     if summary["status"] != "pass":
         raise RuntimeError(f"{case_id}: {summary['failures']}")
-    expected_mismatch = bool(entry["mismatch_challenge"])
+    expected_mismatch = bool(entry.get("mismatch_challenge", False))
     if bool(summary["mismatch_challenge"]) != expected_mismatch:
         raise RuntimeError(f"{case_id}: mismatch challenge policy was not realized")
     if expected_mismatch != (float(summary["population_weight"]) == 0.0):
@@ -258,19 +275,30 @@ def _prepare_preflight(
     execution = config["execution"]
     if not all(isinstance(item, Mapping) for item in (dataset, paths, execution)):
         raise ValueError("Task 12F dataset/paths/execution records are malformed")
-    acceptance_path = _resolve(paths["task12e_acceptance"])
-    expected_acceptance = config["frozen_evidence"]["task12e_acceptance_sha256"]
+    release_key = str(paths.get("release_acceptance_key", "task12e_acceptance"))
+    acceptance_path = _resolve(paths[release_key])
+    expected_acceptance = config["frozen_evidence"].get(
+        "release_acceptance_sha256",
+        config["frozen_evidence"].get("task12e_acceptance_sha256"),
+    )
     if sha256_file(acceptance_path) != expected_acceptance:
         raise RuntimeError("Task 12E acceptance hash changed")
     acceptance = _read_object(acceptance_path)
-    if acceptance.get("release", {}).get("go_for_50_case_generation") is not True:
-        raise RuntimeError("Task 12E has not released the 50-case generation")
+    release_flag = str(
+        config["frozen_evidence"].get(
+            "release_flag", "go_for_50_case_generation"
+        )
+    )
+    if acceptance.get("release", {}).get(release_flag) is not True:
+        raise RuntimeError(f"release evidence does not set {release_flag}=true")
 
     registry_path = _resolve(paths["evidence_registry"])
     profile_path = _resolve(paths["profile"])
+    generation_profile_path = _resolve(paths.get("generation_profile", paths["profile"]))
     scanner_path = _resolve(paths["scanner"])
     registry = load_evidence_registry(registry_path)
     profile = load_profile(profile_path, registry)
+    generation_profile = load_profile(generation_profile_path, registry)
     scanner = load_profile(scanner_path, registry)
     case_count = int(dataset["case_count"])
     split_plan, generation_plan = build_generation_plan(
@@ -286,13 +314,32 @@ def _prepare_preflight(
             for key, value in dataset["split_ratios"].items()
         },
     )
+    dataset_role = str(dataset["dataset_role"])
     challenge_design = config.get("challenge_design")
-    if not isinstance(challenge_design, Mapping):
-        raise ValueError("Task 12F challenge design is missing")
-    generation_plan = _apply_mismatch_challenge_design(
-        generation_plan,
-        challenge_design,
-    )
+    if dataset_role == "main":
+        if not isinstance(challenge_design, Mapping):
+            raise ValueError("main dataset challenge design is missing")
+        generation_plan = _apply_mismatch_challenge_design(
+            generation_plan,
+            challenge_design,
+        )
+    elif dataset_role == "negative":
+        entries = []
+        for raw_entry in generation_plan["entries"]:
+            entry = dict(raw_entry)
+            entry.update(
+                {
+                    "mismatch_challenge": False,
+                    "challenge_labels": [],
+                    "population_weight": 0.0,
+                }
+            )
+            entries.append(entry)
+        content = {key: value for key, value in generation_plan.items() if key != "sha256"}
+        content["entries"] = entries
+        generation_plan = {**content, "sha256": sha256_json(content)}
+    else:
+        raise ValueError(f"unsupported dataset role: {dataset_role}")
     if preflight_root.exists() and not resume:
         raise FileExistsError(
             f"preflight root exists; use --resume: {preflight_root}"
@@ -348,7 +395,8 @@ def _prepare_preflight(
                     _prepare_case_job,
                     case_id=str(entry["case_id"]),
                     entry=dict(entry),
-                    profile_path=str(profile_path),
+                    generation_profile_path=str(generation_profile_path),
+                    dataset_role=dataset_role,
                     registry_path=str(registry_path),
                     grid_shape=tuple(int(value) for value in grid.shape),
                     voxel_size_mm=float(grid.voxel_size_mm),
@@ -368,17 +416,31 @@ def _prepare_preflight(
         for entry in generation_plan["entries"]
     ]
 
-    observed_coverage = sorted(
-        {
-            label
-            for summary in summaries
-            for label in population_coverage(summary)
-        }
-    )
+    if dataset_role == "negative":
+        observed_coverage = sorted(
+            {
+                label
+                for summary in summaries
+                for label in (
+                    f"sex:{summary['patient']['sex']}",
+                    f"morphology:{summary['patient']['liver_morphology']}",
+                    f"territory:{summary['injection_territory']}",
+                    "tumor_count:0",
+                )
+            }
+        )
+    else:
+        observed_coverage = sorted(
+            {
+                label
+                for summary in summaries
+                for label in population_coverage(summary)
+            }
+        )
     required_coverage = [str(value) for value in config["required_coverage"]]
     missing = sorted(set(required_coverage) - set(observed_coverage))
     if missing:
-        raise RuntimeError(f"50-case deterministic cohort misses coverage: {missing}")
+        raise RuntimeError(f"deterministic cohort misses coverage: {missing}")
     input_bundle = write_preflight_input_bundle(preflight_root, summaries)
     report = {
         "schema_version": "pars_v2_task12f_linux50_preflight_v2",
@@ -389,8 +451,12 @@ def _prepare_preflight(
         "python_runtime": capture_python_runtime(),
         "config_sha256": sha256_file(config_path),
         "profile_sha256": sha256_file(profile_path),
+        "generation_profile_id": generation_profile.profile_id,
+        "generation_profile_sha256": sha256_file(generation_profile_path),
         "scanner_sha256": sha256_file(scanner_path),
         "evidence_registry_sha256": sha256_file(registry_path),
+        "release_acceptance_sha256": sha256_file(acceptance_path),
+        "release_flag": release_flag,
         "task12e_acceptance_sha256": sha256_file(acceptance_path),
         "split_plan_sha256": split_plan.sha256,
         "generation_plan_sha256": generation_plan["sha256"],

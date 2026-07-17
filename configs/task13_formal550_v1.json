@@ -1,0 +1,137 @@
+{
+  "schema_version": "pars_v2_task13_formal550_config_v1",
+  "purpose": "formal_linux_500_main_plus_50_independent_negative_generation",
+  "campaign": {
+    "dataset_id": "PAR-S-V2-FORMAL550",
+    "dataset_version": "2.0.0",
+    "case_count": 550
+  },
+  "datasets": {
+    "main": {
+      "dataset_id": "PAR-S-TARE-HCC-NoPVI-SYN-v2",
+      "dataset_version": "2.0.0",
+      "dataset_role": "main",
+      "case_count": 500,
+      "family_size": 1,
+      "global_seed": 20260718,
+      "split_ratios": {
+        "train": 0.8,
+        "val": 0.1,
+        "test": 0.1
+      }
+    },
+    "negative": {
+      "dataset_id": "PAR-S-TARE-HCC-NoPVI-NEG-v2",
+      "dataset_version": "2.0.0",
+      "dataset_role": "negative",
+      "case_count": 50,
+      "family_size": 1,
+      "global_seed": 20260718,
+      "split_ratios": {
+        "train": 0.0,
+        "val": 0.0,
+        "test": 1.0
+      }
+    }
+  },
+  "seed_policy": {
+    "global_seed_semantics": "shared_campaign_seed_with_role_specific_case_id_namespaces",
+    "simind_rr_allocation": "main_slots_0_499_negative_slots_5000_5049_under_one_affine_permutation",
+    "require_unique_simind_rr_across_campaign": true
+  },
+  "challenge_design": {
+    "mismatch_cases_per_split": {
+      "train": 0,
+      "val": 0,
+      "test": 0
+    },
+    "population_semantics": "formal_population_only_no_zero_weight_challenges"
+  },
+  "paths": {
+    "main_profile": "configs/population_tare_hcc_nopvi_v2.json",
+    "negative_profile": "configs/negative_control_v2.json",
+    "negative_generation_profile": "configs/population_tare_hcc_nopvi_v2.json",
+    "scanner": "configs/scanner_ge870_tcmma_v1.json",
+    "evidence_registry": "configs/evidence_registry_v2.json",
+    "smc": "simind/ge870_czt.smc",
+    "simind_ini": "configs/simind_v2.ini",
+    "task12g_release": "docs/reports/task12g_manual_acceptance.json"
+  },
+  "required_coverage": {
+    "main": [
+      "sex:male",
+      "sex:female",
+      "morphology:normal",
+      "morphology:cirrhotic",
+      "count:1",
+      "count:2-5",
+      "count:>5",
+      "dmax:10-<80_mm",
+      "dmax:80-200_mm",
+      "lobe:unilobar",
+      "lobe:bilobar",
+      "territory:whole_liver",
+      "territory:right_lobar",
+      "territory:left_lobar",
+      "territory:sector_proxy",
+      "mismatch:false"
+    ],
+    "negative": [
+      "sex:male",
+      "sex:female",
+      "morphology:normal",
+      "morphology:cirrhotic",
+      "territory:whole_liver",
+      "territory:right_lobar",
+      "territory:left_lobar",
+      "territory:sector_proxy",
+      "tumor_count:0"
+    ]
+  },
+  "execution": {
+    "base_histories_per_projection": 80000,
+    "nn_multiplier": 1,
+    "timeout_seconds": 7200,
+    "local_preflight_max_parallel": 4,
+    "requested_parallel_by_node": {
+      "cnc5": 17,
+      "cnc7": 17,
+      "cnc8": 16
+    },
+    "maximum_parallel_per_node": 24,
+    "node_assignment": "round_robin_across_main_then_negative",
+    "active_work_policy": "node_local_tmp",
+    "publish_policy": "atomic_per_case_to_shared_nfs"
+  },
+  "linux_runtime": {
+    "simind_sha256": "e143e2e0b0315c9cd8b6bb187d6bd28448e096c255f8d16ee0c14787d1537f9d",
+    "smc_dir_file_count": 346,
+    "smc_dir_manifest_sha256": "b8f773bf3c23e2e3f03f60abb076ef6e195a079e888bfc84cfcf914256a49184",
+    "python_version": "3.11.14",
+    "critical_packages": {
+      "numpy": "2.4.3",
+      "scipy": "1.17.1",
+      "scikit-image": "0.26.0"
+    },
+    "minimum_cpu_quota_equivalent": 32.0,
+    "minimum_memory_bytes": 68719476736,
+    "minimum_shared_free_bytes": 68719476736
+  },
+  "nodes": {
+    "expected": [
+      "cnc5",
+      "cnc7",
+      "cnc8"
+    ],
+    "hostname_prefix_by_node": {
+      "cnc5": "cnc5-",
+      "cnc7": "cnc7-",
+      "cnc8": "cnc8-"
+    }
+  },
+  "frozen_evidence": {
+    "release_acceptance_sha256": "aa2eb5621cef6d5e8a2a952f041963743ed83fcd5f814813fcf24a4eb455cf96",
+    "release_flag": "go_for_formal_500_plus_50_generation",
+    "windows_cases_forbidden": true
+  }
+}

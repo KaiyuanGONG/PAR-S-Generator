@@ -91,16 +91,27 @@ def main() -> int:
     if shutil.disk_usage(shared).free < int(expected["minimum_shared_free_bytes"]):
         raise RuntimeError("shared filesystem free space is below the frozen minimum")
 
-    acceptance = read_json(bundle / "evidence" / "task12e_manual_acceptance.json")
-    if acceptance.get("release", {}).get("go_for_50_case_generation") is not True:
-        raise RuntimeError("bundled Task 12E acceptance does not release 50 cases")
+    release_relative = str(
+        plan.get(
+            "release_evidence_relative_path",
+            "evidence/task12e_manual_acceptance.json",
+        )
+    )
+    release_flag = str(plan.get("release_flag", "go_for_50_case_generation"))
+    acceptance = read_json(bundle / release_relative)
+    if acceptance.get("release", {}).get(release_flag) is not True:
+        raise RuntimeError(f"bundled release evidence does not set {release_flag}=true")
     cases = plan.get("cases")
-    if not isinstance(cases, list) or len(cases) != 50:
-        raise RuntimeError("Task 12F plan must contain exactly 50 cases")
+    if not isinstance(cases, list) or not cases:
+        raise RuntimeError("production plan must contain at least one case")
+    case_count = len(cases)
     rr_values = [int(case["rr_seed"]) for case in cases]
-    if len(set(rr_values)) != 50:
-        raise RuntimeError("Task 12F /RR values are not unique")
-    expected_counts = {"cnc5": 17, "cnc7": 17, "cnc8": 16}
+    if len(set(rr_values)) != case_count:
+        raise RuntimeError("production /RR values are not unique")
+    expected_counts = {
+        str(node): sum(case.get("node_id") == node for case in cases)
+        for node in plan["expected_nodes"]
+    }
     observed_counts = {
         node: len(cases_for_node(plan, node)) for node in plan["expected_nodes"]
     }
@@ -112,7 +123,7 @@ def main() -> int:
         "status": "pass",
         "generated_utc": _utc_now(),
         "bundle_manifest_sha256": bundle_sha,
-        "case_count": 50,
+        "case_count": case_count,
         "case_count_by_node": observed_counts,
         "rr_unique": True,
         "environment": {
@@ -127,7 +138,11 @@ def main() -> int:
         "simind_launched": False,
     }
     atomic_write_json(marker, document)
-    print(json.dumps({"status": "pass", "marker": str(marker), "case_count": 50}))
+    print(
+        json.dumps(
+            {"status": "pass", "marker": str(marker), "case_count": case_count}
+        )
+    )
     return 0
 
 

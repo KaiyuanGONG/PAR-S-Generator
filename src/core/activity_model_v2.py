@@ -113,7 +113,10 @@ def _territory_mask(
 def _coverage(tumor_mask: np.ndarray, territory_mask: np.ndarray) -> float:
     count = int(np.count_nonzero(tumor_mask))
     if count == 0:
-        return 0.0
+        # A tumor-negative control cannot be incompletely covered.  Treat the
+        # empty target set as vacuously covered so negative cases remain
+        # mismatch=False and can use the same physiological territory model.
+        return 1.0
     return float(np.count_nonzero(tumor_mask & territory_mask) / count)
 
 
@@ -245,7 +248,11 @@ def sample_activity_target(
         injection_territory=chosen[0],
         sector_proxy_label=chosen[1],
         activity_pattern=activity_pattern,
-        tnr_mean=float(np.mean(tuple(lesion_tnrs.values()))),
+        tnr_mean=(
+            float(np.mean(tuple(lesion_tnrs.values())))
+            if lesion_tnrs
+            else 1.0
+        ),
         heterogeneous=any(lesion_heterogeneous.values()),
         mismatch_challenge=mismatch_challenge,
         lesion_tnr_means=lesion_tnrs,

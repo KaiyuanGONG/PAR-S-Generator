@@ -14,10 +14,13 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "scripts"))
 
 from audit_task12g_linux50 import (  # noqa: E402
+    MAXIMUM_VIEW_SUM_RATIO,
     Task12GAuditError,
     _case_row,
     _direction_labels,
     _projection_metrics,
+    _projection_quality_contract,
+    _projection_view_ratio_passes,
     _render_case_board,
     audit_task12g,
     validate_frozen_dataset,
@@ -148,6 +151,20 @@ def test_projection_metrics_reject_empty_view() -> None:
 
     with pytest.raises(Task12GAuditError, match="non-zero weight"):
         _projection_metrics(projection, outer_width=1)
+
+
+def test_view_ratio_bound_is_80_and_records_manual_review_rationale() -> None:
+    assert MAXIMUM_VIEW_SUM_RATIO == 80.0
+    assert _projection_view_ratio_passes(72.23732384968483) is True
+    assert _projection_view_ratio_passes(80.0) is True
+    assert _projection_view_ratio_passes(80.000001) is False
+
+    contract = _projection_quality_contract()
+    assert contract["thresholds"]["maximum_view_sum_ratio"] == 80.0
+    rationale = contract["threshold_rationale"]["maximum_view_sum_ratio"]
+    assert "manual review" in rationale.lower()
+    assert "50.0" in rationale
+    assert "80.0" in rationale
 
 
 def test_case_row_extracts_tnr_necrosis_and_challenge_semantics() -> None:

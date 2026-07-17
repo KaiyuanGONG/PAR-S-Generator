@@ -18,11 +18,15 @@ sys.path.insert(0, str(SCRIPT_ROOT))
 sys.path.insert(0, str(BUNDLE_ROOT_DEFAULT / "src"))
 
 from task12f_linux50_common import (  # noqa: E402
+    CASE_MARKER_FILENAME,
     CASE_SCHEMA,
     MASTER_SCHEMA,
+    MASTER_FILENAME,
     NODE_COMPLETE_SCHEMA,
     QUARTET_EXTENSIONS,
     REMOTE_PREFLIGHT_SCHEMA,
+    RESULT_ARCHIVE_NAME,
+    RESULT_ARCHIVE_ROOT,
     atomic_write_json,
     cases_for_node,
     load_plan,
@@ -55,7 +59,7 @@ def _validate_case(
     expected_simind_sha: str,
 ) -> Mapping[str, object]:
     case_id = str(case["case_id"])
-    marker = read_json(case_dir / "TASK12F_CASE.json")
+    marker = read_json(case_dir / CASE_MARKER_FILENAME)
     if (
         marker.get("schema_version") != CASE_SCHEMA
         or marker.get("status") != "complete"
@@ -108,30 +112,32 @@ def _validate_case(
     return {
         "case_id": case_id,
         "node_id": node_id,
+        "dataset_id": case.get("dataset_id"),
+        "dataset_role": case.get("dataset_role", "main"),
         "split": case["split"],
         "rr_seed": int(case["rr_seed"]),
         "projection_sum": audit.projection_sum,
         "a00_sha256": audit.sha256["a00"],
-        "case_marker_sha256": sha256_file(case_dir / "TASK12F_CASE.json"),
+        "case_marker_sha256": sha256_file(case_dir / CASE_MARKER_FILENAME),
         "simind_provenance_sha256": sha256_file(provenance_path),
         "status": "pass",
     }
 
 
 def _archive(shared_root: Path, master_dir: Path) -> tuple[Path, str]:
-    path = master_dir / "task12f_linux50_results.tar.gz"
+    path = master_dir / RESULT_ARCHIVE_NAME
     with tarfile.open(path, "w:gz", compresslevel=6) as stream:
         stream.add(
-            master_dir / "TASK12F_LINUX50_MASTER.json",
-            arcname="task12f_linux50_results/TASK12F_LINUX50_MASTER.json",
+            master_dir / MASTER_FILENAME,
+            arcname=f"{RESULT_ARCHIVE_ROOT}/{MASTER_FILENAME}",
         )
         stream.add(
             shared_root / "REMOTE_PREFLIGHT.json",
-            arcname="task12f_linux50_results/REMOTE_PREFLIGHT.json",
+            arcname=f"{RESULT_ARCHIVE_ROOT}/REMOTE_PREFLIGHT.json",
         )
         stream.add(
             shared_root / "nodes",
-            arcname="task12f_linux50_results/nodes",
+            arcname=f"{RESULT_ARCHIVE_ROOT}/nodes",
         )
     return path, sha256_file(path)
 
@@ -155,14 +161,14 @@ def main() -> int:
     ):
         raise RuntimeError("remote preflight is not passing")
     master_dir = shared / "master"
-    completion = master_dir / "TASK12F_LINUX50_MASTER.json"
+    completion = master_dir / MASTER_FILENAME
     if completion.exists():
         if not args.resume:
             raise FileExistsError(f"master exists; use --resume: {completion}")
         existing = read_json(completion)
         if existing.get("schema_version") != MASTER_SCHEMA or existing.get("status") != "pass":
             raise RuntimeError("existing master is invalid")
-        archive_path = master_dir / "task12f_linux50_results.tar.gz"
+        archive_path = master_dir / RESULT_ARCHIVE_NAME
         print(json.dumps({"status": "pass", "reused": True, "archive": str(archive_path)}))
         return 0
 
@@ -205,8 +211,9 @@ def main() -> int:
                 )
             )
     planned_ids = {str(case["case_id"]) for case in plan["cases"]}
-    if observed_ids != planned_ids or len(observed_ids) != 50:
-        raise ValueError("master result set is not the exact frozen 50 cases")
+    case_count = len(planned_ids)
+    if observed_ids != planned_ids or len(observed_ids) != case_count:
+        raise ValueError("master result set is not the exact frozen case set")
     results.sort(key=lambda item: str(item["case_id"]))
     master = {
         "schema_version": MASTER_SCHEMA,
@@ -214,16 +221,21 @@ def main() -> int:
         "generated_utc": _utc_now(),
         "bundle_manifest_sha256": bundle_sha,
         "dataset": dict(plan["dataset"]),
-        "case_count": 50,
+        "case_count": case_count,
         "node_case_counts": {
             str(node): len(cases_for_node(plan, str(node)))
             for node in plan["expected_nodes"]
+        },
+        "role_case_counts": {
+            role: sum(item.get("dataset_role") == role for item in results)
+            for role in sorted({str(item.get("dataset_role")) for item in results})
         },
         "runtime_fingerprints": runtime_hashes,
         "projection_sum_summary": {
             "minimum": min(float(item["projection_sum"]) for item in results),
             "maximum": max(float(item["projection_sum"]) for item in results),
-            "mean": sum(float(item["projection_sum"]) for item in results) / 50.0,
+            "mean": sum(float(item["projection_sum"]) for item in results)
+            / case_count,
         },
         "cases": results,
         "go_for_local_case_writer_and_dataset_freeze": False,
@@ -242,7 +254,7 @@ def main() -> int:
                 "master": str(completion),
                 "archive": str(archive_path),
                 "archive_sha256": archive_sha,
-                "case_count": 50,
+                "case_count": case_count,
                 "go_for_local_case_writer_and_dataset_freeze": False,
             }
         )

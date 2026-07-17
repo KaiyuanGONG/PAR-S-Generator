@@ -26,7 +26,9 @@ sys.path.insert(0, str(SCRIPT_ROOT))
 sys.path.insert(0, str(BUNDLE_ROOT_DEFAULT / "src"))
 
 from task12f_linux50_common import (  # noqa: E402
+    CASE_MARKER_FILENAME,
     CASE_SCHEMA,
+    NODE_FAILED_SCHEMA,
     NODE_COMPLETE_SCHEMA,
     QUARTET_EXTENSIONS,
     REMOTE_PREFLIGHT_SCHEMA,
@@ -134,7 +136,7 @@ def _runtime_fingerprint(
 def _validate_existing(
     final_dir: Path, case_id: str, bundle_manifest_sha256: str
 ) -> Mapping[str, Any]:
-    document = read_json(final_dir / "TASK12F_CASE.json")
+    document = read_json(final_dir / CASE_MARKER_FILENAME)
     if (
         document.get("schema_version") != CASE_SCHEMA
         or document.get("status") != "complete"
@@ -247,7 +249,7 @@ def _run_case(
         "elapsed_seconds": time.monotonic() - started,
         "finished_utc": _utc_now(),
     }
-    atomic_write_json(local_final / "TASK12F_CASE.json", marker)
+    atomic_write_json(local_final / CASE_MARKER_FILENAME, marker)
     final_dir.parent.mkdir(parents=True, exist_ok=True)
     publishing = final_dir.parent / f".{case_id}.{uuid.uuid4().hex}.tmp"
     shutil.copytree(local_final, publishing)
@@ -358,7 +360,7 @@ def main() -> int:
         atomic_write_json(
             node_root / "NODE_FAILED.json",
             {
-                "schema_version": "pars_v2_task12f_linux50_node_failed_v2",
+                "schema_version": NODE_FAILED_SCHEMA,
                 "status": "failed",
                 "node_id": args.node_id,
                 "failures": failures,

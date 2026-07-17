@@ -18,6 +18,7 @@ from .provenance import sha256_file
 from .reproducibility_v2 import array_manifest
 from .schemas_v2 import PopulationProfileV2
 from .seeds import SeedBundle
+from .tumor_generator_v2 import TumorCaseTargetV2, TumorGeometryV2, TumorStrataV2
 
 
 def prepare_population_case(
@@ -144,6 +145,212 @@ def prepare_population_case(
         source_bin=source.path,
         density_bin=density.path,
     )
+
+
+def prepare_negative_case(
+    case_id: str,
+    anatomy_profile: PopulationProfileV2,
+    grid: GridSpecV2,
+    *,
+    global_seed: int,
+    base_histories: int,
+    work_dir: Path,
+    max_liver_attempts: int = 16,
+) -> PreparedPilotCaseV2:
+    """Prepare a tumor-negative physiological liver control.
+
+    ``negative_control_v2`` declares dataset semantics and population weight;
+    the frozen main profile supplies the same patient, liver, activity and
+    attenuation priors as positive cases. Tumor geometry is exactly empty.
+    """
+
+    seeds = SeedBundle.from_case(global_seed, case_id)
+    generator = PhantomGenerator(
+        PhantomConfig(volume_shape=grid.shape, voxel_size_mm=grid.voxel_size_mm)
+    )
+    liver_case = generator.generate_liver_v2(
+        anatomy_profile,
+        np.random.default_rng(seeds.patient),
+        case_id=case_id,
+        liver_seed=seeds.liver,
+        max_shape_attempts=max_liver_attempts,
+    )
+    empty_instances = np.zeros(grid.shape, dtype=np.uint16)
+    tumors = TumorGeometryV2(
+        instance_mask=empty_instances,
+        placements=(),
+        lesion_metrics=(),
+        tumor_union_volume_ml=0.0,
+        liver_volume_ml=float(liver_case.geometry.actual_metrics["volume_ml"]),
+        tumor_to_liver_fraction=0.0,
+        requested_lobe_extent="none",
+        realized_lobe_extent="none",
+        target_count=0,
+        realized_count=0,
+        status="pass",
+    )
+    tumor_target = TumorCaseTargetV2(
+        case_id=case_id,
+        strata=TumorStrataV2(count_bin="0", dmax_bin="none", lobe_extent="none"),
+        targets=(),
+        burden_fraction_max=0.0,
+        dmax_tolerance_voxels=0.0,
+        placement_attempts_per_lesion=0,
+        instance_gap_mm=0.0,
+        subcapsular_clearance_max_mm=0.0,
+        sampling_attempts=1,
+        evidence_types={"tumor_count": "engineering_prior"},
+    )
+    activity_rng = np.random.default_rng(seeds.activity)
+    activity_target = sample_activity_target(
+        liver_case.patient,
+        liver_case.geometry,
+        tumors,
+        anatomy_profile,
+        activity_rng,
+        mismatch_challenge=False,
+    )
+    activity_case = generator.generate_activity_v2(
+        liver_case.patient,
+        liver_case.geometry,
+        tumors,
+        anatomy_profile,
+        activity_rng,
+        target=activity_target,
+    )
+    anatomy = build_torso_anatomy_v2(
+        liver_case.geometry,
+        grid,
+        liver_case.patient,
+    )
+    attenuation = generator.generate_attenuation_v2(
+        anatomy.anatomy,
+        anatomy_profile,
+        np.random.default_rng(seeds.mu),
+    )
+
+    destination = Path(work_dir)
+    destination.mkdir(parents=True, exist_ok=False)
+    stem = destination / case_id
+    source = write_voxel_source(
+        activity_case.field.activity_probability,
+        stem,
+        base_histories=base_histories,
+    )
+    density = write_attenuation_map_v2(
+        attenuation.mu_true_140kev,
+        stem,
+        semantic_key="mu_true_140kev",
+    )
+    source_weights = np.fromfile(source.path, dtype="<f4").reshape(grid.shape).copy()
+    arrays = {
+        "activity_relative": np.asarray(
+            activity_case.field.activity_relative, dtype=np.float32
+        ),
+        "activity_probability": np.asarray(
+            activity_case.field.activity_probability, dtype=np.float32
+        ),
+        "simind_source_weights": np.asarray(source_weights, dtype=np.float32),
+        "mu_true_140kev": np.asarray(attenuation.mu_true_140kev, dtype=np.float32),
+        "mu_input_140kev": np.asarray(attenuation.mu_input_140kev, dtype=np.float32),
+        "body_mask": np.asarray(anatomy.anatomy.body_mask, dtype=np.uint8),
+        "liver_mask": np.asarray(liver_case.geometry.mask, dtype=np.uint8),
+        "liver_region_proxy": np.asarray(
+            liver_case.geometry.region_labels, dtype=np.uint8
+        ),
+        "tumor_instance_mask": empty_instances,
+        "tumor_union_mask": np.zeros(grid.shape, dtype=np.uint8),
+        "perfusion_mask": np.asarray(activity_case.field.perfusion_mask, dtype=np.uint8),
+    }
+    provenance = liver_case.sampling_provenance
+    if provenance is None:
+        raise RuntimeError(f"{case_id}: liver sampling provenance is missing")
+    return PreparedPilotCaseV2(
+        case_id=case_id,
+        patient=liver_case.patient,
+        seeds=seeds,
+        liver=liver_case.geometry,
+        liver_fit_attempt=provenance.accepted_attempt_index,
+        tumor_target=tumor_target,
+        tumors=tumors,
+        activity_target=activity_case.target,
+        activity=activity_case.field,
+        anatomy=anatomy,
+        attenuation_metadata=attenuation.degradation_metadata,
+        base_histories_per_projection=base_histories,
+        arrays=arrays,
+        source_bin=source.path,
+        density_bin=density.path,
+    )
+
+
+def summarize_prepared_negative_case(
+    prepared: PreparedPilotCaseV2,
+) -> dict[str, object]:
+    """Audit one negative control and return its frozen pre-SIMIND record."""
+
+    arrays = prepared.arrays
+    tumor = np.asarray(arrays["tumor_union_mask"], dtype=bool)
+    liver = np.asarray(arrays["liver_mask"], dtype=bool)
+    mu_true = np.asarray(arrays["mu_true_140kev"], dtype=np.float32)
+    mu_input = np.asarray(arrays["mu_input_140kev"], dtype=np.float32)
+    source = np.asarray(arrays["simind_source_weights"], dtype=np.float64)
+    failures: list[str] = []
+    if tumor.any() or prepared.tumors.realized_count != 0:
+        failures.append("negative control contains tumor voxels")
+    if not liver.any():
+        failures.append("liver mask is empty")
+    if prepared.activity.lesion_metrics:
+        failures.append("negative control contains lesion activity metrics")
+    if prepared.activity.mismatch_challenge:
+        failures.append("negative control cannot be a perfusion mismatch challenge")
+    if not np.isfinite(mu_true).all() or not np.isfinite(mu_input).all():
+        failures.append("attenuation contains non-finite values")
+    if np.any(mu_true < 0) or np.any(mu_input < 0):
+        failures.append("attenuation contains negative values")
+    if np.array_equal(mu_true, mu_input):
+        failures.append("mu_true and mu_input are not separated")
+    if not math.isclose(
+        float(source.sum()),
+        float(prepared.base_histories_per_projection),
+        rel_tol=2e-6,
+        abs_tol=0.1,
+    ):
+        failures.append("source history sum mismatch")
+    return {
+        "case_id": prepared.case_id,
+        "dataset_role": "negative",
+        "profile_id": "negative_control_v2",
+        "status": "pass" if not failures else "fail",
+        "failures": failures,
+        "population_weight": 0.0,
+        "seeds": prepared.seeds.to_dict(),
+        "rr_seed": prepared.seeds.simind,
+        "patient": {
+            "sex": prepared.patient.sex,
+            "age_years": prepared.patient.age_years,
+            "height_cm": prepared.patient.height_cm,
+            "weight_kg": prepared.patient.weight_kg,
+            "bmi": prepared.patient.bmi,
+            "liver_morphology": prepared.patient.liver_morphology,
+        },
+        "liver_fit_attempt": prepared.liver_fit_attempt,
+        "liver_volume_ml": prepared.liver.actual_metrics["volume_ml"],
+        "liver_extent_mm_zyx": prepared.liver.actual_metrics["extent_mm_zyx"],
+        "realized_tumor_count": 0,
+        "tumor_fraction_liver": 0.0,
+        "lesions": [],
+        "injection_territory": prepared.activity.injection_territory,
+        "mismatch_challenge": False,
+        "injection_tumor_coverage_fraction": 1.0,
+        "source_weight_sum": float(source.sum()),
+        "source_sha256": sha256_file(prepared.source_bin),
+        "density_sha256": sha256_file(prepared.density_bin),
+        "array_manifest": array_manifest(prepared.arrays),
+        "mu_true_input_mean_absolute_difference": float(
+            np.mean(np.abs(mu_true.astype(np.float64) - mu_input.astype(np.float64)))
+        ),
+    }
 
 
 def summarize_prepared_population_case(
