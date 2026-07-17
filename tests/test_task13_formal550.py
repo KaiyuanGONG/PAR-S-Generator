@@ -40,6 +40,7 @@ def test_formal_config_freezes_500_main_plus_50_test_only_negative() -> None:
         "val": 0.0,
         "test": 1.0,
     }
+    assert config["execution"]["max_tumor_target_attempts"] == 64
     assert config["frozen_evidence"]["release_flag"] == (
         "go_for_formal_500_plus_50_generation"
     )

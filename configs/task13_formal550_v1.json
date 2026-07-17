@@ -90,6 +90,7 @@
   },
   "execution": {
     "base_histories_per_projection": 80000,
+    "max_tumor_target_attempts": 64,
     "nn_multiplier": 1,
     "timeout_seconds": 7200,
     "local_preflight_max_parallel": 4,

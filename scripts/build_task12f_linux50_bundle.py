@@ -207,6 +207,7 @@ def _prepare_case_job(
     voxel_size_mm: float,
     global_seed: int,
     base_histories: int,
+    max_tumor_attempts: int,
     staging_path: str,
     final_path: str,
 ) -> Mapping[str, object]:
@@ -234,6 +235,7 @@ def _prepare_case_job(
             global_seed=global_seed,
             base_histories=base_histories,
             work_dir=staging,
+            max_tumor_attempts=max_tumor_attempts,
             mismatch_challenge=bool(entry["mismatch_challenge"]),
         )
         raw = summarize_prepared_population_case(prepared)
@@ -372,6 +374,9 @@ def _prepare_preflight(
     )
     if not 1 <= requested_local_parallel <= 8:
         raise ValueError("local preflight parallelism must be within 1..8")
+    max_tumor_attempts = int(execution.get("max_tumor_target_attempts", 32))
+    if not 1 <= max_tumor_attempts <= 64:
+        raise ValueError("max_tumor_target_attempts must be within 1..64")
     summaries_by_id: dict[str, Mapping[str, object]] = {}
     pending_jobs: list[tuple[Mapping[str, object], Path, Path]] = []
     for entry in generation_plan["entries"]:
@@ -422,6 +427,7 @@ def _prepare_preflight(
                     voxel_size_mm=float(grid.voxel_size_mm),
                     global_seed=int(dataset["global_seed"]),
                     base_histories=int(execution["base_histories_per_projection"]),
+                    max_tumor_attempts=max_tumor_attempts,
                     staging_path=str(staging),
                     final_path=str(case_root),
                 )
