@@ -556,6 +556,26 @@ def _path_length_document(paths: PathLengthMetricsV2) -> dict[str, object]:
     }
 
 
+def _tumor_perfusion_fractions(
+    tumor_union: np.ndarray,
+    perfusion: np.ndarray,
+) -> tuple[float, float]:
+    """Return stable tumor/perfusion overlap fractions, including controls."""
+
+    tumor = np.asarray(tumor_union, dtype=bool)
+    perfused = np.asarray(perfusion, dtype=bool)
+    if tumor.shape != perfused.shape:
+        raise ValueError("tumor and perfusion masks must have the same shape")
+    intersection = int(np.count_nonzero(tumor & perfused))
+    tumor_voxels = int(np.count_nonzero(tumor))
+    perfusion_voxels = int(np.count_nonzero(perfused))
+    tumor_coverage = intersection / tumor_voxels if tumor_voxels else 1.0
+    tumor_fraction_perfused = (
+        intersection / perfusion_voxels if perfusion_voxels else 0.0
+    )
+    return float(tumor_coverage), float(tumor_fraction_perfused)
+
+
 def build_completed_metadata(
     prepared: PreparedPilotCaseV2,
     *,
@@ -595,9 +615,10 @@ def build_completed_metadata(
 
     tumor_union = prepared.tumors.instance_mask > 0
     perfusion = prepared.activity.perfusion_mask > 0
-    intersection = int(np.count_nonzero(tumor_union & perfusion))
-    tumor_coverage = intersection / int(np.count_nonzero(tumor_union))
-    tumor_fraction_perfused = intersection / int(np.count_nonzero(perfusion))
+    tumor_coverage, tumor_fraction_perfused = _tumor_perfusion_fractions(
+        tumor_union,
+        perfusion,
+    )
     paths = measure_path_lengths(
         prepared.anatomy.anatomy.body_mask,
         prepared.liver.mask,
