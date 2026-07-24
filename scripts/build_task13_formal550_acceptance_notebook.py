@@ -71,13 +71,24 @@ def read_bound_gate(row):
     return value
 
 
-def load_role_manifest(role, root):
+def load_role_manifest(role, root, expected_manifest_sha256):
+    role_root = root.resolve()
     marker, _ = read_json_bytes(root / "DATASET_COMPLETE.json")
     if marker.get("status") != "complete" or marker.get("dataset_role") != role:
         raise ValueError(f"{role} completion marker identity/status mismatch")
-    manifest_path = root / marker["manifest_relative_path"]
+    manifest_relative = Path(marker["manifest_relative_path"])
+    if manifest_relative.is_absolute():
+        raise ValueError(f"{role} manifest path must be relative")
+    manifest_path = (role_root / manifest_relative).resolve()
+    try:
+        manifest_path.relative_to(role_root)
+    except ValueError as exc:
+        raise ValueError(f"{role} manifest path escapes role root") from exc
     manifest_payload = manifest_path.read_bytes()
-    if hashlib.sha256(manifest_payload).hexdigest() != marker["manifest_sha256"]:
+    actual_manifest_sha256 = hashlib.sha256(manifest_payload).hexdigest()
+    if actual_manifest_sha256 != expected_manifest_sha256:
+        raise ValueError(f"{role} generator gate manifest SHA-256 mismatch")
+    if actual_manifest_sha256 != marker["manifest_sha256"]:
         raise ValueError(f"{role} manifest SHA-256 mismatch")
     rows = [json.loads(line) for line in manifest_payload.splitlines() if line.strip()]
     if len(rows) != marker["case_count"]:
@@ -87,11 +98,19 @@ def load_role_manifest(role, root):
 
 def resolve_role_artifact(root, artifact):
     role_root = root.resolve()
-    path = (role_root / artifact["relative_path"]).resolve()
-    path.relative_to(role_root)
-    if path.stat().st_size != artifact["size_bytes"]:
-        raise ValueError(f"artifact size mismatch: {path}")
-    return path
+    relative = Path(artifact["relative_path"])
+    if relative.is_absolute():
+        raise ValueError("projection artifact path must be relative")
+    path = (role_root / relative).resolve()
+    try:
+        path.relative_to(role_root)
+    except ValueError as exc:
+        raise ValueError("projection artifact path escapes role root") from exc
+    return {
+        "path": path,
+        "size_bytes": int(artifact["size_bytes"]),
+        "sha256": str(artifact["sha256"]),
+    }
 
 
 automatic, _ = read_json_bytes(ACCEPTANCE_JSON)
@@ -107,9 +126,13 @@ negative_loader_gate = gate_documents["formal550_negative_loader_gate_v1"]
 coordinate_gate = gate_documents["projection_coordinate_gate_v2"]
 assert generator_gate["schema_version"] == EXPECTED_GENERATOR_SCHEMA
 
-main_marker, main_manifest_rows = load_role_manifest("main", MAIN_ROOT)
+main_marker, main_manifest_rows = load_role_manifest(
+    "main", MAIN_ROOT, generator_gate["dataset_manifests"]["main"]
+)
 negative_marker, negative_manifest_rows = load_role_manifest(
-    "negative", NEGATIVE_ROOT
+    "negative",
+    NEGATIVE_ROOT,
+    generator_gate["dataset_manifests"]["negative"],
 )
 assert main_marker["case_count"] == automatic["role_case_counts"]["main"]
 assert negative_marker["case_count"] == automatic["role_case_counts"]["negative"]
@@ -183,7 +206,9 @@ to this notebook.
 The setup reads the automatic acceptance JSON, verifies each referenced gate
 against the SHA-256 recorded in `gate_rows`, and reads both role manifests from
 their immutable roots. Projection paths are assembled into a display-only
-`visual_registry`; files are never opened in a writable mode.
+`visual_registry`. Each selected projection is read once, checked against the
+manifest size and SHA-256, and displayed from that verified in-memory byte
+snapshot; files are never opened in a writable mode.
 """
         ),
         _code(
@@ -359,18 +384,28 @@ def role_focus_case_ids(role):
 
 
 def load_projection(role, case_id):
-    path = visual_registry[role][case_id]
+    artifact = visual_registry[role][case_id]
+    path = artifact["path"]
+    payload = path.read_bytes()
+    if len(payload) != artifact["size_bytes"]:
+        raise ValueError(f"{case_id} projection size mismatch")
+    if hashlib.sha256(payload).hexdigest() != artifact["sha256"]:
+        raise ValueError(f"{case_id} projection SHA-256 mismatch")
     expected_bytes = int(np.prod(EXPECTED_PROJECTION_SHAPE)) * np.dtype("<f4").itemsize
-    if path.stat().st_size != expected_bytes:
+    if len(payload) != expected_bytes:
         raise ValueError(f"{case_id} projection byte size mismatch")
-    projection = np.memmap(
-        path, dtype="<f4", mode="r", shape=EXPECTED_PROJECTION_SHAPE
-    )
-    return projection
+    return np.frombuffer(payload, dtype="<f4").reshape(EXPECTED_PROJECTION_SHAPE)
+
+
+focus_projection_snapshots = {
+    (role, case_id): load_projection(role, case_id)
+    for role in ("main", "negative")
+    for case_id in role_focus_case_ids(role)
+}
 
 
 def show_focus_projection(role, case_id, view):
-    projection = load_projection(role, case_id)
+    projection = focus_projection_snapshots[(role, case_id)]
     canonical_image = np.asarray(projection[view, ::-1, :])
     simind_angle = (180.0 + view * 6.0) % 360.0
     projector_angle = (90.0 + view * 6.0) % 360.0
@@ -479,7 +514,8 @@ def build_notebook(
         main_root=main_root,
         negative_root=negative_root,
     ))
-    nbformat.write(notebook, output_path)
+    with Path(output_path).open("w", encoding="utf-8", newline="\n") as stream:
+        nbformat.write(notebook, stream)
 
 
 def _parser() -> argparse.ArgumentParser:

@@ -7,7 +7,9 @@ from pathlib import Path
 
 import nbformat
 import numpy as np
+import pytest
 from nbclient import NotebookClient
+from nbclient.exceptions import CellExecutionError
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -31,6 +33,16 @@ def _sha256(path: Path) -> str:
 def _notebook_source(path: Path) -> str:
     notebook = nbformat.read(path, as_version=4)
     return "\n".join(str(cell.source) for cell in notebook.cells)
+
+
+def _execute_notebook(path: Path, execution_root: Path) -> nbformat.NotebookNode:
+    notebook = nbformat.read(path, as_version=4)
+    return NotebookClient(
+        notebook,
+        timeout=180,
+        kernel_name="python3",
+        resources={"metadata": {"path": str(execution_root)}},
+    ).execute()
 
 
 def _fixture_evidence(tmp_path: Path) -> tuple[Path, Path, Path]:
@@ -92,6 +104,14 @@ def _fixture_evidence(tmp_path: Path) -> tuple[Path, Path, Path]:
         "status": "pass",
         "case_count": 2,
         "role_case_counts": {"main": 1, "negative": 1},
+        "dataset_manifests": {
+            "main": json.loads(
+                (main_root / "DATASET_COMPLETE.json").read_text(encoding="utf-8")
+            )["manifest_sha256"],
+            "negative": json.loads(
+                (negative_root / "DATASET_COMPLETE.json").read_text(encoding="utf-8")
+            )["manifest_sha256"],
+        },
         "split_counts": {
             "main": {"train": 1},
             "negative": {"test": 1},
@@ -283,6 +303,7 @@ def test_builder_is_deterministic(tmp_path: Path) -> None:
         )
 
     assert first.read_bytes() == second.read_bytes()
+    assert b"\r\n" not in first.read_bytes()
 
 
 def test_generated_notebook_executes_end_to_end_against_fixture(
@@ -296,17 +317,86 @@ def test_generated_notebook_executes_end_to_end_against_fixture(
         main_root=main_root,
         negative_root=negative_root,
     )
-    notebook = nbformat.read(output, as_version=4)
-
-    executed = NotebookClient(
-        notebook,
-        timeout=180,
-        kernel_name="python3",
-        resources={"metadata": {"path": str(tmp_path)}},
-    ).execute()
+    executed = _execute_notebook(output, tmp_path)
 
     assert all(
         output.get("output_type") != "error"
         for cell in executed.cells
         for output in cell.get("outputs", [])
     )
+
+
+def test_notebook_rejects_marker_and_manifest_substitution_together(
+    tmp_path: Path,
+) -> None:
+    acceptance_json, main_root, negative_root = _fixture_evidence(tmp_path)
+    manifest_path = main_root / "case_manifest.jsonl"
+    row = json.loads(manifest_path.read_text(encoding="utf-8"))
+    row["substituted"] = True
+    manifest_path.write_text(
+        json.dumps(row, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    marker_path = main_root / "DATASET_COMPLETE.json"
+    marker = json.loads(marker_path.read_text(encoding="utf-8"))
+    marker["manifest_sha256"] = _sha256(manifest_path)
+    _write_json(marker_path, marker)
+    output = tmp_path / "substituted.ipynb"
+    build_notebook(
+        acceptance_json=acceptance_json,
+        output_path=output,
+        main_root=main_root,
+        negative_root=negative_root,
+    )
+
+    with pytest.raises(CellExecutionError, match="generator gate manifest SHA-256"):
+        _execute_notebook(output, tmp_path)
+
+
+def test_notebook_rejects_same_size_projection_tamper(tmp_path: Path) -> None:
+    acceptance_json, main_root, negative_root = _fixture_evidence(tmp_path)
+    output = tmp_path / "tampered.ipynb"
+    build_notebook(
+        acceptance_json=acceptance_json,
+        output_path=output,
+        main_root=main_root,
+        negative_root=negative_root,
+    )
+    projection_path = (
+        main_root / "cases" / "case_00000" / "artifacts" / "case_00000.a00"
+    )
+    payload = bytearray(projection_path.read_bytes())
+    payload[0] ^= 1
+    projection_path.write_bytes(payload)
+
+    with pytest.raises(CellExecutionError, match="projection SHA-256 mismatch"):
+        _execute_notebook(output, tmp_path)
+
+
+@pytest.mark.parametrize("escape_kind", ["absolute", "parent"])
+def test_notebook_rejects_manifest_path_escape(
+    tmp_path: Path,
+    escape_kind: str,
+) -> None:
+    acceptance_json, main_root, negative_root = _fixture_evidence(tmp_path)
+    marker_path = main_root / "DATASET_COMPLETE.json"
+    marker = json.loads(marker_path.read_text(encoding="utf-8"))
+    if escape_kind == "absolute":
+        marker["manifest_relative_path"] = str(
+            (main_root / "case_manifest.jsonl").resolve()
+        )
+    else:
+        escaped = main_root.parent / "escaped_manifest.jsonl"
+        escaped.write_bytes((main_root / "case_manifest.jsonl").read_bytes())
+        marker["manifest_relative_path"] = "../escaped_manifest.jsonl"
+    _write_json(marker_path, marker)
+    output = tmp_path / f"{escape_kind}.ipynb"
+    build_notebook(
+        acceptance_json=acceptance_json,
+        output_path=output,
+        main_root=main_root,
+        negative_root=negative_root,
+    )
+
+    with pytest.raises(CellExecutionError, match="manifest path"):
+        _execute_notebook(output, tmp_path)
