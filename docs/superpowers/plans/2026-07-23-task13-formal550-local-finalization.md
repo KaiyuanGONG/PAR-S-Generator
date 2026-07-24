@@ -213,7 +213,8 @@ def build_notebook(
 
 ## Observed Verification and Handoff
 
-Verified locally on 2026-07-24 in the `SPECT` Conda environment.
+Verified locally on 2026-07-24 and production-finalized on 2026-07-25
+(Europe/Paris) in the `SPECT` Conda environment.
 
 - Real immutable-input validation passed for all 550 cases: 500 `main`, 50 `negative`, all node/master/case/quartet bindings, recomputed generation/split semantic self-hashes, exact generation-to-split bindings, exact frozen plan schemas, and exact JSON value types. The strict resumed validation passed again after the final trust-chain hardening.
 - The downloaded archive remained unchanged at SHA-256 `fecbd2d485d3f28dab8e195b208d9a9b5a115cf05d7fe1741ab11e3dc8496c74`.
@@ -221,29 +222,34 @@ Verified locally on 2026-07-24 in the `SPECT` Conda environment.
 - No `main/DATASET_COMPLETE.json`, `negative/DATASET_COMPLETE.json`, or campaign `FORMAL550_COMPLETE.json` exists in the smoke root. The root is preserved for audit and may be deleted later only as that exact dedicated directory.
 - A bounded pause is successful operational behavior but returns process code `3`; wrappers such as `conda run` may therefore display a non-zero wrapper status. Inspect the emitted JSON (`"status": "paused"`) and `PROGRESS.json`.
 - The automatic acceptance now resolves coordinate evidence through the frozen Task12G chain: manual release SHA-256 `aa2eb5621cef6d5e8a2a952f041963743ed83fcd5f814813fcf24a4eb455cf96`, automatic acceptance SHA-256 `3e81bc365cd88325c2cca40af75233a5550b0025102c006bf06f43378f1541a9`, and coordinate report SHA-256 `12b83f5c0627d824cbb408c8042c159dfff9afdf39143a511dfb88f1c259108a`.
-- Final focused regressions passed: core writer/freeze/Formal550 matrix `121 passed`; automatic acceptance matrix `72 passed` with 13 existing Matplotlib/Pyparsing deprecation warnings; notebook matrix `12 passed` with one existing Windows ZMQ warning; PAR-S_2 loader matrix `17 passed`. The three new Python entry points compiled successfully.
+- The full production writer materialized and froze exactly 500 `main` and 50 `negative` cases under `D:\PFE-U\PAR\outputs\pars_v2_formal550_v1`. The main split is exactly 400/50/50 train/val/test; the negative split is exactly 50 test-only. Both role progress files and both `DATASET_COMPLETE.json` markers are `complete`, and the campaign marker reports exactly 550 cases.
+- The production writer encountered one process-memory exhaustion after 428 main cases (`MemoryError` while allocating a 2 MiB boolean array). The writer had exited and no duplicate process was present. A single `--resume` writer hash-verified the completed cases, continued from `case_00428`, and completed both roles without rewriting frozen cases.
+- Main manifest SHA-256 is `b1fb588e0f1c6d3771a317b480704c403afc505d545b59b45dcc52f8f0bd3ffe`; negative manifest SHA-256 is `9dec479577633759c3ed2af838f5f2877dcfd930d81d7ff51d68f2fa43e82bc7`. Each actual manifest hash matches both its role marker and the campaign marker. The case-directory and manifest-line counts are exactly 500 and 50. `FORMAL550_COMPLETE.json` SHA-256 is `7e11de03c82455565574d785c6ec6a9cb2b2d2e05ccc33b3e763d77c5e4e5fd4`.
+- Automatic acceptance was run and then rerun with `--resume`; both runs produced the same substantive result: **FAIL**. The final authoritative JSON has SHA-256 `b2710e034a0bf8869c160fa32b9fce88d9fb899a3989483f1bd0e02afd633de7`, `automatic_gate_passed=false`, and exact role counts 500/50.
+- The main loader gate (`ef073ddcb21b507c6474bf96d85616b874677a2b043d990e65879b2caa051986`), negative loader gate (`6f8341bcffaadb05955696b4b4ca835f4ae5b8b224a0ed87bfcc974a1eade2f0`), projection-coordinate gate, and inherited Task12G release chain all pass. All evidence hashes embedded in the authoritative acceptance JSON match the referenced files.
+- The sole blocking result is the generator gate (`3ae7eaa0dcabec5fe46f9c56ff41581da35b6871d631074ce35134fb98ef9710`): 539 cases pass and 11 cases exceed the frozen per-view max/min ratio limit of 80.0. The failed IDs are `case_00081`, `case_00159`, `case_00320`, `case_00340`, `case_00359`, `case_00411`, `case_00475`, `negative_00001`, `negative_00023`, `negative_00040`, and `negative_00048`; their failed ratios range from `80.296159183210534` to `172.89813690218202`. Every other generator check for these cases passes, including artifact hashes, projection metadata binding, shape, finite/nonnegative values, support, centroid guard band, and role semantics.
+- The failed projections are immutable downloaded SIMIND outputs, local SIMIND execution is forbidden, and the accepted threshold is frozen at 80.0. Therefore the production campaign is fully materialized but **not automatically release-accepted**. No case was removed, rewritten, or waived, and the threshold was not relaxed to manufacture a pass. Resolving the release blocker requires an explicitly authorized upstream simulation/acceptance decision outside this local finalization.
+- Final post-production focused regressions passed: core writer/freeze/Formal550 matrix `121 passed`; automatic acceptance matrix `72 passed` with 13 existing Matplotlib/Pyparsing deprecation warnings; notebook matrix `12 passed` with one existing Windows ZMQ warning; PAR-S_2 loader matrix `17 passed`. The three new Python entry points compiled successfully, and every regression stderr log was empty.
 - The deterministic notebook contains 15 cells, 7 code cells, no stored outputs, and no removable `assert` integrity checks. Its SHA-256 is `7568633982392b366e50bc9a14848423ff2d6db199ef403f90c35271dc4eefcc`.
-- The complete 550-case V2 campaign and its automatic acceptance evidence were intentionally not materialized during smoke verification. The implementation and resume path are ready; the commands below perform that long-running production work.
+- The earlier smoke root remains non-authoritative and deliberately paused. The production roots and QA evidence above are now the authoritative observed local result.
 
-From this worktree, start the full writer with immutable defaults:
-
-```powershell
-conda run -n SPECT python scripts\finalize_task13_formal550_local.py
-```
-
-If that run is interrupted, rerun the same command with `--resume`:
+The commands below are retained as recovery references. Do not start a fresh writer
+against the existing production roots; use `--resume` only after confirming that no
+writer is already running:
 
 ```powershell
 conda run -n SPECT python scripts\finalize_task13_formal550_local.py --resume
 ```
 
-After `D:\PFE-U\PAR\outputs\pars_v2_formal550_v1\FORMAL550_COMPLETE.json` exists, run the automatic acceptance pipeline. Use `--resume` only when continuing an already-created QA root:
+The QA root already exists, so any deliberate acceptance recheck must use
+`--resume`:
 
 ```powershell
-conda run -n SPECT python scripts\finalize_task13_formal550_acceptance.py
+conda run -n SPECT python scripts\finalize_task13_formal550_acceptance.py --resume
 ```
 
-Finally regenerate the read-only review notebook from the frozen acceptance evidence:
+Regenerate the read-only review notebook from the authoritative acceptance evidence
+with:
 
 ```powershell
 conda run -n SPECT python scripts\build_task13_formal550_acceptance_notebook.py
