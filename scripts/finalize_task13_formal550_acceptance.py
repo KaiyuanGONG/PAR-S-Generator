@@ -9,6 +9,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime, timezone
 import hashlib
+import io
 import json
 import math
 import os
@@ -25,8 +26,8 @@ if str(REPO_ROOT / "src") not in sys.path:
     sys.path.insert(0, str(REPO_ROOT / "src"))
 
 from core.case_writer_v2 import (  # noqa: E402
+    CaseRecordV2,
     DatasetFreezeRecordV2,
-    load_case_record_v2,
 )
 from core.provenance import (  # noqa: E402
     atomic_write_bytes,
@@ -106,21 +107,42 @@ class StageCommand:
     expected_status_by_return_code: tuple[tuple[int, str], ...] = ()
 
 
+@dataclass(frozen=True)
+class CaseEvidenceSnapshot:
+    record: CaseRecordV2
+    metadata: Mapping[str, Any]
+    provenance: Mapping[str, Any]
+    arrays: Mapping[str, np.ndarray]
+    projection: np.ndarray
+
+
 def _utc_now() -> str:
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
+
+def _read_file_snapshot(path: Path, label: str) -> bytes:
+    try:
+        return Path(path).read_bytes()
+    except OSError as exc:
+        raise Formal550AcceptanceError(f"cannot read {label}: {exc}") from exc
+
+
+def _parse_json_snapshot(payload: bytes, label: str) -> dict[str, Any]:
+    try:
+        value = json.loads(payload.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise Formal550AcceptanceError(f"cannot parse {label}: {exc}") from exc
+    if not isinstance(value, dict):
+        raise Formal550AcceptanceError(f"{label} must be a JSON object")
+    return value
 
 
 def _read_json_snapshot(
     path: Path,
     label: str,
 ) -> tuple[dict[str, Any], str]:
-    try:
-        payload = path.read_bytes()
-        value = json.loads(payload.decode("utf-8"))
-    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
-        raise Formal550AcceptanceError(f"cannot read {label}: {exc}") from exc
-    if not isinstance(value, dict):
-        raise Formal550AcceptanceError(f"{label} must be a JSON object")
+    payload = _read_file_snapshot(path, label)
+    value = _parse_json_snapshot(payload, label)
     return value, hashlib.sha256(payload).hexdigest()
 
 
@@ -388,45 +410,126 @@ def _artifact_path(dataset_root: Path, record: Any, name: str) -> Path:
         ) from exc
 
 
-def _audit_case(
+def _snapshot_case_evidence(
     dataset_root: Path,
-    record: Any,
+    case_id: str,
+    manifest_row: Mapping[str, Any],
+) -> CaseEvidenceSnapshot:
+    """Read, bind, and parse one case without reopening verified paths."""
+
+    root = Path(dataset_root).resolve()
+    record_path = root / "cases" / case_id / "case_record.json"
+    record_payload = _read_file_snapshot(
+        record_path, f"{case_id} case record"
+    )
+    record_document = _parse_json_snapshot(
+        record_payload, f"{case_id} case record"
+    )
+    try:
+        record = CaseRecordV2.from_dict(record_document)
+    except Exception as exc:
+        raise Formal550AcceptanceError(
+            f"{case_id}: case record schema is invalid: {exc}"
+        ) from exc
+    _require_manifest_record_binding(record, manifest_row)
+
+    retained: dict[str, bytes] = {}
+    retained_names = {
+        "metadata_json",
+        "simind_run_provenance",
+        "projection_a00",
+        "phantom_npz",
+    }
+    for name, artifact in sorted(record.artifacts.items()):
+        path = _artifact_path(root, record, name)
+        payload = _read_file_snapshot(path, f"{case_id} artifact {name}")
+        if len(payload) != artifact.size_bytes:
+            raise Formal550AcceptanceError(
+                f"{case_id}: artifact {name} size does not match its record"
+            )
+        if hashlib.sha256(payload).hexdigest() != artifact.sha256:
+            raise Formal550AcceptanceError(
+                f"{case_id}: artifact {name} SHA-256 does not match its record"
+            )
+        if name in retained_names:
+            retained[name] = payload
+    missing = retained_names - set(retained)
+    if missing:
+        raise Formal550AcceptanceError(
+            f"{case_id}: required audit artifacts are missing: {sorted(missing)}"
+        )
+
+    metadata = _parse_json_snapshot(
+        retained["metadata_json"], f"{case_id} metadata"
+    )
+    provenance = _parse_json_snapshot(
+        retained["simind_run_provenance"], f"{case_id} SIMIND provenance"
+    )
+    projection_values = np.frombuffer(
+        retained["projection_a00"], dtype="<f4"
+    )
+    expected_elements = math.prod(EXPECTED_PROJECTION_SHAPE)
+    if projection_values.size != expected_elements:
+        raise Formal550AcceptanceError(
+            f"{case_id}: projection byte size mismatch"
+        )
+    projection = projection_values.reshape(EXPECTED_PROJECTION_SHAPE).copy()
+    projection.setflags(write=False)
+    try:
+        with np.load(
+            io.BytesIO(retained["phantom_npz"]),
+            allow_pickle=False,
+        ) as archive:
+            arrays = {name: archive[name].copy() for name in archive.files}
+    except Exception as exc:
+        raise Formal550AcceptanceError(
+            f"{case_id}: phantom NPZ snapshot is invalid: {exc}"
+        ) from exc
+    for array in arrays.values():
+        array.setflags(write=False)
+    return CaseEvidenceSnapshot(
+        record=record,
+        metadata=metadata,
+        provenance=provenance,
+        arrays=arrays,
+        projection=projection,
+    )
+
+
+def _audit_case(
+    snapshot: CaseEvidenceSnapshot,
     *,
     role: str,
 ) -> dict[str, Any]:
-    metadata = _read_json(
-        _artifact_path(dataset_root, record, "metadata_json"),
-        f"{record.case_id} metadata",
-    )
-    provenance = _read_json(
-        _artifact_path(dataset_root, record, "simind_run_provenance"),
-        f"{record.case_id} SIMIND provenance",
-    )
+    record = snapshot.record
+    metadata = snapshot.metadata
+    provenance = snapshot.provenance
     if provenance.get("expected_shape") != list(EXPECTED_PROJECTION_SHAPE):
         raise Formal550AcceptanceError(
             f"{record.case_id}: projection provenance shape mismatch"
         )
-    projection_path = _artifact_path(dataset_root, record, "projection_a00")
-    expected_size = math.prod(EXPECTED_PROJECTION_SHAPE) * np.dtype("<f4").itemsize
-    if projection_path.stat().st_size != expected_size:
+    if (
+        provenance.get("case_id") != record.case_id
+        or provenance.get("status") != "complete"
+    ):
         raise Formal550AcceptanceError(
-            f"{record.case_id}: projection byte size mismatch"
+            f"{record.case_id}: projection provenance identity/status mismatch"
         )
-    projection_map = np.memmap(
-        projection_path,
-        dtype="<f4",
-        mode="r",
-        shape=EXPECTED_PROJECTION_SHAPE,
-    )
-    try:
-        metrics = _projection_metrics(projection_map)
-    finally:
-        del projection_map
-    with np.load(
-        _artifact_path(dataset_root, record, "phantom_npz"),
-        allow_pickle=False,
-    ) as archive:
-        arrays = {name: archive[name].copy() for name in archive.files}
+    identity = {
+        "case_id": record.case_id,
+        "case_family_id": record.case_family_id,
+        "profile_id": record.profile_id,
+        "dataset_id": record.dataset_id,
+        "dataset_version": record.dataset_version,
+        "dataset_role": record.dataset_role,
+        "split": record.split,
+    }
+    if any(metadata.get(name) != value for name, value in identity.items()):
+        raise Formal550AcceptanceError(
+            f"{record.case_id}: metadata/record identity mismatch"
+        )
+    metrics = _projection_metrics(snapshot.projection)
+    arrays = snapshot.arrays
     float_arrays = (
         "activity_probability",
         "activity_relative",
@@ -520,19 +623,20 @@ def _manifest_rows(
     role: str,
 ) -> tuple[dict[str, Any], ...]:
     manifest = resolve_relative_path(marker.manifest_relative_path, dataset_root)
-    if not manifest.is_file() or sha256_file(manifest) != marker.manifest_sha256:
+    payload = _read_file_snapshot(manifest, f"{role} manifest")
+    if hashlib.sha256(payload).hexdigest() != marker.manifest_sha256:
         raise Formal550AcceptanceError(f"{role} manifest SHA-256 mismatch")
     try:
         raw_rows = [
             json.loads(line)
-            for line in manifest.read_text(encoding="utf-8").splitlines()
+            for line in payload.decode("utf-8").splitlines()
             if line.strip()
         ]
         if not all(isinstance(row, dict) for row in raw_rows):
             raise TypeError("manifest rows must be objects")
         rows = tuple(dict(row) for row in raw_rows)
         case_ids = tuple(str(row["case_id"]) for row in rows)
-    except (OSError, json.JSONDecodeError, KeyError, TypeError) as exc:
+    except (UnicodeDecodeError, json.JSONDecodeError, KeyError, TypeError) as exc:
         raise Formal550AcceptanceError(f"{role} manifest is malformed") from exc
     contract = ROLE_CONTRACTS[role]
     expected = tuple(
@@ -574,17 +678,12 @@ def _audit_role_dataset(
     rows: list[dict[str, Any]] = []
     for manifest_row in manifest_rows:
         case_id = str(manifest_row["case_id"])
-        try:
-            record = load_case_record_v2(
-                dataset_root / "cases" / case_id / "case_record.json",
-                dataset_root=dataset_root,
-                verify_hashes=True,
-            )
-        except Exception as exc:
-            raise Formal550AcceptanceError(
-                f"{case_id}: record/artifact verification failed: {exc}"
-            ) from exc
-        _require_manifest_record_binding(record, manifest_row)
+        snapshot = _snapshot_case_evidence(
+            dataset_root,
+            case_id,
+            manifest_row,
+        )
+        record = snapshot.record
         if (
             record.case_id != case_id
             or record.dataset_id != ROLE_CONTRACTS[role]["dataset_id"]
@@ -599,7 +698,7 @@ def _audit_role_dataset(
             raise Formal550AcceptanceError(
                 f"{case_id}: record role/artifact/coordinate binding mismatch"
             )
-        rows.append(_audit_case(dataset_root, record, role=role))
+        rows.append(_audit_case(snapshot, role=role))
     if Counter(row["split"] for row in rows) != Counter(
         ROLE_CONTRACTS[role]["split_counts"]
     ):
@@ -660,6 +759,32 @@ def _numeric_summary(values: Sequence[float]) -> dict[str, float]:
     }
 
 
+def _remove_generator_outputs(qa_root: Path) -> None:
+    output = Path(qa_root)
+    (output / "generator_gate.json").unlink(missing_ok=True)
+    (output / "generator_gate.md").unlink(missing_ok=True)
+
+
+def _write_generator_outputs(
+    report: Mapping[str, Any],
+    qa_root: Path,
+) -> None:
+    output = Path(qa_root)
+    output.mkdir(parents=True, exist_ok=True)
+    gate_path = output / "generator_gate.json"
+    markdown_path = output / "generator_gate.md"
+    _remove_generator_outputs(output)
+    try:
+        atomic_write_bytes(
+            markdown_path,
+            (_generator_markdown(report) + "\n").encode("utf-8"),
+        )
+        atomic_write_json(gate_path, report)
+    except Exception:
+        _remove_generator_outputs(output)
+        raise
+
+
 def audit_formal550(
     campaign_root: Path,
     qa_root: Path,
@@ -668,6 +793,8 @@ def audit_formal550(
 
     root = Path(campaign_root).resolve()
     output = Path(qa_root).resolve()
+    output.mkdir(parents=True, exist_ok=True)
+    _remove_generator_outputs(output)
     campaign = _read_json(root / "FORMAL550_COMPLETE.json", "campaign marker")
     role_markers = {
         role: _read_json(
@@ -728,13 +855,7 @@ def audit_formal550(
         "focus_cases": select_focus_cases(rows),
         "cases": rows,
     }
-    output.mkdir(parents=True, exist_ok=True)
-    gate_path = output / "generator_gate.json"
-    atomic_write_json(gate_path, report)
-    atomic_write_bytes(
-        output / "generator_gate.md",
-        (_generator_markdown(report) + "\n").encode("utf-8"),
-    )
+    _write_generator_outputs(report, output)
     return report
 
 
@@ -1132,6 +1253,7 @@ def run_acceptance_pipeline(
 
     generator_path = cfg.qa_root / "generator_gate.json"
     generator_markdown = cfg.qa_root / "generator_gate.md"
+    _remove_generator_outputs(cfg.qa_root)
     _write_progress(
         progress_path,
         cfg,
@@ -1139,62 +1261,75 @@ def run_acceptance_pipeline(
         status="running",
         current_stage="formal550_generator_gate",
     )
-    generator_path.unlink(missing_ok=True)
-    generator_markdown.unlink(missing_ok=True)
     try:
         audit_formal550(cfg.campaign_root, cfg.qa_root)
+        states["formal550_generator_gate"] = {
+            "status": "complete",
+            "return_code": 0,
+            "outputs": {
+                str(generator_path.resolve()): sha256_file(generator_path),
+                str(generator_markdown.resolve()): sha256_file(
+                    generator_markdown
+                ),
+            },
+        }
     except Exception as exc:
-        _write_progress(
-            progress_path,
-            cfg,
-            states,
-            status="failed",
-            current_stage="formal550_generator_gate",
-            error=str(exc),
-        )
+        _remove_generator_outputs(cfg.qa_root)
+        states.pop("formal550_generator_gate", None)
+        try:
+            _write_progress(
+                progress_path,
+                cfg,
+                states,
+                status="failed",
+                current_stage="formal550_generator_gate",
+                error=str(exc),
+            )
+        except Exception:
+            pass
         raise
-    states["formal550_generator_gate"] = {
-        "status": "complete",
-        "return_code": 0,
-        "outputs": {
-            str(generator_path.resolve()): sha256_file(generator_path),
-            str(generator_markdown.resolve()): sha256_file(generator_markdown),
-        },
-    }
 
     for stage in build_stage_commands(cfg):
-        _write_progress(
-            progress_path,
-            cfg,
-            states,
-            status="running",
-            current_stage=stage.name,
-        )
         try:
+            _write_progress(
+                progress_path,
+                cfg,
+                states,
+                status="running",
+                current_stage=stage.name,
+            )
             _remove_stage_outputs(stage)
             return_code = _run_stage(stage, logs)
             state = _stage_state(stage, return_code)
         except Exception as exc:
-            _write_progress(
-                progress_path,
-                cfg,
-                states,
-                status="failed",
-                current_stage=stage.name,
-                error=str(exc),
-            )
+            _remove_generator_outputs(cfg.qa_root)
+            try:
+                _write_progress(
+                    progress_path,
+                    cfg,
+                    states,
+                    status="failed",
+                    current_stage=stage.name,
+                    error=str(exc),
+                )
+            except Exception:
+                pass
             raise
         states[stage.name] = state
         if return_code not in stage.accepted_return_codes:
             error = f"{stage.name} failed with exit code {return_code}; see {logs}"
-            _write_progress(
-                progress_path,
-                cfg,
-                states,
-                status="failed",
-                current_stage=stage.name,
-                error=error,
-            )
+            _remove_generator_outputs(cfg.qa_root)
+            try:
+                _write_progress(
+                    progress_path,
+                    cfg,
+                    states,
+                    status="failed",
+                    current_stage=stage.name,
+                    error=error,
+                )
+            except Exception:
+                pass
             raise Formal550AcceptanceError(error)
 
     try:
@@ -1204,27 +1339,34 @@ def run_acceptance_pipeline(
             (_markdown(summary) + "\n").encode("utf-8"),
         )
         atomic_write_json(automatic_json, summary)
+        states["automatic_acceptance_summary"] = {
+            "status": "complete",
+            "return_code": 0,
+            "outputs": {
+                str(automatic_json.resolve()): sha256_file(automatic_json),
+                str(automatic_markdown.resolve()): sha256_file(
+                    automatic_markdown
+                ),
+            },
+        }
+        _write_progress(progress_path, cfg, states, status="complete")
     except Exception as exc:
         automatic_json.unlink(missing_ok=True)
         automatic_markdown.unlink(missing_ok=True)
-        _write_progress(
-            progress_path,
-            cfg,
-            states,
-            status="failed",
-            current_stage="automatic_acceptance_summary",
-            error=str(exc),
-        )
+        _remove_generator_outputs(cfg.qa_root)
+        states.pop("automatic_acceptance_summary", None)
+        try:
+            _write_progress(
+                progress_path,
+                cfg,
+                states,
+                status="failed",
+                current_stage="automatic_acceptance_summary",
+                error=str(exc),
+            )
+        except Exception:
+            pass
         raise
-    states["automatic_acceptance_summary"] = {
-        "status": "complete",
-        "return_code": 0,
-        "outputs": {
-            str(automatic_json.resolve()): sha256_file(automatic_json),
-            str(automatic_markdown.resolve()): sha256_file(automatic_markdown),
-        },
-    }
-    _write_progress(progress_path, cfg, states, status="complete")
     return summary
 
 

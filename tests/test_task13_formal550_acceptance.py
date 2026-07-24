@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import io
 import json
 import sys
 from pathlib import Path
@@ -1008,3 +1009,468 @@ def test_markdown_publication_failure_removes_authoritative_json(
     assert not (
         config.qa_root / "TASK13_FORMAL550_AUTOMATIC_ACCEPTANCE.md"
     ).exists()
+    progress = json.loads(
+        (config.qa_root / "PROGRESS.json").read_text(encoding="utf-8")
+    )
+    assert progress["status"] == "failed"
+    assert "automatic_acceptance_summary" not in progress["stages"]
+
+
+def _snapshot_case_fixture(
+    tmp_path: Path,
+) -> tuple[Path, dict[str, object], dict[str, Path]]:
+    dataset_root = tmp_path / "dataset"
+    artifact_root = dataset_root / "cases" / "case_00000" / "artifacts"
+    artifact_root.mkdir(parents=True)
+    projection = np.ones((60, 128, 128), dtype="<f4").tobytes()
+    archive_buffer = io.BytesIO()
+    np.savez(
+        archive_buffer,
+        tumor_union_mask=np.zeros((2, 2, 2), dtype=np.uint8),
+        tumor_instance_mask=np.zeros((2, 2, 2), dtype=np.uint16),
+    )
+    payloads = {
+        "metadata_json": json.dumps(
+            {"case_id": "case_00000", "snapshot_value": "bound"}
+        ).encode("utf-8"),
+        "simind_run_provenance": json.dumps(
+            {
+                "case_id": "case_00000",
+                "expected_shape": [60, 128, 128],
+            }
+        ).encode("utf-8"),
+        "projection_a00": projection,
+        "phantom_npz": archive_buffer.getvalue(),
+    }
+    paths: dict[str, Path] = {}
+    artifacts: dict[str, dict[str, object]] = {}
+    filenames = {
+        "metadata_json": "metadata.json",
+        "simind_run_provenance": "run_provenance.json",
+        "projection_a00": "case_00000.a00",
+        "phantom_npz": "phantom.npz",
+    }
+    for name, payload in payloads.items():
+        path = artifact_root / filenames[name]
+        path.write_bytes(payload)
+        paths[name] = path
+        artifacts[name] = {
+            "relative_path": path.relative_to(dataset_root).as_posix(),
+            "size_bytes": len(payload),
+            "sha256": hashlib.sha256(payload).hexdigest(),
+        }
+    record = {
+        "schema_version": "pars_case_record_v2",
+        "case_id": "case_00000",
+        "case_family_id": "family_00000",
+        "profile_id": "population_tare_hcc_nopvi_v2",
+        "dataset_id": "PAR-S-TARE-HCC-NoPVI-SYN-v2",
+        "dataset_version": "2.0.0",
+        "dataset_role": "main",
+        "split": "train",
+        "population_weight": 1.0,
+        "sampling_probability": 1.0,
+        "split_plan_sha256": "1" * 64,
+        "projection_coordinate_contract_id": "pars_simind_v8_xcat_zyx_sar_v1",
+        "loader_transform_id": (
+            "simind_v8_xcat_v1_views_forward_roll000_det_v_flip_det_u_keep"
+        ),
+        "artifacts": artifacts,
+    }
+    record_path = dataset_root / "cases" / "case_00000" / "case_record.json"
+    record_path.write_text(json.dumps(record), encoding="utf-8")
+    paths["case_record"] = record_path
+    return dataset_root, record, paths
+
+
+@pytest.mark.parametrize(
+    "artifact_name",
+    ["metadata_json", "projection_a00", "phantom_npz"],
+)
+def test_case_snapshot_rejects_artifact_swapped_after_record_snapshot(
+    monkeypatch,
+    tmp_path: Path,
+    artifact_name: str,
+) -> None:
+    dataset_root, manifest_row, paths = _snapshot_case_fixture(tmp_path)
+    real_read = acceptance._read_file_snapshot
+    target = paths[artifact_name]
+
+    def read_then_swap(path: Path, label: str) -> bytes:
+        payload = real_read(path, label)
+        if Path(path) == paths["case_record"]:
+            original = target.read_bytes()
+            target.write_bytes(bytes([original[0] ^ 1]) + original[1:])
+        return payload
+
+    monkeypatch.setattr(acceptance, "_read_file_snapshot", read_then_swap)
+
+    with pytest.raises(Formal550AcceptanceError, match="SHA-256"):
+        acceptance._snapshot_case_evidence(
+            dataset_root,
+            "case_00000",
+            manifest_row,
+        )
+
+
+def test_case_snapshot_parses_the_exact_metadata_bytes_it_hashed(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    dataset_root, manifest_row, paths = _snapshot_case_fixture(tmp_path)
+    real_read = acceptance._read_file_snapshot
+    metadata_path = paths["metadata_json"]
+
+    def read_then_swap(path: Path, label: str) -> bytes:
+        payload = real_read(path, label)
+        if Path(path) == metadata_path:
+            metadata_path.write_text(
+                json.dumps(
+                    {"case_id": "case_00000", "snapshot_value": "replaced"}
+                ),
+                encoding="utf-8",
+            )
+        return payload
+
+    monkeypatch.setattr(acceptance, "_read_file_snapshot", read_then_swap)
+
+    snapshot = acceptance._snapshot_case_evidence(
+        dataset_root,
+        "case_00000",
+        manifest_row,
+    )
+
+    assert snapshot.metadata["snapshot_value"] == "bound"
+    assert json.loads(metadata_path.read_text(encoding="utf-8"))[
+        "snapshot_value"
+    ] == "replaced"
+
+
+def test_manifest_parser_uses_one_digest_and_parse_snapshot(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    dataset_root = tmp_path / "negative"
+    dataset_root.mkdir()
+    manifest_path = dataset_root / "case_manifest.jsonl"
+    bound_rows = [
+        {"case_id": f"negative_{index:05d}", "snapshot_value": "bound"}
+        for index in range(50)
+    ]
+    replaced_rows = [
+        {"case_id": f"negative_{index:05d}", "snapshot_value": "replaced"}
+        for index in range(50)
+    ]
+    bound_payload = (
+        "\n".join(json.dumps(row, sort_keys=True) for row in bound_rows) + "\n"
+    ).encode("utf-8")
+    replaced_payload = (
+        "\n".join(json.dumps(row, sort_keys=True) for row in replaced_rows)
+        + "\n"
+    ).encode("utf-8")
+    manifest_path.write_bytes(bound_payload)
+    marker = SimpleNamespace(
+        manifest_relative_path="case_manifest.jsonl",
+        manifest_sha256=hashlib.sha256(bound_payload).hexdigest(),
+    )
+    real_read = acceptance._read_file_snapshot
+
+    def read_then_swap(path: Path, label: str) -> bytes:
+        payload = real_read(path, label)
+        if Path(path) == manifest_path:
+            manifest_path.write_bytes(replaced_payload)
+        return payload
+
+    monkeypatch.setattr(acceptance, "_read_file_snapshot", read_then_swap)
+
+    rows = acceptance._manifest_rows(
+        dataset_root,
+        marker,
+        role="negative",
+    )
+
+    assert {row["snapshot_value"] for row in rows} == {"bound"}
+    assert b"replaced" in manifest_path.read_bytes()
+
+
+@pytest.mark.parametrize("artifact_name", ["projection_a00", "phantom_npz"])
+def test_case_snapshot_analyzes_exact_projection_and_npz_bytes_it_hashed(
+    monkeypatch,
+    tmp_path: Path,
+    artifact_name: str,
+) -> None:
+    dataset_root, manifest_row, paths = _snapshot_case_fixture(tmp_path)
+    real_read = acceptance._read_file_snapshot
+    target = paths[artifact_name]
+    replacement_npz = io.BytesIO()
+    np.savez(
+        replacement_npz,
+        tumor_union_mask=np.ones((2, 2, 2), dtype=np.uint8),
+        tumor_instance_mask=np.ones((2, 2, 2), dtype=np.uint16),
+    )
+
+    def read_then_swap(path: Path, label: str) -> bytes:
+        payload = real_read(path, label)
+        if Path(path) == target:
+            if artifact_name == "projection_a00":
+                target.write_bytes(
+                    np.zeros((60, 128, 128), dtype="<f4").tobytes()
+                )
+            else:
+                target.write_bytes(replacement_npz.getvalue())
+        return payload
+
+    monkeypatch.setattr(acceptance, "_read_file_snapshot", read_then_swap)
+
+    snapshot = acceptance._snapshot_case_evidence(
+        dataset_root,
+        "case_00000",
+        manifest_row,
+    )
+
+    if artifact_name == "projection_a00":
+        assert float(snapshot.projection.mean()) == 1.0
+        assert np.fromfile(target, dtype="<f4").sum() == 0.0
+    else:
+        assert not snapshot.arrays["tumor_union_mask"].any()
+        with np.load(target, allow_pickle=False) as replaced:
+            assert replaced["tumor_union_mask"].all()
+
+
+def test_generator_markdown_failure_removes_stale_and_new_gate_outputs(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    qa_root = tmp_path / "qa"
+    _write_json(qa_root / "generator_gate.json", {"status": "pass"})
+    (qa_root / "generator_gate.md").write_text("STALE PASS\n", encoding="utf-8")
+    monkeypatch.setattr(
+        acceptance,
+        "atomic_write_bytes",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            OSError("generator markdown failure")
+        ),
+    )
+
+    with pytest.raises(OSError, match="generator markdown failure"):
+        acceptance._write_generator_outputs(
+            {
+                "schema_version": "formal550_generator_gate_v1",
+                "status": "pass",
+                "case_count": 550,
+                "role_case_counts": {"main": 500, "negative": 50},
+                "passed_case_count": 550,
+                "failed_case_ids": [],
+            },
+            qa_root,
+        )
+
+    assert not (qa_root / "generator_gate.json").exists()
+    assert not (qa_root / "generator_gate.md").exists()
+
+
+def test_completed_progress_failure_removes_final_authority_outputs(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    config = _config(tmp_path)
+    campaign, main, negative = _campaign_documents()
+    _write_json(config.campaign_root / "FORMAL550_COMPLETE.json", campaign)
+    _write_json(config.campaign_root / "main" / "DATASET_COMPLETE.json", main)
+    _write_json(
+        config.campaign_root / "negative" / "DATASET_COMPLETE.json", negative
+    )
+
+    def pass_audit(_campaign: Path, qa: Path) -> dict[str, object]:
+        report = {
+            "schema_version": "formal550_generator_gate_v1",
+            "status": "pass",
+        }
+        _write_json(qa / "generator_gate.json", report)
+        (qa / "generator_gate.md").write_text("pass\n", encoding="utf-8")
+        return report
+
+    summary = {
+        "schema_version": acceptance.AUTOMATIC_SCHEMA,
+        "status": "pass",
+        "automatic_gate_passed": True,
+        "case_count": 550,
+        "role_case_counts": {"main": 500, "negative": 50},
+        "gate_rows": [],
+        "notebook_authority": "informational_read_only",
+    }
+    real_progress = acceptance._write_progress
+
+    def fail_completed_progress(*args: object, **kwargs: object) -> None:
+        if kwargs.get("status") == "complete":
+            raise OSError("completed progress failure")
+        real_progress(*args, **kwargs)
+
+    monkeypatch.setattr(acceptance, "audit_formal550", pass_audit)
+    monkeypatch.setattr(acceptance, "build_stage_commands", lambda _config: [])
+    monkeypatch.setattr(
+        acceptance, "build_final_summary", lambda _config: summary
+    )
+    monkeypatch.setattr(acceptance, "_write_progress", fail_completed_progress)
+
+    with pytest.raises(OSError, match="completed progress failure"):
+        run_acceptance_pipeline(config, resume=False)
+
+    assert not (
+        config.qa_root / "TASK13_FORMAL550_AUTOMATIC_ACCEPTANCE.json"
+    ).exists()
+    assert not (
+        config.qa_root / "TASK13_FORMAL550_AUTOMATIC_ACCEPTANCE.md"
+    ).exists()
+    progress = json.loads(
+        (config.qa_root / "PROGRESS.json").read_text(encoding="utf-8")
+    )
+    assert progress["status"] == "failed"
+    assert "automatic_acceptance_summary" not in progress["stages"]
+
+
+def test_loader_progress_failure_removes_generator_pass_outputs(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    config = _config(tmp_path)
+    campaign, main, negative = _campaign_documents()
+    _write_json(config.campaign_root / "FORMAL550_COMPLETE.json", campaign)
+    _write_json(config.campaign_root / "main" / "DATASET_COMPLETE.json", main)
+    _write_json(
+        config.campaign_root / "negative" / "DATASET_COMPLETE.json", negative
+    )
+    stage_script = config.pars2_root / "scripts" / "loader.py"
+    stage_script.write_text("# loader\n", encoding="utf-8")
+    stage = StageCommand(
+        name="formal550_main_loader_gate",
+        command=(sys.executable, str(stage_script)),
+        cwd=config.pars2_root,
+        script_path=stage_script,
+        output_paths=(config.qa_root / "loader.json",),
+    )
+
+    def pass_audit(_campaign: Path, qa: Path) -> dict[str, object]:
+        report = {
+            "schema_version": "formal550_generator_gate_v1",
+            "status": "pass",
+        }
+        _write_json(qa / "generator_gate.json", report)
+        (qa / "generator_gate.md").write_text("pass\n", encoding="utf-8")
+        return report
+
+    real_progress = acceptance._write_progress
+
+    def fail_loader_progress(*args: object, **kwargs: object) -> None:
+        if kwargs.get("current_stage") == stage.name:
+            raise OSError("loader progress failure")
+        real_progress(*args, **kwargs)
+
+    monkeypatch.setattr(acceptance, "audit_formal550", pass_audit)
+    monkeypatch.setattr(acceptance, "build_stage_commands", lambda _config: [stage])
+    monkeypatch.setattr(acceptance, "_write_progress", fail_loader_progress)
+
+    with pytest.raises(OSError, match="loader progress failure"):
+        run_acceptance_pipeline(config, resume=False)
+
+    assert not (config.qa_root / "generator_gate.json").exists()
+    assert not (config.qa_root / "generator_gate.md").exists()
+
+
+def test_generator_progress_failure_removes_stale_generator_pass(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    config = _config(tmp_path)
+    campaign, main, negative = _campaign_documents()
+    _write_json(config.campaign_root / "FORMAL550_COMPLETE.json", campaign)
+    _write_json(config.campaign_root / "main" / "DATASET_COMPLETE.json", main)
+    _write_json(
+        config.campaign_root / "negative" / "DATASET_COMPLETE.json", negative
+    )
+    _write_json(config.qa_root / "generator_gate.json", {"status": "pass"})
+    (config.qa_root / "generator_gate.md").write_text(
+        "STALE PASS\n", encoding="utf-8"
+    )
+
+    def fail_generator_progress(*_args: object, **_kwargs: object) -> None:
+        raise OSError("generator progress failure")
+
+    monkeypatch.setattr(
+        acceptance, "_write_progress", fail_generator_progress
+    )
+
+    with pytest.raises(OSError, match="generator progress failure"):
+        run_acceptance_pipeline(config, resume=False)
+
+    assert not (config.qa_root / "generator_gate.json").exists()
+    assert not (config.qa_root / "generator_gate.md").exists()
+
+
+def test_failed_progress_write_does_not_mask_generator_audit_error(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    config = _config(tmp_path)
+    campaign, main, negative = _campaign_documents()
+    _write_json(config.campaign_root / "FORMAL550_COMPLETE.json", campaign)
+    _write_json(config.campaign_root / "main" / "DATASET_COMPLETE.json", main)
+    _write_json(
+        config.campaign_root / "negative" / "DATASET_COMPLETE.json", negative
+    )
+
+    def fail_audit(*_args: object, **_kwargs: object) -> object:
+        raise Formal550AcceptanceError("artifact audit failed")
+
+    real_progress = acceptance._write_progress
+
+    def fail_only_failed_progress(*args: object, **kwargs: object) -> None:
+        if kwargs.get("status") == "failed":
+            raise OSError("failed progress write failed")
+        real_progress(*args, **kwargs)
+
+    monkeypatch.setattr(acceptance, "audit_formal550", fail_audit)
+    monkeypatch.setattr(
+        acceptance, "_write_progress", fail_only_failed_progress
+    )
+
+    with pytest.raises(Formal550AcceptanceError, match="artifact audit failed"):
+        run_acceptance_pipeline(config, resume=False)
+
+
+def test_generator_state_hash_failure_removes_published_generator_pass(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    config = _config(tmp_path)
+    campaign, main, negative = _campaign_documents()
+    _write_json(config.campaign_root / "FORMAL550_COMPLETE.json", campaign)
+    _write_json(config.campaign_root / "main" / "DATASET_COMPLETE.json", main)
+    _write_json(
+        config.campaign_root / "negative" / "DATASET_COMPLETE.json", negative
+    )
+
+    def pass_audit(_campaign: Path, qa: Path) -> dict[str, object]:
+        report = {
+            "schema_version": "formal550_generator_gate_v1",
+            "status": "pass",
+        }
+        _write_json(qa / "generator_gate.json", report)
+        (qa / "generator_gate.md").write_text("pass\n", encoding="utf-8")
+        return report
+
+    real_sha = acceptance.sha256_file
+
+    def fail_markdown_sha(path: Path) -> str:
+        if Path(path).name == "generator_gate.md":
+            raise OSError("generator state hash failure")
+        return real_sha(path)
+
+    monkeypatch.setattr(acceptance, "audit_formal550", pass_audit)
+    monkeypatch.setattr(acceptance, "sha256_file", fail_markdown_sha)
+
+    with pytest.raises(OSError, match="generator state hash failure"):
+        run_acceptance_pipeline(config, resume=False)
+
+    assert not (config.qa_root / "generator_gate.json").exists()
+    assert not (config.qa_root / "generator_gate.md").exists()
