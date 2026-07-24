@@ -491,12 +491,18 @@ def _role_dataset(role: str) -> Mapping[str, object]:
             "dataset_version": "2.0.0",
             "dataset_role": "main",
             "case_count": 500,
+            "family_size": 1,
+            "global_seed": 20260718,
+            "split_ratios": {"train": 0.8, "val": 0.1, "test": 0.1},
         },
         "negative": {
             "dataset_id": "PAR-S-TARE-HCC-NoPVI-NEG-v2",
             "dataset_version": "2.0.0",
             "dataset_role": "negative",
             "case_count": 50,
+            "family_size": 1,
+            "global_seed": 20260718,
+            "split_ratios": {"train": 0.0, "val": 0.0, "test": 1.0},
         },
     }
     return datasets[role]
@@ -532,8 +538,24 @@ def _validate_role_contract(
     ):
         raise Formal550LocalError(f"{role} local preflight schema/status mismatch")
     dataset = _role_dataset(role)
-    if any(generation.get(key) != value for key, value in dataset.items()):
+    expected_generation_dataset = {
+        key: value for key, value in dataset.items() if key != "split_ratios"
+    }
+    observed_generation_dataset = {
+        key: generation.get(key) for key in expected_generation_dataset
+    }
+    if observed_generation_dataset != expected_generation_dataset:
         raise Formal550LocalError(f"{role} generation dataset identity mismatch")
+    expected_split_dataset = {
+        "dataset_id": dataset["dataset_id"],
+        "global_seed": dataset["global_seed"],
+        "ratios": dataset["split_ratios"],
+    }
+    observed_split_dataset = {
+        key: split.get(key) for key in expected_split_dataset
+    }
+    if observed_split_dataset != expected_split_dataset:
+        raise Formal550LocalError(f"{role} split dataset identity mismatch")
     raw_entries = generation.get("entries")
     raw_summaries = report.get("cases")
     if not isinstance(raw_entries, list) or not all(

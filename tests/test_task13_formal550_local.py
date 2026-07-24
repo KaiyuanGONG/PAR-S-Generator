@@ -210,6 +210,29 @@ def _role_dataset(role: str) -> dict[str, object]:
         "dataset_version": "2.0.0",
         "dataset_role": role,
         "case_count": 500 if role == "main" else 50,
+        "family_size": 1,
+        "global_seed": 20260718,
+        "split_ratios": (
+            {"train": 0.8, "val": 0.1, "test": 0.1}
+            if role == "main"
+            else {"train": 0.0, "val": 0.0, "test": 1.0}
+        ),
+    }
+
+
+def _generation_dataset(role: str) -> dict[str, object]:
+    return {
+        key: value
+        for key, value in _role_dataset(role).items()
+        if key != "split_ratios"
+    }
+
+
+def _case_dataset_identity(role: str) -> dict[str, object]:
+    return {
+        key: value
+        for key, value in _role_dataset(role).items()
+        if key not in {"family_size", "global_seed", "split_ratios"}
     }
 
 
@@ -236,6 +259,20 @@ def _refresh_bundle_binding(results: Path, bundle: Path) -> None:
             **finalizer.read_json(path),
             "bundle_manifest_sha256": bundle_sha,
         })
+
+
+def _rewrite_bundled_preflight_file(
+    *,
+    results: Path,
+    bundle: Path,
+    preflight: Path,
+    role: str,
+    name: str,
+    value: object,
+) -> None:
+    _write_json(preflight / role / name, value)
+    _write_json(bundle / "plans" / role / name, value)
+    _refresh_bundle_binding(results, bundle)
 
 
 def _write_completed_quartet_case(case_dir: Path, case_id: str) -> dict[str, object]:
@@ -284,8 +321,17 @@ def _formal_input_roots(tmp_path: Path) -> tuple[Path, Path, Path]:
     master_cases: list[dict[str, object]] = []
     for role, entries in roles.items():
         role_root = preflight / role
-        generation = {"schema_version": "pars_generation_plan_v2", **_role_dataset(role), "entries": entries}
-        split = {"schema_version": "pars_split_plan_v2", "role": role}
+        generation = {
+            "schema_version": "pars_generation_plan_v2",
+            **_generation_dataset(role),
+            "entries": entries,
+        }
+        split = {
+            "schema_version": "pars_split_plan_v2",
+            "dataset_id": _role_dataset(role)["dataset_id"],
+            "global_seed": _role_dataset(role)["global_seed"],
+            "ratios": _role_dataset(role)["split_ratios"],
+        }
         _write_json(role_root / "GENERATION_PLAN.json", generation)
         _write_json(role_root / "SPLIT_PLAN.json", split)
         report = {
@@ -311,7 +357,7 @@ def _formal_input_roots(tmp_path: Path) -> tuple[Path, Path, Path]:
         plan_cases.extend(
             {
                 **entry,
-                **_role_dataset(role),
+                **_case_dataset_identity(role),
                 "node_id": ("cnc5", "cnc7", "cnc8")[len(plan_cases) % 3],
                 "rr_seed": len(plan_cases) + 1000,
                 "nn_multiplier": 1,
@@ -439,6 +485,88 @@ def test_role_contracts_bind_the_immutable_bundle_and_both_preflights(
         *[f"case_{index:05d}" for index in range(1, 500)],
     )
     assert contracts["negative"].expected_case_ids[-1] == "negative_00049"
+
+
+def test_validate_formal_inputs_accepts_full_frozen_role_dataset_bindings(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    results, bundle, preflight = _formal_input_roots(tmp_path)
+    monkeypatch.setattr(finalizer, "_validate_downloaded_results", lambda **_: None)
+
+    contracts = finalizer.validate_formal_inputs(results, bundle, preflight)
+
+    assert set(contracts) == {"main", "negative"}
+
+
+@pytest.mark.parametrize(
+    ("role", "field", "wrong_value"),
+    (
+        ("main", "family_size", 2),
+        ("negative", "global_seed", 20260719),
+        ("main", "split_ratios", {"train": 0.7, "val": 0.2, "test": 0.1}),
+        ("negative", "unexpected_field", True),
+    ),
+)
+def test_validate_formal_inputs_rejects_task13_role_dataset_frozen_field_drift(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    role: str,
+    field: str,
+    wrong_value: object,
+) -> None:
+    results, bundle, preflight = _formal_input_roots(tmp_path)
+    plan_path = bundle / "TASK13_PLAN.json"
+    plan = finalizer.read_json(plan_path)
+    datasets = {key: dict(value) for key, value in plan["datasets"].items()}
+    datasets[role][field] = wrong_value
+    _write_json(plan_path, {**plan, "datasets": datasets})
+    _refresh_bundle_binding(results, bundle)
+    monkeypatch.setattr(finalizer, "_validate_downloaded_results", lambda **_: None)
+
+    with pytest.raises(
+        finalizer.Formal550LocalError,
+        match="Task13 plan role dataset bindings mismatch",
+    ):
+        finalizer.validate_formal_inputs(results, bundle, preflight)
+
+
+@pytest.mark.parametrize(
+    ("role", "name", "field", "wrong_value"),
+    (
+        ("main", "GENERATION_PLAN.json", "family_size", 2),
+        ("negative", "GENERATION_PLAN.json", "global_seed", 20260719),
+        (
+            "main",
+            "SPLIT_PLAN.json",
+            "ratios",
+            {"train": 0.7, "val": 0.2, "test": 0.1},
+        ),
+    ),
+)
+def test_validate_formal_inputs_rejects_preflight_frozen_field_drift(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    role: str,
+    name: str,
+    field: str,
+    wrong_value: object,
+) -> None:
+    results, bundle, preflight = _formal_input_roots(tmp_path)
+    path = preflight / role / name
+    value = finalizer.read_json(path)
+    _rewrite_bundled_preflight_file(
+        results=results,
+        bundle=bundle,
+        preflight=preflight,
+        role=role,
+        name=name,
+        value={**value, field: wrong_value},
+    )
+    monkeypatch.setattr(finalizer, "_validate_downloaded_results", lambda **_: None)
+
+    with pytest.raises(finalizer.Formal550LocalError, match=f"{role} .* mismatch"):
+        finalizer.validate_formal_inputs(results, bundle, preflight)
 
 
 def test_validate_formal_inputs_rejects_master_bundle_binding_drift(
