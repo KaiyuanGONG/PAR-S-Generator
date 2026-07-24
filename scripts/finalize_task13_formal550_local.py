@@ -1376,10 +1376,14 @@ def _initialize_campaign_roots(
         if not resume:
             raise FileExistsError("Task13 roots already exist; use --resume")
         return
-    if resume:
-        raise Formal550LocalError("--resume requires existing Task13 roots")
-    Path(output_root).mkdir(parents=True, exist_ok=False)
-    Path(work_root).mkdir(parents=True, exist_ok=False)
+    output_root = Path(output_root)
+    work_root = Path(work_root)
+    output_root.mkdir(parents=True, exist_ok=False)
+    try:
+        work_root.mkdir(parents=True, exist_ok=False)
+    except Exception:
+        output_root.rmdir()
+        raise
 
 
 def _finalize_role(

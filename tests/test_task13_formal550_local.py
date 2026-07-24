@@ -785,6 +785,66 @@ def test_cli_accepts_validate_only_resume_and_bounded_max_cases() -> None:
     assert args.max_cases == 17
 
 
+def test_campaign_roots_resume_initializes_a_fresh_pair(tmp_path: Path) -> None:
+    output_root = tmp_path / "output"
+    work_root = tmp_path / "work"
+
+    finalizer._initialize_campaign_roots(output_root, work_root, resume=True)
+
+    assert output_root.is_dir()
+    assert work_root.is_dir()
+
+
+@pytest.mark.parametrize("existing_name", ["output", "work"])
+def test_campaign_roots_reject_one_sided_state(
+    tmp_path: Path,
+    existing_name: str,
+) -> None:
+    output_root = tmp_path / "output"
+    work_root = tmp_path / "work"
+    (output_root if existing_name == "output" else work_root).mkdir()
+
+    with pytest.raises(
+        finalizer.Formal550LocalError,
+        match="output/work roots are inconsistent",
+    ):
+        finalizer._initialize_campaign_roots(
+            output_root,
+            work_root,
+            resume=True,
+        )
+
+
+def test_campaign_roots_resume_preserves_an_existing_pair(tmp_path: Path) -> None:
+    output_root = tmp_path / "output"
+    work_root = tmp_path / "work"
+    output_root.mkdir()
+    work_root.mkdir()
+    output_sentinel = output_root / "sentinel.txt"
+    work_sentinel = work_root / "sentinel.txt"
+    output_sentinel.write_text("output\n", encoding="utf-8")
+    work_sentinel.write_text("work\n", encoding="utf-8")
+
+    finalizer._initialize_campaign_roots(output_root, work_root, resume=True)
+
+    assert output_sentinel.read_text(encoding="utf-8") == "output\n"
+    assert work_sentinel.read_text(encoding="utf-8") == "work\n"
+
+
+def test_existing_staging_without_resume_remains_rejected(tmp_path: Path) -> None:
+    archive = tmp_path / "task13_formal550_results.tar.gz"
+    _write_result_archive(
+        archive,
+        member_name="task13_formal550_results/TASK13_FORMAL550_MASTER.json",
+    )
+    sidecar = _write_sidecar(archive, finalizer.sha256_file(archive))
+    staging = tmp_path / "staging"
+    finalizer.stage_results_archive(archive, sidecar, staging, resume=False)
+
+    with pytest.raises(FileExistsError, match="staging root exists; use --resume"):
+        finalizer.stage_results_archive(archive, sidecar, staging, resume=False)
+
+
 def _minimal_role_contract(
     tmp_path: Path,
     *,
@@ -1214,6 +1274,68 @@ def test_campaign_marker_not_written_when_post_freeze_revalidation_fails(
     assert result == 1
     assert writes == []
     assert not (tmp_path / "output" / "FORMAL550_COMPLETE.json").exists()
+
+
+def test_resume_with_reusable_staging_and_fresh_campaign_reaches_writer(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    _patch_minimal_main_inputs(monkeypatch, tmp_path)
+    staging_root = tmp_path / "staging"
+    staging_root.mkdir()
+    writer_calls: list[tuple[str, int | None]] = []
+
+    def reuse_staging(
+        _archive: Path,
+        _sidecar: Path,
+        staging: Path,
+        *,
+        resume: bool,
+    ) -> Path:
+        assert Path(staging) == staging_root
+        assert resume is True
+        return staging_root / "task13_formal550_results"
+
+    def finalize_role(
+        *,
+        role: str,
+        output_root: Path,
+        work_root: Path,
+        max_cases: int | None,
+        **_: object,
+    ) -> tuple[None, int]:
+        assert Path(output_root).is_dir()
+        assert Path(work_root).is_dir()
+        writer_calls.append((role, max_cases))
+        return None, 1
+
+    monkeypatch.setattr(finalizer, "stage_results_archive", reuse_staging)
+    monkeypatch.setattr(finalizer, "_finalize_role", finalize_role)
+
+    result = finalizer.main(
+        [
+            "--archive",
+            str(tmp_path / "archive.tar.gz"),
+            "--sidecar",
+            str(tmp_path / "archive.sha256"),
+            "--staging-root",
+            str(staging_root),
+            "--preflight-root",
+            str(tmp_path / "preflight"),
+            "--bundle-root",
+            str(tmp_path / "bundle"),
+            "--output-root",
+            str(tmp_path / "output"),
+            "--work-root",
+            str(tmp_path / "work"),
+            "--resume",
+            "--max-cases",
+            "1",
+        ]
+    )
+
+    assert result == 3
+    assert writer_calls == [("main", 1)]
 
 
 def test_bounded_run_resume_lifecycle_is_independent_and_exact(
