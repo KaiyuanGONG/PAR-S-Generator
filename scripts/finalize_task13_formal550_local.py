@@ -28,6 +28,7 @@ from task12f_linux50_common import (  # noqa: E402
     validate_bundle,
 )
 from task13_formal550_runtime import patch_runtime_contract, restore_runtime_contract  # noqa: E402
+from core.simind_postprocess import audit_simind_completion  # noqa: E402
 
 
 STAGING_SCHEMA = "pars_v2_task13_formal550_staging_v1"
@@ -373,6 +374,189 @@ def _validate_role_contract(
     )
 
 
+def _switch(command: object, prefix: str) -> int:
+    if not isinstance(command, list):
+        raise Formal550LocalError("SIMIND command must be a list")
+    values = [
+        str(value)[len(prefix) :]
+        for value in command
+        if str(value).startswith(prefix)
+    ]
+    if len(values) != 1:
+        raise Formal550LocalError(f"SIMIND command requires exactly one {prefix} switch")
+    try:
+        return int(values[0])
+    except ValueError as exc:
+        raise Formal550LocalError(f"SIMIND command has invalid {prefix} switch") from exc
+
+
+def _validate_downloaded_case(
+    *,
+    case_dir: Path,
+    case: Mapping[str, object],
+    node_id: str,
+    bundle_sha: str,
+    expected_simind_sha: str,
+) -> Mapping[str, object]:
+    """Fail closed on every downloaded Task13 SIMIND case and its quartet."""
+
+    case_id = str(case.get("case_id"))
+    marker_path = case_dir / "TASK13_CASE.json"
+    marker = _read_object(marker_path, f"{case_id} Task13 case marker")
+    if (
+        marker.get("schema_version") != "pars_v2_task13_formal550_case_v1"
+        or marker.get("status") != "complete"
+        or marker.get("case_id") != case_id
+        or marker.get("node_id") != node_id
+        or marker.get("bundle_manifest_sha256") != bundle_sha
+    ):
+        raise Formal550LocalError(f"invalid downloaded Task13 marker for {case_id}")
+    artifacts = marker.get("output_artifacts")
+    if not isinstance(artifacts, Mapping):
+        raise Formal550LocalError(f"{case_id} artifact records are missing")
+    for extension in ("a00", "mhd", "res", "spe"):
+        path = case_dir / f"{case_id}.{extension}"
+        record = artifacts.get(extension)
+        if not path.is_file() or not isinstance(record, Mapping):
+            raise Formal550LocalError(f"{case_id}.{extension} is missing")
+        if path.stat().st_size != int(record.get("size_bytes", -1)):
+            raise Formal550LocalError(f"{case_id}.{extension} size mismatch")
+        if sha256_file(path) != record.get("sha256"):
+            raise Formal550LocalError(f"{case_id}.{extension} hash mismatch")
+    provenance_path = case_dir / "run_provenance.json"
+    provenance = _read_object(provenance_path, f"{case_id} SIMIND provenance")
+    if marker.get("simind_provenance_sha256") != sha256_file(provenance_path):
+        raise Formal550LocalError(f"{case_id} SIMIND provenance hash mismatch")
+    if (
+        provenance.get("schema_version") != "pars_simind_run_v2"
+        or provenance.get("status") != "complete"
+        or provenance.get("exit_code") != 0
+        or provenance.get("binary_sha256") != expected_simind_sha
+        or provenance.get("rr_seed") != case.get("rr_seed")
+        or provenance.get("nn_multiplier") != case.get("nn_multiplier")
+    ):
+        raise Formal550LocalError(f"{case_id} SIMIND provenance contract mismatch")
+    if (
+        _switch(provenance.get("command"), "/RR:") != int(case["rr_seed"])
+        or _switch(provenance.get("command"), "/NN:") != int(case["nn_multiplier"])
+    ):
+        raise Formal550LocalError(f"{case_id} SIMIND command binding mismatch")
+    inputs = provenance.get("inputs")
+    planned_inputs = case.get("inputs")
+    if not isinstance(inputs, Mapping) or not isinstance(planned_inputs, Mapping):
+        raise Formal550LocalError(f"{case_id} SIMIND input binding is missing")
+    if (
+        inputs.get("source_sha256") != planned_inputs.get("source_sha256")
+        or inputs.get("density_sha256") != planned_inputs.get("density_sha256")
+    ):
+        raise Formal550LocalError(f"{case_id} SIMIND input binding mismatch")
+    try:
+        audit = audit_simind_completion(
+            case_dir / case_id,
+            expected_shape=(60, 128, 128),
+            exit_code=0,
+        )
+    except (OSError, ValueError, RuntimeError) as exc:
+        raise Formal550LocalError(f"{case_id} SIMIND quartet validation failed") from exc
+    return {
+        "case_id": case_id,
+        "node_id": node_id,
+        "dataset_id": case.get("dataset_id"),
+        "dataset_role": case.get("dataset_role"),
+        "split": case.get("split"),
+        "rr_seed": int(case["rr_seed"]),
+        "projection_sum": audit.projection_sum,
+        "a00_sha256": audit.sha256["a00"],
+        "case_marker_sha256": sha256_file(marker_path),
+        "simind_provenance_sha256": sha256_file(provenance_path),
+        "status": "pass",
+    }
+
+
+def _validate_downloaded_results(
+    *,
+    results_root: Path,
+    plan: Mapping[str, object],
+    bundle_sha: str,
+    master: Mapping[str, object],
+) -> None:
+    """Validate every assigned node and every completed Task13 case exactly once."""
+
+    nodes = plan["expected_nodes"]
+    plan_cases = plan["cases"]
+    execution = plan.get("execution")
+    runtime = plan.get("linux_runtime")
+    if not isinstance(execution, Mapping) or not isinstance(runtime, Mapping):
+        raise Formal550LocalError("Task13 execution/runtime contract is malformed")
+    parallel = execution.get("requested_parallel_by_node")
+    if not isinstance(parallel, Mapping):
+        raise Formal550LocalError("Task13 node parallelism contract is missing")
+    expected_simind_sha = runtime.get("simind_sha256")
+    if not isinstance(expected_simind_sha, str):
+        raise Formal550LocalError("Task13 SIMIND binary binding is missing")
+    results: list[Mapping[str, object]] = []
+    node_counts: dict[str, int] = {}
+    runtime_fingerprints: dict[str, Mapping[str, object]] = {}
+    observed_case_ids: set[str] = set()
+    for node_id in nodes:
+        node_root = results_root / "nodes" / node_id
+        if not node_root.is_dir():
+            raise Formal550LocalError(f"missing node results: {node_id}")
+        if (node_root / "NODE_FAILED.json").exists():
+            raise Formal550LocalError(f"downloaded results retain NODE_FAILED.json: {node_id}")
+        node_complete = _read_object(
+            node_root / "NODE_COMPLETE.json", f"{node_id} node completion"
+        )
+        assigned = [case for case in plan_cases if case.get("node_id") == node_id]
+        expected_ids = sorted(str(case["case_id"]) for case in assigned)
+        if (
+            node_complete.get("schema_version")
+            != "pars_v2_task13_formal550_node_complete_v1"
+            or node_complete.get("status") != "complete"
+            or node_complete.get("bundle_manifest_sha256") != bundle_sha
+            or node_complete.get("case_ids") != expected_ids
+            or int(node_complete.get("case_count", -1)) != len(expected_ids)
+            or node_complete.get("max_parallel") != parallel.get(node_id)
+        ):
+            raise Formal550LocalError(f"downloaded node completion mismatch: {node_id}")
+        fingerprint = node_complete.get("runtime_fingerprint")
+        if not isinstance(fingerprint, Mapping):
+            raise Formal550LocalError(f"downloaded node runtime is missing: {node_id}")
+        runtime_fingerprints[node_id] = fingerprint
+        node_counts[node_id] = len(expected_ids)
+        for case in assigned:
+            case_id = str(case["case_id"])
+            if case_id in observed_case_ids:
+                raise Formal550LocalError(f"duplicate downloaded Task13 case: {case_id}")
+            observed_case_ids.add(case_id)
+            results.append(
+                _validate_downloaded_case(
+                    case_dir=node_root / "cases" / case_id,
+                    case=case,
+                    node_id=node_id,
+                    bundle_sha=bundle_sha,
+                    expected_simind_sha=expected_simind_sha,
+                )
+            )
+    results.sort(key=lambda item: str(item["case_id"]))
+    planned_ids = {str(case["case_id"]) for case in plan_cases}
+    if observed_case_ids != planned_ids or len(observed_case_ids) != 550:
+        raise Formal550LocalError("downloaded result set is not the exact frozen 550 cases")
+    if (
+        master.get("node_case_counts") != node_counts
+        or master.get("runtime_fingerprints") != runtime_fingerprints
+        or master.get("cases") != results
+    ):
+        raise Formal550LocalError("downloaded Task13 master case/node binding mismatch")
+    projection_summary = {
+        "minimum": min(float(item["projection_sum"]) for item in results),
+        "maximum": max(float(item["projection_sum"]) for item in results),
+        "mean": sum(float(item["projection_sum"]) for item in results) / 550,
+    }
+    if master.get("projection_sum_summary") != projection_summary:
+        raise Formal550LocalError("downloaded Task13 projection summary mismatch")
+
+
 def validate_formal_inputs(
     results_root: Path,
     bundle_root: Path,
@@ -427,6 +611,20 @@ def validate_formal_inputs(
             raise Formal550LocalError(f"Task13 plan {role} case binding mismatch")
     if len(plan_cases) != 550:
         raise Formal550LocalError("Task13 plan case count mismatch")
+    if any(
+        not isinstance(case.get("rr_seed"), int)
+        or isinstance(case.get("rr_seed"), bool)
+        for case in plan_cases
+    ):
+        raise Formal550LocalError("Task13 plan /RR seeds are malformed")
+    rr_seeds = [int(case["rr_seed"]) for case in plan_cases]
+    if len(set(rr_seeds)) != 550:
+        raise Formal550LocalError("Task13 requires exactly 550 unique /RR seeds")
+    nodes = plan.get("expected_nodes")
+    if nodes != ["cnc5", "cnc7", "cnc8"]:
+        raise Formal550LocalError("Task13 expected-node contract mismatch")
+    if any(case.get("node_id") not in nodes for case in plan_cases):
+        raise Formal550LocalError("Task13 plan case/node binding mismatch")
     bundle_sha = sha256_file(bundle_root / "BUNDLE_MANIFEST.json")
     remote = _read_object(results_root / "REMOTE_PREFLIGHT.json", "remote preflight")
     master = _read_object(results_root / "TASK13_FORMAL550_MASTER.json", "Task13 master")
@@ -461,6 +659,12 @@ def validate_formal_inputs(
             raise Formal550LocalError(f"downloaded Task13 master {role} case binding mismatch")
     if len(raw_master_cases) != 550:
         raise Formal550LocalError("downloaded Task13 master case count mismatch")
+    _validate_downloaded_results(
+        results_root=results_root,
+        plan=plan,
+        bundle_sha=bundle_sha,
+        master=master,
+    )
     return contracts
 
 

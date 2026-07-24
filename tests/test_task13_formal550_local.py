@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 import sys
 import tarfile
+import ast
 
 import numpy as np
 import pytest
@@ -119,13 +120,48 @@ def test_stage_results_archive_rejects_path_traversal(tmp_path: Path) -> None:
         )
 
 
+def test_resume_cli_revalidates_a_tampered_staging_tree(tmp_path: Path) -> None:
+    results, bundle, preflight = _formal_input_roots(tmp_path)
+    archive = tmp_path / "task13_formal550_results.tar.gz"
+    with tarfile.open(archive, "w:gz") as stream:
+        stream.add(results, arcname="task13_formal550_results")
+    sidecar = _write_sidecar(archive, finalizer.sha256_file(archive))
+    staging = tmp_path / "staging"
+    staged_results = finalizer.stage_results_archive(
+        archive, sidecar, staging, resume=False
+    )
+    master_path = staged_results / "TASK13_FORMAL550_MASTER.json"
+    _write_json(master_path, {
+        **finalizer.read_json(master_path),
+        "bundle_manifest_sha256": "0" * 64,
+    })
+
+    with pytest.raises(finalizer.Formal550LocalError, match="master.*bundle"):
+        finalizer.main([
+            "--archive", str(archive),
+            "--sidecar", str(sidecar),
+            "--staging-root", str(staging),
+            "--bundle-root", str(bundle),
+            "--preflight-root", str(preflight),
+            "--resume",
+            "--validate-only",
+        ])
+
+
 def test_task13_local_finalizer_never_launches_simind() -> None:
     source = (REPO_ROOT / "scripts" / "finalize_task13_formal550_local.py").read_text(
         encoding="utf-8"
     )
+    tree = ast.parse(source)
+    calls = {
+        node.func.id
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
+    }
 
     assert "run_simind" not in source
     assert "subprocess.run" not in source
+    assert calls.isdisjoint({"run_simind_case", "run_simind"})
 
 
 def _formal_entries(role: str, count: int) -> list[dict[str, object]]:
@@ -176,6 +212,65 @@ def _role_dataset(role: str) -> dict[str, object]:
     }
 
 
+def _refresh_bundle_binding(results: Path, bundle: Path) -> None:
+    plan_path = bundle / "TASK13_PLAN.json"
+    manifest = finalizer.read_json(bundle / "BUNDLE_MANIFEST.json")
+    _write_json(bundle / "BUNDLE_MANIFEST.json", {
+        **manifest,
+        "plan_sha256": finalizer.sha256_file(plan_path),
+        "files": [
+            {
+                "relative_path": path.relative_to(bundle).as_posix(),
+                "size_bytes": path.stat().st_size,
+                "sha256": finalizer.sha256_file(path),
+            }
+            for path in sorted(bundle.rglob("*"))
+            if path.is_file() and path.name != "BUNDLE_MANIFEST.json"
+        ],
+    })
+    bundle_sha = finalizer.sha256_file(bundle / "BUNDLE_MANIFEST.json")
+    for name in ("REMOTE_PREFLIGHT.json", "TASK13_FORMAL550_MASTER.json"):
+        path = results / name
+        _write_json(path, {
+            **finalizer.read_json(path),
+            "bundle_manifest_sha256": bundle_sha,
+        })
+
+
+def _write_completed_quartet_case(case_dir: Path, case_id: str) -> dict[str, object]:
+    case_dir.mkdir(parents=True, exist_ok=True)
+    paths = {
+        "a00": case_dir / f"{case_id}.a00",
+        "mhd": case_dir / f"{case_id}.mhd",
+        "res": case_dir / f"{case_id}.res",
+        "spe": case_dir / f"{case_id}.spe",
+    }
+    paths["a00"].write_bytes(b"\0" * (60 * 128 * 128 * 4))
+    paths["mhd"].write_text(
+        "\n".join((
+            "ObjectType = Image",
+            "BinaryData = True",
+            "BinaryDataByteOrderMSB = False",
+            "CompressedData = False",
+            "NDims = 3",
+            "DimSize = 128 128 60",
+            "ElementType = MET_FLOAT",
+            f"ElementDataFile = {case_id}.a00",
+            "",
+        )),
+        encoding="ascii",
+    )
+    paths["res"].write_text("SIMIND completed\n", encoding="utf-8")
+    paths["spe"].write_text("spectrum\n", encoding="utf-8")
+    return {
+        suffix: {
+            "size_bytes": path.stat().st_size,
+            "sha256": finalizer.sha256_file(path),
+        }
+        for suffix, path in paths.items()
+    }
+
+
 def _formal_input_roots(tmp_path: Path) -> tuple[Path, Path, Path]:
     """Write the smallest complete immutable Task13 contract fixture."""
 
@@ -212,13 +307,31 @@ def _formal_input_roots(tmp_path: Path) -> tuple[Path, Path, Path]:
             "generation_plan_sha256": report["generation_plan_sha256"],
             "split_plan_sha256": report["split_plan_sha256"],
         }
-        plan_cases.extend({**entry, **_role_dataset(role)} for entry in entries)
+        plan_cases.extend(
+            {
+                **entry,
+                **_role_dataset(role),
+                "node_id": ("cnc5", "cnc7", "cnc8")[len(plan_cases) % 3],
+                "rr_seed": len(plan_cases) + 1000,
+                "nn_multiplier": 1,
+                "inputs": {
+                    "source_sha256": "1" * 64,
+                    "density_sha256": "2" * 64,
+                },
+            }
+            for entry in entries
+        )
         master_cases.extend({"case_id": entry["case_id"], "dataset_role": role} for entry in entries)
     plan = {
         "schema_version": "pars_v2_task13_formal550_plan_v1",
         "dataset": {"dataset_id": "PAR-S-V2-FORMAL550", "dataset_version": "2.0.0", "case_count": 550},
         "datasets": {role: _role_dataset(role) for role in roles},
         "preflight": plan_preflight,
+        "expected_nodes": ["cnc5", "cnc7", "cnc8"],
+        "execution": {
+            "requested_parallel_by_node": {"cnc5": 17, "cnc7": 17, "cnc8": 16},
+        },
+        "linux_runtime": {"simind_sha256": "a" * 64},
         "cases": plan_cases,
     }
     _write_json(bundle / "TASK13_PLAN.json", plan)
@@ -302,12 +415,21 @@ def test_validate_role_entries_rejects_negative_weight_or_split_drift() -> None:
         )
 
 
-def test_validate_formal_inputs_binds_master_bundle_and_both_role_contracts(
+def test_role_contracts_bind_the_immutable_bundle_and_both_preflights(
     tmp_path: Path,
 ) -> None:
     results, bundle, preflight = _formal_input_roots(tmp_path)
 
-    contracts = finalizer.validate_formal_inputs(results, bundle, preflight)
+    _, plan = finalizer._formal_bundle(bundle)
+    contracts = {
+        role: finalizer._validate_role_contract(
+            role=role,
+            preflight_root=preflight / role,
+            bundle_root=bundle,
+            plan=plan,
+        )
+        for role in ("main", "negative")
+    }
 
     assert set(contracts) == {"main", "negative"}
     assert isinstance(contracts["main"], finalizer.RoleContract)
@@ -342,6 +464,93 @@ def test_validate_formal_inputs_rejects_local_preflight_byte_drift(
 
     with pytest.raises(finalizer.Formal550LocalError, match="uploaded/local main split"):
         finalizer.validate_formal_inputs(results, bundle, preflight)
+
+
+def test_validate_formal_inputs_rejects_missing_required_node(
+    tmp_path: Path,
+) -> None:
+    results, bundle, preflight = _formal_input_roots(tmp_path)
+
+    with pytest.raises(finalizer.Formal550LocalError, match="missing node results: cnc5"):
+        finalizer.validate_formal_inputs(results, bundle, preflight)
+
+
+def test_validate_formal_inputs_rejects_duplicate_rr_seed(
+    tmp_path: Path,
+) -> None:
+    results, bundle, preflight = _formal_input_roots(tmp_path)
+    plan_path = bundle / "TASK13_PLAN.json"
+    plan = finalizer.read_json(plan_path)
+    cases = list(plan["cases"])
+    cases[1] = {**cases[1], "rr_seed": cases[0]["rr_seed"]}
+    _write_json(plan_path, {**plan, "cases": cases})
+    _refresh_bundle_binding(results, bundle)
+
+    with pytest.raises(finalizer.Formal550LocalError, match="unique /RR"):
+        finalizer.validate_formal_inputs(results, bundle, preflight)
+
+
+def test_validate_formal_inputs_rejects_missing_rr_seed(
+    tmp_path: Path,
+) -> None:
+    results, bundle, preflight = _formal_input_roots(tmp_path)
+    plan_path = bundle / "TASK13_PLAN.json"
+    plan = finalizer.read_json(plan_path)
+    cases = list(plan["cases"])
+    cases[0] = {key: value for key, value in cases[0].items() if key != "rr_seed"}
+    _write_json(plan_path, {**plan, "cases": cases})
+    _refresh_bundle_binding(results, bundle)
+
+    with pytest.raises(finalizer.Formal550LocalError, match="/RR seeds are malformed"):
+        finalizer.validate_formal_inputs(results, bundle, preflight)
+
+
+def test_downloaded_case_validator_rejects_tampered_quartet_bytes(tmp_path: Path) -> None:
+    case_id = "case_00000"
+    case_dir = tmp_path / case_id
+    artifacts = _write_completed_quartet_case(case_dir, case_id)
+    provenance = {
+        "schema_version": "pars_simind_run_v2",
+        "status": "complete",
+        "exit_code": 0,
+        "binary_sha256": "a" * 64,
+        "rr_seed": 1000,
+        "nn_multiplier": 1,
+        "command": ["/RR:1000", "/NN:1"],
+        "inputs": {"source_sha256": "1" * 64, "density_sha256": "2" * 64},
+    }
+    _write_json(case_dir / "run_provenance.json", provenance)
+    _write_json(case_dir / "TASK13_CASE.json", {
+        "schema_version": "pars_v2_task13_formal550_case_v1",
+        "status": "complete",
+        "case_id": case_id,
+        "node_id": "cnc5",
+        "bundle_manifest_sha256": "b" * 64,
+        "simind_provenance_sha256": finalizer.sha256_file(
+            case_dir / "run_provenance.json"
+        ),
+        "output_artifacts": artifacts,
+    })
+    (case_dir / f"{case_id}.spe").write_text("tampered\n", encoding="utf-8")
+    case = {
+        "case_id": case_id,
+        "node_id": "cnc5",
+        "dataset_id": "PAR-S-TARE-HCC-NoPVI-SYN-v2",
+        "dataset_role": "main",
+        "split": "train",
+        "rr_seed": 1000,
+        "nn_multiplier": 1,
+        "inputs": {"source_sha256": "1" * 64, "density_sha256": "2" * 64},
+    }
+
+    with pytest.raises(finalizer.Formal550LocalError, match="spe hash mismatch"):
+        finalizer._validate_downloaded_case(
+            case_dir=case_dir,
+            case=case,
+            node_id="cnc5",
+            bundle_sha="b" * 64,
+            expected_simind_sha="a" * 64,
+        )
 
 
 def test_cli_accepts_validate_only_resume_and_bounded_max_cases() -> None:
