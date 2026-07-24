@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import argparse
 from collections import Counter
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 import json
 import math
 import os
@@ -28,6 +28,29 @@ from task12f_linux50_common import (  # noqa: E402
     validate_bundle,
 )
 from task13_formal550_runtime import patch_runtime_contract, restore_runtime_contract  # noqa: E402
+from core.case_writer_v2 import (  # noqa: E402
+    DATASET_COMPLETE_FILENAME,
+    CasePayloadV2,
+    DatasetContractV2,
+    freeze_dataset,
+    load_case_record_v2,
+    write_case_v2,
+)
+from core.liver_geometry import GridSpecV2  # noqa: E402
+from core.pilot_v2 import build_completed_metadata, simind_extra_artifacts  # noqa: E402
+from core.production_v2 import (  # noqa: E402
+    prepare_negative_case,
+    prepare_population_case,
+    summarize_prepared_negative_case,
+    summarize_prepared_population_case,
+)
+from core.provenance import sha256_json  # noqa: E402
+from core.reproducibility_v2 import (  # noqa: E402
+    load_and_validate_preflight_input_bundle,
+    prove_preflight_byte_identity,
+)
+from core.schemas_v2 import load_evidence_registry, load_profile  # noqa: E402
+from core.simind_exec import SimindRunResult  # noqa: E402
 from core.simind_postprocess import audit_simind_completion  # noqa: E402
 
 
@@ -55,6 +78,42 @@ DEFAULT_OUTPUT_ROOT = Path(r"D:\PFE-U\PAR\outputs\pars_v2_formal550_v1")
 DEFAULT_WORK_ROOT = Path(r"D:\PFE-U\PAR\outputs\pars_v2_formal550_v1_work")
 
 _SHA256 = re.compile(r"[0-9a-f]{64}")
+ROLE_PROGRESS_SCHEMA = "pars_v2_task13_formal550_role_progress_v1"
+CAMPAIGN_COMPLETE_SCHEMA = "pars_v2_task13_formal550_complete_v1"
+CAMPAIGN_COMPLETE_FILENAME = "FORMAL550_COMPLETE.json"
+
+REQUIRED_ARTIFACTS = (
+    "phantom_npz",
+    "metadata_json",
+    "projection_a00",
+    "projection_mhd",
+    "projection_res",
+    "projection_spe",
+    "simind_run_provenance",
+    "simind_source_bin",
+    "simind_density_bin",
+    "formal_config",
+    "formal_runtime",
+    "role_preflight",
+    "role_input_bundle",
+    "preflight_byte_identity",
+    "generation_plan",
+    "split_plan",
+    "task13_bundle_manifest",
+    "task13_execution_plan",
+    "task13_case_preflight",
+    "task13_remote_preflight",
+    "task13_node_complete",
+    "task13_case_marker",
+    "task13_master",
+    "population_profile",
+    "generation_profile",
+    "scanner_config",
+    "evidence_registry",
+    "task12g_acceptance",
+    "simind_smc_snapshot",
+    "simind_ini_snapshot",
+)
 
 
 class Formal550LocalError(RuntimeError):
@@ -72,6 +131,162 @@ class RoleContract:
     entries: tuple[Mapping[str, object], ...]
     summaries: Mapping[str, Mapping[str, object]]
     expected_case_ids: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class DownloadedCaseV2:
+    case_id: str
+    node_id: str
+    case_dir: Path
+    case_marker_path: Path
+    node_complete_path: Path
+
+
+def _dataset_contract(
+    role_contract: RoleContract,
+    output_root: Path,
+) -> DatasetContractV2:
+    generation = role_contract.generation
+    return DatasetContractV2(
+        output_root=Path(output_root),
+        dataset_id=str(generation["dataset_id"]),
+        dataset_version=str(generation["dataset_version"]),
+        dataset_role=role_contract.role,
+        expected_case_ids=role_contract.expected_case_ids,
+        allowed_profile_ids=(str(generation["profile_id"]),),
+        split_plan_sha256=str(role_contract.split["sha256"]),
+        required_artifact_names=REQUIRED_ARTIFACTS,
+    )
+
+
+def _prepare_role_case(
+    *,
+    role: str,
+    case_id: str,
+    entry: Mapping[str, object],
+    profile: object,
+    grid: object,
+    global_seed: int,
+    base_histories: int,
+    work_dir: Path,
+    max_tumor_attempts: int = 32,
+) -> object:
+    common = {
+        "global_seed": global_seed,
+        "base_histories": base_histories,
+        "work_dir": work_dir,
+    }
+    if role == "main":
+        return prepare_population_case(
+            case_id,
+            profile,
+            grid,
+            mismatch_challenge=bool(entry.get("mismatch_challenge", False)),
+            max_tumor_attempts=max_tumor_attempts,
+            **common,
+        )
+    if role == "negative":
+        return prepare_negative_case(case_id, profile, grid, **common)
+    raise ValueError(f"unknown formal role: {role}")
+
+
+def _write_role_progress(
+    work_root: Path,
+    *,
+    role: str,
+    status: str,
+    records: Sequence[object],
+    total_count: int,
+    current_case_id: str | None = None,
+    error: str | None = None,
+    dataset_complete: Mapping[str, object] | None = None,
+) -> Path:
+    path = Path(work_root) / role / "PROGRESS.json"
+    completed = [str(record.case_id) for record in records]
+    document: dict[str, object] = {
+        "schema_version": ROLE_PROGRESS_SCHEMA,
+        "status": status,
+        "role": role,
+        "completed_case_ids": completed,
+        "completed_count": len(completed),
+        "total_count": total_count,
+        "remaining_count": total_count - len(completed),
+    }
+    if current_case_id is not None:
+        document["current_case_id"] = current_case_id
+    if error is not None:
+        document["error"] = error
+    if dataset_complete is not None:
+        document["dataset_complete"] = dict(dataset_complete)
+    atomic_write_json(path, document)
+    return path
+
+
+def _campaign_complete_document(
+    main_marker: object,
+    negative_marker: object,
+) -> dict[str, object]:
+    return {
+        "schema_version": CAMPAIGN_COMPLETE_SCHEMA,
+        "status": "complete",
+        "campaign": {
+            "dataset_id": "PAR-S-V2-FORMAL550",
+            "dataset_version": "2.0.0",
+        },
+        "case_count": 550,
+        "role_case_counts": {"main": 500, "negative": 50},
+        "datasets": {
+            "main": {
+                "relative_root": "main",
+                "manifest_sha256": main_marker.manifest_sha256,
+            },
+            "negative": {
+                "relative_root": "negative",
+                "manifest_sha256": negative_marker.manifest_sha256,
+            },
+        },
+    }
+
+
+def _write_campaign_complete(
+    output_root: Path,
+    main_marker: object,
+    negative_marker: object,
+) -> Path:
+    path = Path(output_root) / CAMPAIGN_COMPLETE_FILENAME
+    document = _campaign_complete_document(main_marker, negative_marker)
+    if path.exists():
+        if read_json(path) != document:
+            raise Formal550LocalError("existing campaign marker drift")
+        return path
+    atomic_write_json(path, document)
+    return path
+
+
+def _load_role_records(
+    output_root: Path,
+    expected_case_ids: Sequence[str],
+) -> list[object]:
+    root = Path(output_root)
+    cases_root = root / "cases"
+    if not cases_root.exists():
+        return []
+    expected = set(expected_case_ids)
+    observed = {path.name for path in cases_root.iterdir() if path.is_dir()}
+    unexpected = observed - expected
+    if unexpected:
+        raise Formal550LocalError(
+            f"role dataset contains unexpected cases: {sorted(unexpected)}"
+        )
+    return [
+        load_case_record_v2(
+            cases_root / case_id / "case_record.json",
+            dataset_root=root,
+            verify_hashes=True,
+        )
+        for case_id in expected_case_ids
+        if case_id in observed
+    ]
 
 
 def _validate_role_entries(
@@ -668,6 +883,590 @@ def validate_formal_inputs(
     return contracts
 
 
+def _safe_repo_path(relative_value: object, label: str) -> Path:
+    if not isinstance(relative_value, str) or not relative_value:
+        raise Formal550LocalError(f"{label} must be a non-empty relative path")
+    relative = Path(relative_value)
+    if relative.is_absolute():
+        raise Formal550LocalError(f"{label} must be repository-relative")
+    root = REPO_ROOT.resolve()
+    path = (root / relative).resolve()
+    try:
+        path.relative_to(root)
+    except ValueError as exc:
+        raise Formal550LocalError(f"{label} escapes the repository") from exc
+    if not path.is_file():
+        raise Formal550LocalError(f"{label} not found: {path}")
+    return path
+
+
+def _copy_immutable(source: Path, destination: Path) -> None:
+    payload = Path(source).read_bytes()
+    destination = Path(destination)
+    if destination.exists():
+        if not destination.is_file() or destination.read_bytes() != payload:
+            raise Formal550LocalError(f"immutable output file drift: {destination}")
+        return
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    temporary = destination.with_name(f".{destination.name}.{uuid.uuid4().hex}.tmp")
+    try:
+        temporary.write_bytes(payload)
+        os.replace(temporary, destination)
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
+def _next_attempt_dir(work_root: Path, case_id: str) -> Path:
+    parent = Path(work_root) / "inputs" / case_id
+    if not parent.exists():
+        return parent / "attempt_001"
+    indices: list[int] = []
+    for path in parent.iterdir():
+        if not path.is_dir() or not path.name.startswith("attempt_"):
+            continue
+        try:
+            indices.append(int(path.name.removeprefix("attempt_")))
+        except ValueError:
+            continue
+    return parent / f"attempt_{max(indices, default=0) + 1:03d}"
+
+
+def _completed_downloaded_result(case_dir: Path, case_id: str) -> SimindRunResult:
+    final_dir = Path(case_dir).resolve()
+    provenance = _read_object(
+        final_dir / "run_provenance.json",
+        f"{case_id} Linux SIMIND provenance",
+    )
+    if (
+        provenance.get("schema_version") != "pars_simind_run_v2"
+        or provenance.get("status") != "complete"
+        or provenance.get("case_id") != case_id
+        or provenance.get("exit_code") != 0
+        or provenance.get("expected_shape") != [60, 128, 128]
+    ):
+        raise Formal550LocalError(
+            f"{case_id}: completed Linux SIMIND provenance is required"
+        )
+    completion = provenance.get("completion_audit")
+    hashes = completion.get("sha256") if isinstance(completion, Mapping) else None
+    if not isinstance(hashes, Mapping):
+        raise Formal550LocalError(
+            f"{case_id}: Linux SIMIND completion hashes are missing"
+        )
+    return SimindRunResult(
+        case_id=case_id,
+        success=True,
+        exit_code=0,
+        command=tuple(str(value) for value in provenance.get("command", [])),
+        expected_shape=(60, 128, 128),
+        started_utc=str(provenance.get("started_utc", "")),
+        finished_utc=str(provenance.get("finished_utc", "")),
+        final_dir=final_dir,
+        output_hashes={str(key): str(value) for key, value in hashes.items()},
+    )
+
+
+def _downloaded_cases(
+    results_root: Path,
+    plan: Mapping[str, object],
+) -> dict[str, DownloadedCaseV2]:
+    raw_cases = plan.get("cases")
+    if not isinstance(raw_cases, list):
+        raise Formal550LocalError("Task13 plan cases are malformed")
+    downloaded: dict[str, DownloadedCaseV2] = {}
+    for raw in raw_cases:
+        if not isinstance(raw, Mapping):
+            raise Formal550LocalError("Task13 plan case is malformed")
+        case_id = str(raw["case_id"])
+        node_id = str(raw["node_id"])
+        node_root = Path(results_root) / "nodes" / node_id
+        downloaded[case_id] = DownloadedCaseV2(
+            case_id=case_id,
+            node_id=node_id,
+            case_dir=node_root / "cases" / case_id,
+            case_marker_path=node_root / "cases" / case_id / "TASK13_CASE.json",
+            node_complete_path=node_root / "NODE_COMPLETE.json",
+        )
+    if len(downloaded) != 550:
+        raise Formal550LocalError("Task13 downloaded case index is not exactly 550")
+    return downloaded
+
+
+def _bound_summary(
+    role: str,
+    prepared: object,
+    entry: Mapping[str, object],
+) -> dict[str, object]:
+    if role == "main":
+        summary = summarize_prepared_population_case(prepared)
+    elif role == "negative":
+        summary = summarize_prepared_negative_case(prepared)
+    else:
+        raise ValueError(f"unknown formal role: {role}")
+    summary.update(
+        {
+            "case_family_id": str(entry["case_family_id"]),
+            "profile_id": str(entry["profile_id"]),
+            "split": str(entry["split"]),
+            "population_weight": float(entry["population_weight"]),
+            "sampling_probability": float(entry["sampling_probability"]),
+        }
+    )
+    return summary
+
+
+def _role_paths(
+    *,
+    bundle_root: Path,
+    contracts: Mapping[str, RoleContract],
+) -> tuple[dict[str, Path], dict[str, dict[str, Path]]]:
+    config_path = Path(bundle_root) / "config" / "task13_formal550_v1.json"
+    config = _read_object(config_path, "Task13 formal config")
+    if config.get("schema_version") != "pars_v2_task13_formal550_config_v1":
+        raise Formal550LocalError("Task13 formal config schema mismatch")
+    raw_paths = config.get("paths")
+    if not isinstance(raw_paths, Mapping):
+        raise Formal550LocalError("Task13 formal config paths are missing")
+    common = {
+        "config": config_path,
+        "scanner": _safe_repo_path(raw_paths.get("scanner"), "scanner config"),
+        "evidence_registry": _safe_repo_path(
+            raw_paths.get("evidence_registry"), "evidence registry"
+        ),
+        "task12g_acceptance": _safe_repo_path(
+            raw_paths.get("task12g_release"), "Task12G acceptance"
+        ),
+        "smc": Path(bundle_root) / "runtime" / "ge870_czt.smc",
+        "simind_ini": Path(bundle_root) / "runtime" / "simind.ini",
+    }
+    role_paths = {
+        "main": {
+            "profile": _safe_repo_path(
+                raw_paths.get("main_profile"), "main population profile"
+            ),
+            "generation_profile": _safe_repo_path(
+                raw_paths.get("main_profile"), "main generation profile"
+            ),
+        },
+        "negative": {
+            "profile": _safe_repo_path(
+                raw_paths.get("negative_profile"), "negative semantic profile"
+            ),
+            "generation_profile": _safe_repo_path(
+                raw_paths.get("negative_generation_profile"),
+                "negative generation profile",
+            ),
+        },
+    }
+    plan = _read_object(Path(bundle_root) / "TASK13_PLAN.json", "Task13 plan")
+    runtime = plan.get("runtime")
+    if not isinstance(runtime, Mapping):
+        raise Formal550LocalError("Task13 runtime paths are missing")
+    expected_common = {
+        "smc": runtime.get("smc_sha256"),
+        "simind_ini": runtime.get("simind_ini_sha256"),
+        "task12g_acceptance": plan.get("release_evidence_sha256"),
+    }
+    for name, digest in expected_common.items():
+        path = common[name]
+        if not path.is_file() or sha256_file(path) != digest:
+            raise Formal550LocalError(f"Task13 {name} bytes drifted")
+    for role, contract in contracts.items():
+        report = _read_object(
+            contract.preflight_root / "PREFLIGHT.json", f"{role} preflight"
+        )
+        expected = {
+            "config": report.get("config_sha256"),
+            "profile": report.get("profile_sha256"),
+            "generation_profile": report.get("generation_profile_sha256"),
+            "scanner": report.get("scanner_sha256"),
+            "evidence_registry": report.get("evidence_registry_sha256"),
+            "task12g_acceptance": report.get("release_acceptance_sha256"),
+        }
+        observed_paths = {**common, **role_paths[role]}
+        drifted = [
+            name
+            for name, digest in expected.items()
+            if sha256_file(observed_paths[name]) != digest
+        ]
+        if drifted:
+            raise Formal550LocalError(
+                f"Task13 {role} local config bytes drifted: {drifted}"
+            )
+    return common, role_paths
+
+
+def _role_runtime_document(
+    *,
+    role: str,
+    contract: RoleContract,
+    output_root: Path,
+    work_root: Path,
+    bundle_root: Path,
+    results_root: Path,
+    paths: Mapping[str, Path],
+) -> dict[str, object]:
+    return {
+        "schema_version": "pars_v2_task13_formal550_role_runtime_v1",
+        "status": "bound",
+        "role": role,
+        "dataset": {
+            key: contract.generation[key]
+            for key in ("dataset_id", "dataset_version", "dataset_role")
+        },
+        "output_root": str(Path(output_root).resolve()),
+        "work_root": str(Path(work_root).resolve()),
+        "bundle_manifest_sha256": sha256_file(
+            Path(bundle_root) / "BUNDLE_MANIFEST.json"
+        ),
+        "task13_plan_sha256": sha256_file(Path(bundle_root) / "TASK13_PLAN.json"),
+        "task13_master_sha256": sha256_file(
+            Path(results_root) / "TASK13_FORMAL550_MASTER.json"
+        ),
+        "preflight_sha256": sha256_file(
+            contract.preflight_root / "PREFLIGHT.json"
+        ),
+        "generation_plan_sha256": contract.generation["sha256"],
+        "split_plan_sha256": contract.split["sha256"],
+        "config_hashes": {
+            name: sha256_file(path)
+            for name, path in sorted(paths.items())
+            if name
+            in {
+                "config",
+                "profile",
+                "generation_profile",
+                "scanner",
+                "evidence_registry",
+                "task12g_acceptance",
+                "smc",
+                "simind_ini",
+            }
+        },
+        "simind_execution": "forbidden_use_downloaded_linux_outputs_only",
+        "resume_contract": "verify_hashes_and_skip_completed_cases",
+    }
+
+
+def _load_or_write_role_runtime(
+    output_root: Path,
+    runtime: Mapping[str, object],
+) -> Path:
+    path = Path(output_root) / "FORMAL_RUNTIME.json"
+    if path.exists():
+        if _read_object(path, "Task13 role runtime") != dict(runtime):
+            raise Formal550LocalError("Task13 role runtime binding changed")
+        return path
+    atomic_write_json(path, dict(runtime))
+    return path
+
+
+def _case_artifacts(
+    *,
+    prepared: object,
+    result: SimindRunResult,
+    byte_identity_path: Path,
+    downloaded: DownloadedCaseV2,
+    contract: RoleContract,
+    bundle_root: Path,
+    results_root: Path,
+    runtime_path: Path,
+    paths: Mapping[str, Path],
+) -> dict[str, Path]:
+    provenance = _read_object(
+        downloaded.case_dir / "run_provenance.json",
+        f"{downloaded.case_id} SIMIND provenance",
+    )
+    smc_record = provenance.get("smc")
+    ini_record = provenance.get("simind_ini")
+    if not isinstance(smc_record, Mapping) or not isinstance(ini_record, Mapping):
+        raise Formal550LocalError(
+            f"{downloaded.case_id}: SIMIND snapshots are missing"
+        )
+    artifacts = simind_extra_artifacts(prepared, result)
+    artifacts.update(
+        {
+            "formal_config": paths["config"],
+            "formal_runtime": runtime_path,
+            "role_preflight": contract.preflight_root / "PREFLIGHT.json",
+            "role_input_bundle": contract.preflight_root / "INPUT_BUNDLE.json",
+            "preflight_byte_identity": byte_identity_path,
+            "generation_plan": contract.preflight_root / "GENERATION_PLAN.json",
+            "split_plan": contract.preflight_root / "SPLIT_PLAN.json",
+            "task13_bundle_manifest": Path(bundle_root) / "BUNDLE_MANIFEST.json",
+            "task13_execution_plan": Path(bundle_root) / "TASK13_PLAN.json",
+            "task13_case_preflight": contract.preflight_root
+            / "cases"
+            / downloaded.case_id
+            / "CASE_PREFLIGHT.json",
+            "task13_remote_preflight": Path(results_root) / "REMOTE_PREFLIGHT.json",
+            "task13_node_complete": downloaded.node_complete_path,
+            "task13_case_marker": downloaded.case_marker_path,
+            "task13_master": Path(results_root) / "TASK13_FORMAL550_MASTER.json",
+            "population_profile": paths["profile"],
+            "generation_profile": paths["generation_profile"],
+            "scanner_config": paths["scanner"],
+            "evidence_registry": paths["evidence_registry"],
+            "task12g_acceptance": paths["task12g_acceptance"],
+            "simind_smc_snapshot": downloaded.case_dir
+            / str(smc_record["source_name"]),
+            "simind_ini_snapshot": downloaded.case_dir
+            / str(ini_record["source_name"]),
+        }
+    )
+    if set(artifacts) != set(REQUIRED_ARTIFACTS) - {
+        "phantom_npz",
+        "metadata_json",
+    }:
+        raise Formal550LocalError(
+            f"{downloaded.case_id}: Task13 artifact set is not exact"
+        )
+    return artifacts
+
+
+def _initialize_campaign_roots(
+    output_root: Path,
+    work_root: Path,
+    *,
+    resume: bool,
+) -> None:
+    output_exists = Path(output_root).exists()
+    work_exists = Path(work_root).exists()
+    if output_exists != work_exists:
+        raise Formal550LocalError("Task13 output/work roots are inconsistent")
+    if output_exists:
+        if not resume:
+            raise FileExistsError("Task13 roots already exist; use --resume")
+        return
+    if resume:
+        raise Formal550LocalError("--resume requires existing Task13 roots")
+    Path(output_root).mkdir(parents=True, exist_ok=False)
+    Path(work_root).mkdir(parents=True, exist_ok=False)
+
+
+def _finalize_role(
+    *,
+    role: str,
+    contract: RoleContract,
+    output_root: Path,
+    work_root: Path,
+    bundle_root: Path,
+    results_root: Path,
+    plan: Mapping[str, object],
+    downloaded: Mapping[str, DownloadedCaseV2],
+    common_paths: Mapping[str, Path],
+    role_paths: Mapping[str, Path],
+    max_cases: int | None,
+) -> tuple[object | None, int]:
+    role_output = Path(output_root) / role
+    role_work = Path(work_root) / role
+    role_output.mkdir(parents=True, exist_ok=True)
+    role_work.mkdir(parents=True, exist_ok=True)
+    _copy_immutable(
+        contract.preflight_root / "GENERATION_PLAN.json",
+        role_output / "GENERATION_PLAN.json",
+    )
+    _copy_immutable(
+        contract.preflight_root / "SPLIT_PLAN.json",
+        role_output / "SPLIT_PLAN.json",
+    )
+    paths = {**common_paths, **role_paths}
+    runtime_document = _role_runtime_document(
+        role=role,
+        contract=contract,
+        output_root=role_output,
+        work_root=role_work,
+        bundle_root=bundle_root,
+        results_root=results_root,
+        paths=paths,
+    )
+    runtime_path = _load_or_write_role_runtime(role_output, runtime_document)
+    runtime_document = _read_object(runtime_path, f"{role} formal runtime")
+    registry = load_evidence_registry(paths["evidence_registry"])
+    profile = load_profile(paths["generation_profile"], registry)
+    scanner = load_profile(paths["scanner"], registry)
+    grid = GridSpecV2(
+        shape=tuple(int(value) for value in scanner.value("matrix")),
+        voxel_size_mm=float(scanner.value("voxel_size_mm")),
+    )
+    report = _read_object(contract.preflight_root / "PREFLIGHT.json", f"{role} preflight")
+    input_reference = report.get("input_bundle")
+    if not isinstance(input_reference, Mapping):
+        raise Formal550LocalError(f"{role} preflight input bundle binding is missing")
+    preflight_inputs = load_and_validate_preflight_input_bundle(
+        contract.preflight_root / "PREFLIGHT.json",
+        input_reference,
+        expected_case_ids=list(contract.expected_case_ids),
+        case_summaries=[
+            contract.summaries[case_id] for case_id in contract.expected_case_ids
+        ],
+    )
+    records = _load_role_records(role_output, contract.expected_case_ids)
+    records.sort(key=lambda item: item.case_id)
+    dataset_contract = _dataset_contract(contract, role_output)
+    marker_path = role_output / DATASET_COMPLETE_FILENAME
+    if marker_path.exists():
+        frozen = freeze_dataset(records, dataset_contract)
+        _write_role_progress(
+            work_root,
+            role=role,
+            status="complete",
+            records=records,
+            total_count=len(contract.expected_case_ids),
+            dataset_complete=frozen.to_dict(),
+        )
+        return frozen, 0
+    task_cases = {
+        str(item["case_id"]): item
+        for item in plan["cases"]
+        if isinstance(item, Mapping)
+    }
+    completed_ids = {record.case_id for record in records}
+    pending = [
+        entry
+        for entry in contract.entries
+        if str(entry["case_id"]) not in completed_ids
+    ]
+    processed = 0
+    execution = plan["execution"]
+    base_histories = int(execution["base_histories_per_projection"])
+    max_tumor_attempts = int(execution["max_tumor_target_attempts"])
+    for entry in pending:
+        if max_cases is not None and processed >= max_cases:
+            _write_role_progress(
+                work_root,
+                role=role,
+                status="paused",
+                records=records,
+                total_count=len(contract.expected_case_ids),
+            )
+            return None, processed
+        case_id = str(entry["case_id"])
+        _write_role_progress(
+            work_root,
+            role=role,
+            status="running",
+            records=records,
+            total_count=len(contract.expected_case_ids),
+            current_case_id=case_id,
+        )
+        try:
+            attempt_dir = _next_attempt_dir(role_work, case_id)
+            prepared = _prepare_role_case(
+                role=role,
+                case_id=case_id,
+                entry=entry,
+                profile=profile,
+                grid=grid,
+                global_seed=int(contract.generation["global_seed"]),
+                base_histories=base_histories,
+                work_dir=attempt_dir,
+                max_tumor_attempts=max_tumor_attempts,
+            )
+            regenerated = _bound_summary(role, prepared, entry)
+            frozen_summary = contract.summaries[case_id]
+            if sha256_json(regenerated) != sha256_json(frozen_summary):
+                raise Formal550LocalError(
+                    f"{case_id}: regenerated semantic summary differs from frozen "
+                    f"preflight; observed_sha256={sha256_json(regenerated)}; "
+                    f"frozen_sha256={sha256_json(frozen_summary)}"
+                )
+            byte_identity_path = attempt_dir / "PREFLIGHT_BYTE_IDENTITY.json"
+            prove_preflight_byte_identity(
+                generated_source=prepared.source_bin,
+                generated_density=prepared.density_bin,
+                frozen=preflight_inputs[case_id],
+                generated_arrays=prepared.arrays,
+                evidence_path=byte_identity_path,
+            )
+            prepared = replace(
+                prepared,
+                source_bin=preflight_inputs[case_id].source_path,
+                density_bin=preflight_inputs[case_id].density_path,
+            )
+            task_case = task_cases[case_id]
+            if (
+                prepared.seeds.simind != int(task_case["rr_seed"])
+                or int(task_case["nn_multiplier"]) != 1
+            ):
+                raise Formal550LocalError(f"{case_id}: frozen /RR or /NN mismatch")
+            downloaded_case = downloaded[case_id]
+            result = _completed_downloaded_result(
+                downloaded_case.case_dir,
+                case_id,
+            )
+            metadata = build_completed_metadata(
+                prepared,
+                profile_path=paths["profile"],
+                scanner_path=paths["scanner"],
+                evidence_registry_path=paths["evidence_registry"],
+                simind_ini_path=paths["simind_ini"],
+                scanner=scanner,
+                result=result,
+                runtime_binding=runtime_document,
+            )
+            artifacts = _case_artifacts(
+                prepared=prepared,
+                result=result,
+                byte_identity_path=byte_identity_path,
+                downloaded=downloaded_case,
+                contract=contract,
+                bundle_root=bundle_root,
+                results_root=results_root,
+                runtime_path=runtime_path,
+                paths=paths,
+            )
+            record = write_case_v2(
+                CasePayloadV2(
+                    case_id=case_id,
+                    case_family_id=str(entry["case_family_id"]),
+                    profile_id=str(entry["profile_id"]),
+                    dataset_id=str(contract.generation["dataset_id"]),
+                    dataset_version=str(contract.generation["dataset_version"]),
+                    dataset_role=role,
+                    split=str(entry["split"]),
+                    population_weight=float(entry["population_weight"]),
+                    sampling_probability=float(entry["sampling_probability"]),
+                    arrays=prepared.arrays,
+                    metadata=metadata,
+                    extra_artifacts=artifacts,
+                ),
+                role_output,
+                resume=True,
+            )
+            records.append(record)
+            records.sort(key=lambda item: item.case_id)
+            processed += 1
+            _write_role_progress(
+                work_root,
+                role=role,
+                status="running",
+                records=records,
+                total_count=len(contract.expected_case_ids),
+            )
+        except Exception as exc:
+            _write_role_progress(
+                work_root,
+                role=role,
+                status="failed",
+                records=records,
+                total_count=len(contract.expected_case_ids),
+                current_case_id=case_id,
+                error=f"{type(exc).__name__}: {exc}",
+            )
+            raise
+    frozen = freeze_dataset(records, dataset_contract)
+    _write_role_progress(
+        work_root,
+        role=role,
+        status="complete",
+        records=records,
+        total_count=len(contract.expected_case_ids),
+        dataset_complete=frozen.to_dict(),
+    )
+    return frozen, processed
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--archive", type=Path, default=DEFAULT_ARCHIVE)
@@ -694,17 +1493,102 @@ def main(argv: list[str] | None = None) -> int:
         resume=args.resume,
     )
     contracts = validate_formal_inputs(results, args.bundle_root, args.preflight_root)
+    if args.validate_only:
+        print(
+            json.dumps(
+                {
+                    "status": "validated",
+                    "results_root": str(results),
+                    "role_case_counts": {
+                        role: len(contract.expected_case_ids)
+                        for role, contract in contracts.items()
+                    },
+                    "validate_only": True,
+                    "next_action": "run without --validate-only to write role datasets",
+                },
+                ensure_ascii=False,
+            )
+        )
+        return 0
+    output_root = args.output_root.resolve()
+    work_root = args.work_root.resolve()
+    bundle_root = args.bundle_root.resolve()
+    _initialize_campaign_roots(output_root, work_root, resume=args.resume)
+    _, plan = _formal_bundle(bundle_root)
+    downloaded = _downloaded_cases(results, plan)
+    common_paths, role_paths = _role_paths(
+        bundle_root=bundle_root,
+        contracts=contracts,
+    )
+    markers: dict[str, object] = {}
+    processed = 0
+    try:
+        for role in ("main", "negative"):
+            remaining = (
+                None
+                if args.max_cases is None
+                else max(args.max_cases - processed, 0)
+            )
+            marker, role_processed = _finalize_role(
+                role=role,
+                contract=contracts[role],
+                output_root=output_root,
+                work_root=work_root,
+                bundle_root=bundle_root,
+                results_root=results,
+                plan=plan,
+                downloaded=downloaded,
+                common_paths=common_paths,
+                role_paths=role_paths[role],
+                max_cases=remaining,
+            )
+            processed += role_processed
+            if marker is None:
+                print(
+                    json.dumps(
+                        {
+                            "status": "paused",
+                            "role": role,
+                            "processed_this_run": processed,
+                        },
+                        ensure_ascii=False,
+                    )
+                )
+                return 3
+            markers[role] = marker
+    except Exception as exc:
+        print(
+            json.dumps(
+                {
+                    "status": "failed",
+                    "error": f"{type(exc).__name__}: {exc}",
+                },
+                ensure_ascii=False,
+            )
+        )
+        return 1
+    campaign_path = _write_campaign_complete(
+        output_root,
+        markers["main"],
+        markers["negative"],
+    )
     print(
         json.dumps(
             {
-                "status": "validated",
+                "status": "complete",
                 "results_root": str(results),
+                "output_root": str(output_root),
+                "work_root": str(work_root),
+                "campaign_marker": str(campaign_path),
                 "role_case_counts": {
                     role: len(contract.expected_case_ids)
                     for role, contract in contracts.items()
                 },
-                "validate_only": args.validate_only,
-                "next_action": "local case writing is outside this archive-validation layer",
+                "processed_this_run": processed,
+                "manifest_sha256": {
+                    role: markers[role].manifest_sha256
+                    for role in ("main", "negative")
+                },
             },
             ensure_ascii=False,
         )

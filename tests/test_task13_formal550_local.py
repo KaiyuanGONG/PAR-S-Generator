@@ -6,6 +6,7 @@ from pathlib import Path
 import sys
 import tarfile
 import ast
+from types import SimpleNamespace
 
 import numpy as np
 import pytest
@@ -561,3 +562,235 @@ def test_cli_accepts_validate_only_resume_and_bounded_max_cases() -> None:
     assert args.validate_only is True
     assert args.resume is True
     assert args.max_cases == 17
+
+
+def _minimal_role_contract(
+    tmp_path: Path,
+    *,
+    role: str,
+    case_id: str,
+) -> finalizer.RoleContract:
+    dataset_id = (
+        "PAR-S-TARE-HCC-NoPVI-SYN-v2"
+        if role == "main"
+        else "PAR-S-TARE-HCC-NoPVI-NEG-v2"
+    )
+    profile_id = (
+        "population_tare_hcc_nopvi_v2"
+        if role == "main"
+        else "negative_control_v2"
+    )
+    return finalizer.RoleContract(
+        role=role,
+        preflight_root=tmp_path / "preflight" / role,
+        generation={
+            "dataset_id": dataset_id,
+            "dataset_version": "2.0.0",
+            "dataset_role": role,
+            "profile_id": profile_id,
+            "sha256": "a" * 64,
+        },
+        split={"sha256": "b" * 64},
+        entries=(
+            {
+                "case_id": case_id,
+                "case_family_id": f"{case_id}_family",
+                "profile_id": profile_id,
+                "split": "train" if role == "main" else "test",
+                "population_weight": 1.0 if role == "main" else 0.0,
+                "sampling_probability": 1.0,
+                "mismatch_challenge": False,
+            },
+        ),
+        summaries={case_id: {"case_id": case_id}},
+        expected_case_ids=(case_id,),
+    )
+
+
+def test_task13_required_artifacts_are_exact() -> None:
+    assert finalizer.REQUIRED_ARTIFACTS == (
+        "phantom_npz",
+        "metadata_json",
+        "projection_a00",
+        "projection_mhd",
+        "projection_res",
+        "projection_spe",
+        "simind_run_provenance",
+        "simind_source_bin",
+        "simind_density_bin",
+        "formal_config",
+        "formal_runtime",
+        "role_preflight",
+        "role_input_bundle",
+        "preflight_byte_identity",
+        "generation_plan",
+        "split_plan",
+        "task13_bundle_manifest",
+        "task13_execution_plan",
+        "task13_case_preflight",
+        "task13_remote_preflight",
+        "task13_node_complete",
+        "task13_case_marker",
+        "task13_master",
+        "population_profile",
+        "generation_profile",
+        "scanner_config",
+        "evidence_registry",
+        "task12g_acceptance",
+        "simind_smc_snapshot",
+        "simind_ini_snapshot",
+    )
+
+
+def test_role_dataset_contracts_are_independent(tmp_path: Path) -> None:
+    main = _minimal_role_contract(tmp_path, role="main", case_id="case_00000")
+    negative = _minimal_role_contract(
+        tmp_path, role="negative", case_id="negative_00000"
+    )
+
+    main_contract = finalizer._dataset_contract(main, tmp_path / "output" / "main")
+    negative_contract = finalizer._dataset_contract(
+        negative, tmp_path / "output" / "negative"
+    )
+
+    assert main_contract.output_root == tmp_path / "output" / "main"
+    assert main_contract.dataset_role == "main"
+    assert main_contract.allowed_profile_ids == ("population_tare_hcc_nopvi_v2",)
+    assert main_contract.expected_case_ids == ("case_00000",)
+    assert negative_contract.output_root == tmp_path / "output" / "negative"
+    assert negative_contract.dataset_role == "negative"
+    assert negative_contract.allowed_profile_ids == ("negative_control_v2",)
+    assert negative_contract.expected_case_ids == ("negative_00000",)
+    assert main_contract.required_artifact_names == finalizer.REQUIRED_ARTIFACTS
+    assert negative_contract.required_artifact_names == finalizer.REQUIRED_ARTIFACTS
+
+
+def test_role_preparation_dispatches_main_and_negative(monkeypatch, tmp_path: Path) -> None:
+    calls: list[tuple[str, str]] = []
+
+    def population(case_id: str, *_: object, **__: object) -> object:
+        calls.append(("main", case_id))
+        return object()
+
+    def negative(case_id: str, *_: object, **__: object) -> object:
+        calls.append(("negative", case_id))
+        return object()
+
+    monkeypatch.setattr(finalizer, "prepare_population_case", population)
+    monkeypatch.setattr(finalizer, "prepare_negative_case", negative)
+    common = {
+        "profile": object(),
+        "grid": object(),
+        "global_seed": 7,
+        "base_histories": 80_000,
+    }
+
+    finalizer._prepare_role_case(
+        role="main",
+        case_id="case_00000",
+        entry={"mismatch_challenge": False},
+        work_dir=tmp_path / "main",
+        **common,
+    )
+    finalizer._prepare_role_case(
+        role="negative",
+        case_id="negative_00000",
+        entry={"mismatch_challenge": False},
+        work_dir=tmp_path / "negative",
+        **common,
+    )
+
+    assert calls == [("main", "case_00000"), ("negative", "negative_00000")]
+
+
+def test_role_progress_is_independent(tmp_path: Path) -> None:
+    main_record = SimpleNamespace(case_id="case_00000")
+    negative_record = SimpleNamespace(case_id="negative_00000")
+
+    main_path = finalizer._write_role_progress(
+        tmp_path,
+        role="main",
+        status="running",
+        records=[main_record],
+        total_count=500,
+    )
+    negative_path = finalizer._write_role_progress(
+        tmp_path,
+        role="negative",
+        status="paused",
+        records=[negative_record],
+        total_count=50,
+    )
+
+    assert main_path == tmp_path / "main" / "PROGRESS.json"
+    assert negative_path == tmp_path / "negative" / "PROGRESS.json"
+    assert finalizer.read_json(main_path)["completed_case_ids"] == ["case_00000"]
+    negative_progress = finalizer.read_json(negative_path)
+    assert negative_progress["completed_case_ids"] == ["negative_00000"]
+    assert negative_progress["remaining_count"] == 49
+
+
+def test_campaign_marker_binds_both_role_manifest_hashes() -> None:
+    marker = finalizer._campaign_complete_document(
+        SimpleNamespace(manifest_sha256="1" * 64),
+        SimpleNamespace(manifest_sha256="2" * 64),
+    )
+
+    assert marker == {
+        "schema_version": "pars_v2_task13_formal550_complete_v1",
+        "status": "complete",
+        "campaign": {
+            "dataset_id": "PAR-S-V2-FORMAL550",
+            "dataset_version": "2.0.0",
+        },
+        "case_count": 550,
+        "role_case_counts": {"main": 500, "negative": 50},
+        "datasets": {
+            "main": {"relative_root": "main", "manifest_sha256": "1" * 64},
+            "negative": {
+                "relative_root": "negative",
+                "manifest_sha256": "2" * 64,
+            },
+        },
+    }
+
+
+def test_campaign_marker_is_idempotent_but_never_overwritten(tmp_path: Path) -> None:
+    main = SimpleNamespace(manifest_sha256="1" * 64)
+    negative = SimpleNamespace(manifest_sha256="2" * 64)
+
+    path = finalizer._write_campaign_complete(tmp_path, main, negative)
+    first = path.read_bytes()
+    assert finalizer._write_campaign_complete(tmp_path, main, negative) == path
+    assert path.read_bytes() == first
+
+    with pytest.raises(finalizer.Formal550LocalError, match="campaign marker drift"):
+        finalizer._write_campaign_complete(
+            tmp_path,
+            SimpleNamespace(manifest_sha256="3" * 64),
+            negative,
+        )
+
+
+def test_resume_loads_completed_cases_with_hash_verification(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    cases = tmp_path / "cases"
+    (cases / "case_00000").mkdir(parents=True)
+    observed: list[tuple[Path, Path, bool]] = []
+
+    def load(path: Path, *, dataset_root: Path, verify_hashes: bool) -> object:
+        observed.append((path, dataset_root, verify_hashes))
+        return SimpleNamespace(case_id=path.parent.name)
+
+    monkeypatch.setattr(finalizer, "load_case_record_v2", load)
+    records = finalizer._load_role_records(
+        tmp_path,
+        ("case_00000", "case_00001"),
+    )
+
+    assert [record.case_id for record in records] == ["case_00000"]
+    assert observed == [
+        (cases / "case_00000" / "case_record.json", tmp_path, True)
+    ]
