@@ -794,3 +794,317 @@ def test_resume_loads_completed_cases_with_hash_verification(
     assert observed == [
         (cases / "case_00000" / "case_record.json", tmp_path, True)
     ]
+
+
+@pytest.mark.parametrize(
+    "missing_name",
+    ["GENERATION_PLAN.json", "SPLIT_PLAN.json", "FORMAL_RUNTIME.json"],
+)
+def test_frozen_role_resume_never_repairs_missing_root_artifacts(
+    monkeypatch,
+    tmp_path: Path,
+    missing_name: str,
+) -> None:
+    contract = _minimal_role_contract(
+        tmp_path, role="main", case_id="case_00000"
+    )
+    contract.preflight_root.mkdir(parents=True)
+    _write_json(
+        contract.preflight_root / "GENERATION_PLAN.json",
+        contract.generation,
+    )
+    _write_json(contract.preflight_root / "SPLIT_PLAN.json", contract.split)
+    role_output = tmp_path / "output" / "main"
+    role_output.mkdir(parents=True)
+    _write_json(role_output / "DATASET_COMPLETE.json", {"status": "complete"})
+    _write_json(role_output / "GENERATION_PLAN.json", contract.generation)
+    _write_json(role_output / "SPLIT_PLAN.json", contract.split)
+    runtime = {"schema_version": "runtime", "status": "bound"}
+    _write_json(role_output / "FORMAL_RUNTIME.json", runtime)
+    (role_output / missing_name).unlink()
+    monkeypatch.setattr(
+        finalizer,
+        "_load_role_records",
+        lambda *_: pytest.fail("case loading must follow frozen root-file validation"),
+    )
+
+    with pytest.raises(finalizer.Formal550LocalError, match="frozen main"):
+        finalizer._revalidate_frozen_role(
+            role="main",
+            contract=contract,
+            role_output=role_output,
+            runtime_document=runtime,
+        )
+
+    assert not (role_output / missing_name).exists()
+
+
+def test_new_role_freeze_requires_immediate_idempotent_revalidation(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    contract = _minimal_role_contract(
+        tmp_path, role="main", case_id="case_00000"
+    )
+    dataset_contract = SimpleNamespace(output_root=tmp_path / "output" / "main")
+    record = SimpleNamespace(case_id="case_00000")
+    calls: list[str] = []
+
+    monkeypatch.setattr(
+        finalizer,
+        "freeze_dataset",
+        lambda records, frozen_contract: calls.append("initial_freeze")
+        or SimpleNamespace(manifest_sha256="1" * 64),
+    )
+
+    def reject_revalidation(**_: object) -> object:
+        calls.append("post_freeze_revalidation")
+        raise finalizer.Formal550LocalError("post-freeze revalidation failed")
+
+    monkeypatch.setattr(finalizer, "_revalidate_frozen_role", reject_revalidation)
+
+    with pytest.raises(
+        finalizer.Formal550LocalError, match="post-freeze revalidation failed"
+    ):
+        finalizer._freeze_and_revalidate_role(
+            role="main",
+            records=[record],
+            dataset_contract=dataset_contract,
+            contract=contract,
+            role_output=dataset_contract.output_root,
+            runtime_document={"status": "bound"},
+        )
+
+    assert calls == ["initial_freeze", "post_freeze_revalidation"]
+
+
+def test_non_file_completion_marker_is_frozen_state_and_never_mutated(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    contract = _minimal_role_contract(
+        tmp_path, role="main", case_id="case_00000"
+    )
+    role_output = tmp_path / "output" / "main"
+    (role_output / "DATASET_COMPLETE.json").mkdir(parents=True)
+    monkeypatch.setattr(
+        finalizer,
+        "_role_runtime_document",
+        lambda **_: {"status": "bound"},
+    )
+    monkeypatch.setattr(
+        finalizer,
+        "_copy_immutable",
+        lambda *_: pytest.fail("frozen role root must not be mutated"),
+    )
+
+    with pytest.raises(
+        finalizer.Formal550LocalError, match="completion marker is missing"
+    ):
+        finalizer._finalize_role(
+            role="main",
+            contract=contract,
+            output_root=tmp_path / "output",
+            work_root=tmp_path / "work",
+            bundle_root=tmp_path / "bundle",
+            results_root=tmp_path / "results",
+            plan={},
+            downloaded={},
+            common_paths={},
+            role_paths={},
+            max_cases=None,
+        )
+
+    assert (role_output / "DATASET_COMPLETE.json").is_dir()
+
+
+def _patch_minimal_main_inputs(
+    monkeypatch,
+    tmp_path: Path,
+) -> dict[str, finalizer.RoleContract]:
+    contracts = {
+        "main": _minimal_role_contract(
+            tmp_path, role="main", case_id="case_00000"
+        ),
+        "negative": _minimal_role_contract(
+            tmp_path, role="negative", case_id="negative_00000"
+        ),
+    }
+    monkeypatch.setattr(
+        finalizer,
+        "stage_results_archive",
+        lambda *_args, **_kwargs: tmp_path / "results",
+    )
+    monkeypatch.setattr(
+        finalizer,
+        "validate_formal_inputs",
+        lambda *_args, **_kwargs: contracts,
+    )
+    monkeypatch.setattr(finalizer, "_formal_bundle", lambda *_: ({}, {"cases": []}))
+    monkeypatch.setattr(finalizer, "_downloaded_cases", lambda *_: {})
+    monkeypatch.setattr(
+        finalizer,
+        "_role_paths",
+        lambda **_: ({}, {"main": {}, "negative": {}}),
+    )
+    return contracts
+
+
+def test_campaign_marker_not_written_when_post_freeze_revalidation_fails(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    _patch_minimal_main_inputs(monkeypatch, tmp_path)
+    writes: list[object] = []
+
+    def finalize_role(*, role: str, **_: object) -> tuple[object, int]:
+        if role == "negative":
+            raise finalizer.Formal550LocalError(
+                "negative post-freeze revalidation failed"
+            )
+        return SimpleNamespace(manifest_sha256="1" * 64), 1
+
+    monkeypatch.setattr(finalizer, "_finalize_role", finalize_role)
+    monkeypatch.setattr(
+        finalizer,
+        "_write_campaign_complete",
+        lambda *_: writes.append(object()),
+    )
+
+    result = finalizer.main(
+        [
+            "--archive",
+            str(tmp_path / "archive.tar.gz"),
+            "--sidecar",
+            str(tmp_path / "archive.sha256"),
+            "--staging-root",
+            str(tmp_path / "staging"),
+            "--preflight-root",
+            str(tmp_path / "preflight"),
+            "--bundle-root",
+            str(tmp_path / "bundle"),
+            "--output-root",
+            str(tmp_path / "output"),
+            "--work-root",
+            str(tmp_path / "work"),
+        ]
+    )
+
+    assert result == 1
+    assert writes == []
+    assert not (tmp_path / "output" / "FORMAL550_COMPLETE.json").exists()
+
+
+def test_bounded_run_resume_lifecycle_is_independent_and_exact(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    _patch_minimal_main_inputs(monkeypatch, tmp_path)
+    loaded: list[tuple[str, bool]] = []
+    prepared: list[str] = []
+    freeze_passes: dict[str, int] = {"main": 0, "negative": 0}
+
+    def load(path: Path, *, dataset_root: Path, verify_hashes: bool) -> object:
+        loaded.append((path.parent.name, verify_hashes))
+        return SimpleNamespace(case_id=path.parent.name)
+
+    monkeypatch.setattr(finalizer, "load_case_record_v2", load)
+
+    def finalize_role(
+        *,
+        role: str,
+        contract: finalizer.RoleContract,
+        output_root: Path,
+        work_root: Path,
+        max_cases: int | None,
+        **_: object,
+    ) -> tuple[object | None, int]:
+        role_output = Path(output_root) / role
+        cases_root = role_output / "cases"
+        cases_root.mkdir(parents=True, exist_ok=True)
+        records = finalizer._load_role_records(
+            role_output, contract.expected_case_ids
+        )
+        if not records and role == "main" and max_cases == 1:
+            case_id = contract.expected_case_ids[0]
+            prepared.append(case_id)
+            case_root = cases_root / case_id
+            case_root.mkdir()
+            (case_root / "case_record.json").write_text("{}", encoding="utf-8")
+            record = SimpleNamespace(case_id=case_id)
+            finalizer._write_role_progress(
+                work_root,
+                role=role,
+                status="paused",
+                records=[record],
+                total_count=2,
+            )
+            return None, 1
+        if not records:
+            case_id = contract.expected_case_ids[0]
+            prepared.append(case_id)
+            case_root = cases_root / case_id
+            case_root.mkdir(exist_ok=True)
+            (case_root / "case_record.json").write_text("{}", encoding="utf-8")
+            records = [SimpleNamespace(case_id=case_id)]
+        for _pass in range(2):
+            freeze_passes[role] += 1
+        marker = SimpleNamespace(
+            manifest_sha256=("1" if role == "main" else "2") * 64
+        )
+        finalizer._write_role_progress(
+            work_root,
+            role=role,
+            status="complete",
+            records=records,
+            total_count=len(records),
+            dataset_complete={"manifest_sha256": marker.manifest_sha256},
+        )
+        return marker, 0 if role == "main" else 1
+
+    monkeypatch.setattr(finalizer, "_finalize_role", finalize_role)
+    common_args = [
+        "--archive",
+        str(tmp_path / "archive.tar.gz"),
+        "--sidecar",
+        str(tmp_path / "archive.sha256"),
+        "--staging-root",
+        str(tmp_path / "staging"),
+        "--preflight-root",
+        str(tmp_path / "preflight"),
+        "--bundle-root",
+        str(tmp_path / "bundle"),
+        "--output-root",
+        str(tmp_path / "output"),
+        "--work-root",
+        str(tmp_path / "work"),
+    ]
+
+    assert finalizer.main([*common_args, "--max-cases", "1"]) == 3
+    assert not (tmp_path / "output" / "FORMAL550_COMPLETE.json").exists()
+    assert (tmp_path / "work" / "main" / "PROGRESS.json").is_file()
+    assert not (tmp_path / "work" / "negative" / "PROGRESS.json").exists()
+
+    assert finalizer.main([*common_args, "--resume"]) == 0
+    assert loaded == [("case_00000", True)]
+    assert prepared == ["case_00000", "negative_00000"]
+    assert freeze_passes == {"main": 2, "negative": 2}
+    assert finalizer.read_json(
+        tmp_path / "output" / "FORMAL550_COMPLETE.json"
+    ) == {
+        "schema_version": "pars_v2_task13_formal550_complete_v1",
+        "status": "complete",
+        "campaign": {
+            "dataset_id": "PAR-S-V2-FORMAL550",
+            "dataset_version": "2.0.0",
+        },
+        "case_count": 550,
+        "role_case_counts": {"main": 500, "negative": 50},
+        "datasets": {
+            "main": {"relative_root": "main", "manifest_sha256": "1" * 64},
+            "negative": {
+                "relative_root": "negative",
+                "manifest_sha256": "2" * 64,
+            },
+        },
+    }

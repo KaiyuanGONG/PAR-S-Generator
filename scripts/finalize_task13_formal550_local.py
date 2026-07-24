@@ -1161,6 +1161,62 @@ def _load_or_write_role_runtime(
     return path
 
 
+def _revalidate_frozen_role(
+    *,
+    role: str,
+    contract: RoleContract,
+    role_output: Path,
+    runtime_document: Mapping[str, object],
+) -> object:
+    """Read-only revalidation of an already frozen role dataset."""
+
+    root = Path(role_output)
+    marker_path = root / DATASET_COMPLETE_FILENAME
+    if not marker_path.is_file():
+        raise Formal550LocalError(f"frozen {role} completion marker is missing")
+    for name in ("GENERATION_PLAN.json", "SPLIT_PLAN.json"):
+        source = contract.preflight_root / name
+        destination = root / name
+        if (
+            not destination.is_file()
+            or not source.is_file()
+            or destination.read_bytes() != source.read_bytes()
+        ):
+            raise Formal550LocalError(f"frozen {role} {name} is missing or drifted")
+    runtime_path = root / "FORMAL_RUNTIME.json"
+    if (
+        not runtime_path.is_file()
+        or _read_object(runtime_path, f"frozen {role} runtime")
+        != dict(runtime_document)
+    ):
+        raise Formal550LocalError(
+            f"frozen {role} FORMAL_RUNTIME.json is missing or drifted"
+        )
+    records = _load_role_records(root, contract.expected_case_ids)
+    records.sort(key=lambda item: item.case_id)
+    return freeze_dataset(records, _dataset_contract(contract, root))
+
+
+def _freeze_and_revalidate_role(
+    *,
+    role: str,
+    records: Sequence[object],
+    dataset_contract: DatasetContractV2,
+    contract: RoleContract,
+    role_output: Path,
+    runtime_document: Mapping[str, object],
+) -> object:
+    """Freeze once, then require the same read-only frozen-role audit to pass."""
+
+    freeze_dataset(records, dataset_contract)
+    return _revalidate_frozen_role(
+        role=role,
+        contract=contract,
+        role_output=role_output,
+        runtime_document=runtime_document,
+    )
+
+
 def _case_artifacts(
     *,
     prepared: object,
@@ -1260,16 +1316,6 @@ def _finalize_role(
 ) -> tuple[object | None, int]:
     role_output = Path(output_root) / role
     role_work = Path(work_root) / role
-    role_output.mkdir(parents=True, exist_ok=True)
-    role_work.mkdir(parents=True, exist_ok=True)
-    _copy_immutable(
-        contract.preflight_root / "GENERATION_PLAN.json",
-        role_output / "GENERATION_PLAN.json",
-    )
-    _copy_immutable(
-        contract.preflight_root / "SPLIT_PLAN.json",
-        role_output / "SPLIT_PLAN.json",
-    )
     paths = {**common_paths, **role_paths}
     runtime_document = _role_runtime_document(
         role=role,
@@ -1279,6 +1325,36 @@ def _finalize_role(
         bundle_root=bundle_root,
         results_root=results_root,
         paths=paths,
+    )
+    dataset_contract = _dataset_contract(contract, role_output)
+    marker_path = role_output / DATASET_COMPLETE_FILENAME
+    if marker_path.exists():
+        frozen = _revalidate_frozen_role(
+            role=role,
+            contract=contract,
+            role_output=role_output,
+            runtime_document=runtime_document,
+        )
+        records = _load_role_records(role_output, contract.expected_case_ids)
+        records.sort(key=lambda item: item.case_id)
+        _write_role_progress(
+            work_root,
+            role=role,
+            status="complete",
+            records=records,
+            total_count=len(contract.expected_case_ids),
+            dataset_complete=frozen.to_dict(),
+        )
+        return frozen, 0
+    role_output.mkdir(parents=True, exist_ok=True)
+    role_work.mkdir(parents=True, exist_ok=True)
+    _copy_immutable(
+        contract.preflight_root / "GENERATION_PLAN.json",
+        role_output / "GENERATION_PLAN.json",
+    )
+    _copy_immutable(
+        contract.preflight_root / "SPLIT_PLAN.json",
+        role_output / "SPLIT_PLAN.json",
     )
     runtime_path = _load_or_write_role_runtime(role_output, runtime_document)
     runtime_document = _read_object(runtime_path, f"{role} formal runtime")
@@ -1303,19 +1379,6 @@ def _finalize_role(
     )
     records = _load_role_records(role_output, contract.expected_case_ids)
     records.sort(key=lambda item: item.case_id)
-    dataset_contract = _dataset_contract(contract, role_output)
-    marker_path = role_output / DATASET_COMPLETE_FILENAME
-    if marker_path.exists():
-        frozen = freeze_dataset(records, dataset_contract)
-        _write_role_progress(
-            work_root,
-            role=role,
-            status="complete",
-            records=records,
-            total_count=len(contract.expected_case_ids),
-            dataset_complete=frozen.to_dict(),
-        )
-        return frozen, 0
     task_cases = {
         str(item["case_id"]): item
         for item in plan["cases"]
@@ -1455,12 +1518,34 @@ def _finalize_role(
                 error=f"{type(exc).__name__}: {exc}",
             )
             raise
-    frozen = freeze_dataset(records, dataset_contract)
+    try:
+        frozen = _freeze_and_revalidate_role(
+            role=role,
+            records=records,
+            dataset_contract=dataset_contract,
+            contract=contract,
+            role_output=role_output,
+            runtime_document=runtime_document,
+        )
+    except Exception as exc:
+        _write_role_progress(
+            work_root,
+            role=role,
+            status="failed",
+            records=records,
+            total_count=len(contract.expected_case_ids),
+            error=f"{type(exc).__name__}: {exc}",
+        )
+        raise
+    revalidated_records = _load_role_records(
+        role_output, contract.expected_case_ids
+    )
+    revalidated_records.sort(key=lambda item: item.case_id)
     _write_role_progress(
         work_root,
         role=role,
         status="complete",
-        records=records,
+        records=revalidated_records,
         total_count=len(contract.expected_case_ids),
         dataset_complete=frozen.to_dict(),
     )
