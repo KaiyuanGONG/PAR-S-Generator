@@ -47,6 +47,28 @@ def _sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def _coordinate_document() -> dict[str, object]:
+    return {
+        "schema_version": "pars_projection_alignment_report_v1",
+        "report_classification": {
+            "schema_version": "projection_coordinate_gate_v2",
+            "role": "projection-coordinate-gate",
+            "blocking": True,
+            "transform_uniqueness_required": True,
+        },
+        "freeze_gate": {
+            "passed": True,
+            "frozen_transform_recovered": True,
+        },
+        "projection_coordinates": {
+            "coordinate_contract_id": "pars_simind_v8_xcat_zyx_sar_v1",
+            "loader_transform_id": (
+                "simind_v8_xcat_v1_views_forward_roll000_det_v_flip_det_u_keep"
+            ),
+        },
+    }
+
+
 def _config(tmp_path: Path) -> AcceptanceConfig:
     generator = tmp_path / "generator"
     pars2 = tmp_path / "pars2"
@@ -59,7 +81,47 @@ def _config(tmp_path: Path) -> AcceptanceConfig:
     (pars2 / "scripts" / "validate_synthetic_dataset.py").write_text(
         "# loader\n", encoding="utf-8"
     )
-    coordinate.write_text("{}\n", encoding="utf-8")
+    _write_json(coordinate, _coordinate_document())
+    task12g_automatic = tmp_path / "TASK12G_AUTOMATIC_ACCEPTANCE.json"
+    coordinate_sha256 = _sha256(coordinate)
+    _write_json(
+        task12g_automatic,
+        {
+            "schema_version": "pars_v2_task12g_automatic_acceptance_v1",
+            "status": "pass_awaiting_manual_review",
+            "automatic_gate_passed": True,
+            "manual_review_status": "pending",
+            "go_for_500_case_generation": False,
+            "coordinate_report": {"sha256": coordinate_sha256},
+            "gate_rows": [
+                {
+                    "gate_id": "projection_coordinate_gate_v2",
+                    "schema_version": "projection_coordinate_gate_v2",
+                    "status": "pass",
+                    "blocking": True,
+                    "sha256": coordinate_sha256,
+                }
+            ],
+        },
+    )
+    task12g_release = tmp_path / "task12g_manual_acceptance.json"
+    _write_json(
+        task12g_release,
+        {
+            "schema_version": "pars_v2_task12g_manual_acceptance_v1",
+            "status": "pass",
+            "automatic_acceptance": {
+                "status": "pass_awaiting_manual_review",
+                "automatic_gate_passed": True,
+                "sha256": _sha256(task12g_automatic),
+            },
+            "release": {
+                "go_for_formal_500_plus_50_generation": True,
+                "main_case_count": 500,
+                "negative_case_count": 50,
+            },
+        },
+    )
     return AcceptanceConfig(
         python_executable=Path(sys.executable),
         generator_root=generator,
@@ -67,6 +129,9 @@ def _config(tmp_path: Path) -> AcceptanceConfig:
         campaign_root=campaign,
         qa_root=qa,
         coordinate_report=coordinate,
+        task12g_release=task12g_release,
+        task12g_release_sha256=_sha256(task12g_release),
+        task12g_automatic_acceptance=task12g_automatic,
     )
 
 
@@ -105,6 +170,13 @@ def test_role_loader_commands_are_exact_and_use_500_and_50(tmp_path: Path) -> No
         assert stage.cwd == config.pars2_root.resolve()
         assert stage.accepted_return_codes == (0, 1)
         assert stage.expected_status_by_return_code == ((0, "pass"), (1, "fail"))
+
+
+def test_cli_does_not_allow_overriding_task12g_release_trust_root() -> None:
+    with pytest.raises(SystemExit):
+        acceptance._parser().parse_args(
+            ["--task12g-release-sha256", "0" * 64]
+        )
 
 
 def _campaign_documents() -> tuple[dict[str, object], dict[str, object], dict[str, object]]:
@@ -547,28 +619,7 @@ def _summary_inputs(config: AcceptanceConfig, *, negative_status: str = "pass") 
                 "manifest_sha256": manifest,
             },
         )
-    _write_json(
-        config.coordinate_report,
-        {
-            "schema_version": "pars_projection_alignment_report_v1",
-            "report_classification": {
-                "schema_version": "projection_coordinate_gate_v2",
-                "role": "projection-coordinate-gate",
-                "blocking": True,
-                "transform_uniqueness_required": True,
-            },
-            "freeze_gate": {
-                "passed": True,
-                "frozen_transform_recovered": True,
-            },
-            "projection_coordinates": {
-                "coordinate_contract_id": "pars_simind_v8_xcat_zyx_sar_v1",
-                "loader_transform_id": (
-                    "simind_v8_xcat_v1_views_forward_roll000_det_v_flip_det_u_keep"
-                ),
-            },
-        },
-    )
+    _write_json(config.coordinate_report, _coordinate_document())
 
 
 def test_evidence_rows_bind_source_bytes_by_sha256(tmp_path: Path) -> None:
@@ -621,6 +672,7 @@ def test_final_summary_has_exact_authoritative_contract(tmp_path: Path) -> None:
         "case_count",
         "role_case_counts",
         "gate_rows",
+        "task12g_release_chain",
         "notebook_authority",
     }
     assert summary["schema_version"] == (
@@ -636,6 +688,11 @@ def test_final_summary_has_exact_authoritative_contract(tmp_path: Path) -> None:
         "formal550_negative_loader_gate_v1",
         "projection_coordinate_gate_v2",
     ]
+    assert summary["task12g_release_chain"]["status"] == "pass"
+    assert (
+        summary["task12g_release_chain"]["coordinate_report"]["sha256"]
+        == _sha256(config.coordinate_report)
+    )
     assert summary["notebook_authority"] == "informational_read_only"
 
 
@@ -647,6 +704,50 @@ def test_final_aggregation_cannot_hide_a_failed_blocking_gate(tmp_path: Path) ->
 
     assert summary["status"] == "fail"
     assert summary["automatic_gate_passed"] is False
+
+
+def test_final_summary_rejects_structurally_valid_coordinate_substitution(
+    tmp_path: Path,
+) -> None:
+    config = _config(tmp_path)
+    _summary_inputs(config)
+    coordinate = json.loads(config.coordinate_report.read_text(encoding="utf-8"))
+    coordinate["substituted_after_task12g_release"] = True
+    _write_json(config.coordinate_report, coordinate)
+
+    with pytest.raises(Formal550AcceptanceError, match="Task12G.*coordinate"):
+        build_final_summary(config)
+
+
+def test_final_summary_rejects_task12g_automatic_substitution(
+    tmp_path: Path,
+) -> None:
+    config = _config(tmp_path)
+    _summary_inputs(config)
+    automatic = json.loads(
+        config.task12g_automatic_acceptance.read_text(encoding="utf-8")
+    )
+    automatic["substituted_after_manual_release"] = True
+    _write_json(config.task12g_automatic_acceptance, automatic)
+
+    with pytest.raises(
+        Formal550AcceptanceError,
+        match="automatic acceptance SHA-256",
+    ):
+        build_final_summary(config)
+
+
+def test_final_summary_rejects_task12g_release_substitution(
+    tmp_path: Path,
+) -> None:
+    config = _config(tmp_path)
+    _summary_inputs(config)
+    release = json.loads(config.task12g_release.read_text(encoding="utf-8"))
+    release["substituted_trust_root"] = True
+    _write_json(config.task12g_release, release)
+
+    with pytest.raises(Formal550AcceptanceError, match="release SHA-256"):
+        build_final_summary(config)
 
 
 def test_final_summary_rejects_non_pars2_loader_schema(tmp_path: Path) -> None:

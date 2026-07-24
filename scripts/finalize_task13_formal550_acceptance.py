@@ -14,6 +14,7 @@ import json
 import math
 import os
 from pathlib import Path
+import re
 import subprocess
 import sys
 from typing import Any
@@ -44,16 +45,30 @@ DEFAULT_COORDINATE_REPORT = Path(
     r"D:\PFE-U\PAR\outputs\task12e_linux_qa_v3"
     r"\linux_projection_coordinate_report.json"
 )
+DEFAULT_TASK12G_RELEASE = Path(
+    r"D:\PFE-U\PAR\outputs\task13_formal550_upload_v1"
+    r"\pars_v2_task13_formal550_bundle_v1"
+    r"\evidence\task12g_manual_acceptance.json"
+)
+DEFAULT_TASK12G_AUTOMATIC_ACCEPTANCE = Path(
+    r"D:\PFE-U\PAR\outputs\pars_v2_linux50_v2_qa"
+    r"\TASK12G_AUTOMATIC_ACCEPTANCE.json"
+)
+EXPECTED_TASK12G_RELEASE_SHA256 = (
+    "aa2eb5621cef6d5e8a2a952f041963743ed83fcd5f814813fcf24a4eb455cf96"
+)
 CAMPAIGN_SCHEMA = "pars_v2_task13_formal550_complete_v1"
 AUTOMATIC_SCHEMA = "pars_v2_task13_formal550_automatic_acceptance_v1"
 GENERATOR_GATE_SCHEMA = "formal550_generator_gate_v1"
 PROGRESS_SCHEMA = "pars_v2_task13_formal550_acceptance_progress_v1"
+TASK12G_RELEASE_CHAIN_SCHEMA = "pars_v2_task12g_release_chain_v1"
 EXPECTED_PROJECTION_SHAPE = (60, 128, 128)
 MAXIMUM_VIEW_SUM_RATIO = 80.0
 COORDINATE_CONTRACT_ID = "pars_simind_v8_xcat_zyx_sar_v1"
 LOADER_TRANSFORM_ID = (
     "simind_v8_xcat_v1_views_forward_roll000_det_v_flip_det_u_keep"
 )
+_SHA256 = re.compile(r"[0-9a-f]{64}")
 ROLE_CONTRACTS: Mapping[str, Mapping[str, object]] = {
     "main": {
         "dataset_id": "PAR-S-TARE-HCC-NoPVI-SYN-v2",
@@ -84,6 +99,9 @@ class AcceptanceConfig:
     campaign_root: Path
     qa_root: Path
     coordinate_report: Path
+    task12g_release: Path
+    task12g_release_sha256: str
+    task12g_automatic_acceptance: Path
 
     def resolved(self) -> "AcceptanceConfig":
         return AcceptanceConfig(
@@ -93,6 +111,11 @@ class AcceptanceConfig:
             campaign_root=self.campaign_root.resolve(),
             qa_root=self.qa_root.resolve(),
             coordinate_report=self.coordinate_report.resolve(),
+            task12g_release=self.task12g_release.resolve(),
+            task12g_release_sha256=self.task12g_release_sha256,
+            task12g_automatic_acceptance=(
+                self.task12g_automatic_acceptance.resolve()
+            ),
         )
 
 
@@ -287,6 +310,113 @@ def _validate_coordinate_gate(document: Mapping[str, Any]) -> dict[str, Any]:
         "schema_version": "projection_coordinate_gate_v2",
         "status": "pass",
         "blocking": True,
+    }
+
+
+def _validate_task12g_release_chain(
+    config: AcceptanceConfig,
+) -> tuple[tuple[dict[str, Any], str], dict[str, Any]]:
+    """Resolve the coordinate SHA through the frozen Task12G release chain."""
+
+    cfg = config.resolved()
+    release, release_sha256 = _read_json_snapshot(
+        cfg.task12g_release, "Task12G manual release"
+    )
+    if release_sha256 != cfg.task12g_release_sha256:
+        raise Formal550AcceptanceError(
+            "Task12G release SHA-256 does not match the frozen trust root"
+        )
+    automatic_binding = release.get("automatic_acceptance")
+    release_gate = release.get("release")
+    if (
+        release.get("schema_version")
+        != "pars_v2_task12g_manual_acceptance_v1"
+        or release.get("status") != "pass"
+        or not isinstance(automatic_binding, Mapping)
+        or automatic_binding.get("status") != "pass_awaiting_manual_review"
+        or automatic_binding.get("automatic_gate_passed") is not True
+        or type(automatic_binding.get("sha256")) is not str
+        or _SHA256.fullmatch(automatic_binding["sha256"]) is None
+        or not isinstance(release_gate, Mapping)
+        or release_gate.get("go_for_formal_500_plus_50_generation") is not True
+        or release_gate.get("main_case_count") != 500
+        or release_gate.get("negative_case_count") != 50
+    ):
+        raise Formal550AcceptanceError(
+            "Task12G manual release is not the frozen Formal550 approval"
+        )
+
+    automatic, automatic_sha256 = _read_json_snapshot(
+        cfg.task12g_automatic_acceptance,
+        "Task12G automatic acceptance",
+    )
+    if automatic_sha256 != automatic_binding["sha256"]:
+        raise Formal550AcceptanceError(
+            "Task12G automatic acceptance SHA-256 is not release-bound"
+        )
+    gate_rows = automatic.get("gate_rows")
+    coordinate_binding = automatic.get("coordinate_report")
+    if (
+        automatic.get("schema_version")
+        != "pars_v2_task12g_automatic_acceptance_v1"
+        or automatic.get("status") != "pass_awaiting_manual_review"
+        or automatic.get("automatic_gate_passed") is not True
+        or automatic.get("manual_review_status") != "pending"
+        or automatic.get("go_for_500_case_generation") is not False
+        or not isinstance(gate_rows, list)
+        or not isinstance(coordinate_binding, Mapping)
+    ):
+        raise Formal550AcceptanceError(
+            "Task12G automatic acceptance is not the frozen pre-release gate"
+        )
+    coordinate_rows = [
+        row
+        for row in gate_rows
+        if isinstance(row, Mapping)
+        and row.get("gate_id") == "projection_coordinate_gate_v2"
+    ]
+    if len(coordinate_rows) != 1:
+        raise Formal550AcceptanceError(
+            "Task12G automatic acceptance lacks one coordinate gate binding"
+        )
+    coordinate_row = coordinate_rows[0]
+    expected_coordinate_sha256 = coordinate_row.get("sha256")
+    if (
+        coordinate_row.get("schema_version")
+        != "projection_coordinate_gate_v2"
+        or coordinate_row.get("status") != "pass"
+        or coordinate_row.get("blocking") is not True
+        or type(expected_coordinate_sha256) is not str
+        or _SHA256.fullmatch(expected_coordinate_sha256) is None
+        or coordinate_binding.get("sha256") != expected_coordinate_sha256
+    ):
+        raise Formal550AcceptanceError(
+            "Task12G coordinate gate binding is invalid"
+        )
+
+    coordinate_snapshot = _read_json_snapshot(
+        cfg.coordinate_report, "projection coordinate gate"
+    )
+    if coordinate_snapshot[1] != expected_coordinate_sha256:
+        raise Formal550AcceptanceError(
+            "Task12G release-bound coordinate SHA-256 mismatch"
+        )
+    _validate_coordinate_gate(coordinate_snapshot[0])
+    return coordinate_snapshot, {
+        "schema_version": TASK12G_RELEASE_CHAIN_SCHEMA,
+        "status": "pass",
+        "release": {
+            "path": str(cfg.task12g_release),
+            "sha256": release_sha256,
+        },
+        "automatic_acceptance": {
+            "path": str(cfg.task12g_automatic_acceptance),
+            "sha256": automatic_sha256,
+        },
+        "coordinate_report": {
+            "path": str(cfg.coordinate_report),
+            "sha256": coordinate_snapshot[1],
+        },
     }
 
 
@@ -1000,10 +1130,9 @@ def build_final_summary(config: AcceptanceConfig) -> dict[str, Any]:
             binding=bindings[role],
             dataset_root=cfg.campaign_root / role,
         )
-    coordinate_snapshot = _read_json_snapshot(
-        cfg.coordinate_report, "projection coordinate gate"
+    coordinate_snapshot, task12g_release_chain = (
+        _validate_task12g_release_chain(cfg)
     )
-    _validate_coordinate_gate(coordinate_snapshot[0])
     rows = [
         evidence_row(
             "formal550_generator_gate_v1",
@@ -1034,6 +1163,7 @@ def build_final_summary(config: AcceptanceConfig) -> dict[str, Any]:
         "case_count": 550,
         "role_case_counts": {"main": 500, "negative": 50},
         "gate_rows": rows,
+        "task12g_release_chain": task12g_release_chain,
         "notebook_authority": "informational_read_only",
     }
 
@@ -1149,9 +1279,18 @@ def _validate_config(config: AcceptanceConfig) -> AcceptanceConfig:
         (cfg.campaign_root / "main", "main dataset"),
         (cfg.campaign_root / "negative", "negative dataset"),
         (cfg.coordinate_report, "coordinate report"),
+        (cfg.task12g_release, "Task12G manual release"),
+        (
+            cfg.task12g_automatic_acceptance,
+            "Task12G automatic acceptance",
+        ),
     ):
         if not path.exists():
             raise Formal550AcceptanceError(f"{label} does not exist: {path}")
+    if _SHA256.fullmatch(cfg.task12g_release_sha256) is None:
+        raise Formal550AcceptanceError(
+            "Task12G release SHA-256 trust root is invalid"
+        )
     for stage in build_stage_commands(cfg):
         if not stage.script_path.is_file():
             raise Formal550AcceptanceError(
@@ -1381,6 +1520,14 @@ def _parser() -> argparse.ArgumentParser:
         "--coordinate-report", type=Path, default=DEFAULT_COORDINATE_REPORT
     )
     parser.add_argument(
+        "--task12g-release", type=Path, default=DEFAULT_TASK12G_RELEASE
+    )
+    parser.add_argument(
+        "--task12g-automatic-acceptance",
+        type=Path,
+        default=DEFAULT_TASK12G_AUTOMATIC_ACCEPTANCE,
+    )
+    parser.add_argument(
         "--python-executable", type=Path, default=Path(sys.executable)
     )
     parser.add_argument("--resume", action="store_true")
@@ -1396,6 +1543,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         campaign_root=args.campaign_root,
         qa_root=args.qa_root,
         coordinate_report=args.coordinate_report,
+        task12g_release=args.task12g_release,
+        task12g_release_sha256=EXPECTED_TASK12G_RELEASE_SHA256,
+        task12g_automatic_acceptance=args.task12g_automatic_acceptance,
     )
     try:
         summary = run_acceptance_pipeline(config, resume=args.resume)

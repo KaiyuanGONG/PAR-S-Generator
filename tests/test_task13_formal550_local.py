@@ -180,7 +180,11 @@ def _formal_entries(role: str, count: int) -> list[dict[str, object]]:
         entries.append(
             {
                 "case_id": f"{prefix}_{index:05d}",
-                "case_family_id": f"{prefix}_family_{index:05d}",
+                "case_family_id": (
+                    f"family_{index:05d}"
+                    if role == "main"
+                    else f"negative_family_{index:05d}"
+                ),
                 "profile_id": (
                     "population_tare_hcc_nopvi_v2"
                     if role == "main"
@@ -190,6 +194,7 @@ def _formal_entries(role: str, count: int) -> list[dict[str, object]]:
                 "population_weight": weight,
                 "sampling_probability": probability,
                 "mismatch_challenge": False,
+                "challenge_labels": [],
             }
         )
     return entries
@@ -321,31 +326,39 @@ def _formal_input_roots(tmp_path: Path) -> tuple[Path, Path, Path]:
     master_cases: list[dict[str, object]] = []
     for role, entries in roles.items():
         role_root = preflight / role
-        generation = {
-            "schema_version": "pars_generation_plan_v2",
-            **_generation_dataset(role),
-            "profile_id": (
-                "population_tare_hcc_nopvi_v2"
-                if role == "main"
-                else "negative_control_v2"
-            ),
-            "sha256": "a" * 64,
-            "split_plan_sha256": "b" * 64,
-            "entries": entries,
-        }
-        split = {
+        profile_id = (
+            "population_tare_hcc_nopvi_v2"
+            if role == "main"
+            else "negative_control_v2"
+        )
+        split_content = {
             "schema_version": "pars_split_plan_v2",
             "dataset_id": _role_dataset(role)["dataset_id"],
-            "family_seeds": {},
-            "family_to_split": {},
+            "family_seeds": {
+                entry["case_family_id"]: index
+                for index, entry in enumerate(entries)
+            },
+            "family_to_split": {
+                entry["case_family_id"]: entry["split"] for entry in entries
+            },
             "global_seed": _role_dataset(role)["global_seed"],
-            "profile_id": (
-                "population_tare_hcc_nopvi_v2"
-                if role == "main"
-                else "negative_control_v2"
-            ),
+            "profile_id": profile_id,
             "ratios": _role_dataset(role)["split_ratios"],
-            "sha256": "c" * 64,
+        }
+        split = {
+            **split_content,
+            "sha256": finalizer.sha256_json(split_content),
+        }
+        generation_content = {
+            "schema_version": "pars_generation_plan_v2",
+            **_generation_dataset(role),
+            "profile_id": profile_id,
+            "split_plan_sha256": split["sha256"],
+            "entries": entries,
+        }
+        generation = {
+            **generation_content,
+            "sha256": finalizer.sha256_json(generation_content),
         }
         _write_json(role_root / "GENERATION_PLAN.json", generation)
         _write_json(role_root / "SPLIT_PLAN.json", split)
@@ -354,8 +367,8 @@ def _formal_input_roots(tmp_path: Path) -> tuple[Path, Path, Path]:
             "status": "pass",
             "case_count": len(entries),
             "simind_launched": False,
-            "generation_plan_sha256": finalizer.sha256_file(role_root / "GENERATION_PLAN.json"),
-            "split_plan_sha256": finalizer.sha256_file(role_root / "SPLIT_PLAN.json"),
+            "generation_plan_sha256": generation["sha256"],
+            "split_plan_sha256": split["sha256"],
             "cases": entries,
         }
         _write_json(role_root / "PREFLIGHT.json", report)
@@ -474,6 +487,135 @@ def test_validate_role_entries_rejects_negative_weight_or_split_drift() -> None:
                 "dataset_role": "negative",
                 "case_count": 50,
             },
+        )
+
+
+@pytest.mark.parametrize(
+    ("role", "field", "wrong_value"),
+    (
+        ("main", "population_weight", 1),
+        ("main", "sampling_probability", "0.002"),
+        ("negative", "population_weight", False),
+    ),
+)
+def test_validate_role_entries_rejects_numeric_type_aliases(
+    role: str,
+    field: str,
+    wrong_value: object,
+) -> None:
+    count = 500 if role == "main" else 50
+    entries = _formal_entries(role, count)
+    entries[0][field] = wrong_value
+
+    with pytest.raises(finalizer.Formal550LocalError, match="entry schema/type"):
+        finalizer._validate_role_entries(role, entries, _role_dataset(role))
+
+
+def test_role_contract_rejects_generation_plan_self_hash_drift(
+    tmp_path: Path,
+) -> None:
+    results, bundle, preflight = _formal_input_roots(tmp_path)
+    generation_path = preflight / "main" / "GENERATION_PLAN.json"
+    generation = finalizer.read_json(generation_path)
+    generation["sha256"] = "f" * 64
+    _rewrite_bundled_preflight_file(
+        results=results,
+        bundle=bundle,
+        preflight=preflight,
+        role="main",
+        name="GENERATION_PLAN.json",
+        value=generation,
+    )
+    _, plan = finalizer._formal_bundle(bundle)
+
+    with pytest.raises(finalizer.Formal550LocalError, match="generation plan SHA-256"):
+        finalizer._validate_role_contract(
+            role="main",
+            preflight_root=preflight / "main",
+            bundle_root=bundle,
+            plan=plan,
+        )
+
+
+def test_role_contract_rejects_split_plan_self_hash_drift(
+    tmp_path: Path,
+) -> None:
+    results, bundle, preflight = _formal_input_roots(tmp_path)
+    split_path = preflight / "main" / "SPLIT_PLAN.json"
+    split = finalizer.read_json(split_path)
+    split["sha256"] = "f" * 64
+    _rewrite_bundled_preflight_file(
+        results=results,
+        bundle=bundle,
+        preflight=preflight,
+        role="main",
+        name="SPLIT_PLAN.json",
+        value=split,
+    )
+    _, plan = finalizer._formal_bundle(bundle)
+
+    with pytest.raises(finalizer.Formal550LocalError, match="split plan SHA-256"):
+        finalizer._validate_role_contract(
+            role="main",
+            preflight_root=preflight / "main",
+            bundle_root=bundle,
+            plan=plan,
+        )
+
+
+def test_role_contract_rejects_generation_to_split_hash_drift(
+    tmp_path: Path,
+) -> None:
+    results, bundle, preflight = _formal_input_roots(tmp_path)
+    generation_path = preflight / "main" / "GENERATION_PLAN.json"
+    generation = finalizer.read_json(generation_path)
+    generation["split_plan_sha256"] = "f" * 64
+    generation_content = {
+        key: value for key, value in generation.items() if key != "sha256"
+    }
+    generation["sha256"] = finalizer.sha256_json(generation_content)
+    _rewrite_bundled_preflight_file(
+        results=results,
+        bundle=bundle,
+        preflight=preflight,
+        role="main",
+        name="GENERATION_PLAN.json",
+        value=generation,
+    )
+    _, plan = finalizer._formal_bundle(bundle)
+
+    with pytest.raises(finalizer.Formal550LocalError, match="split-plan binding"):
+        finalizer._validate_role_contract(
+            role="main",
+            preflight_root=preflight / "main",
+            bundle_root=bundle,
+            plan=plan,
+        )
+
+
+def test_role_contract_rejects_preflight_plan_hash_drift(
+    tmp_path: Path,
+) -> None:
+    results, bundle, preflight = _formal_input_roots(tmp_path)
+    report_path = preflight / "main" / "PREFLIGHT.json"
+    report = finalizer.read_json(report_path)
+    report["generation_plan_sha256"] = "f" * 64
+    _rewrite_bundled_preflight_file(
+        results=results,
+        bundle=bundle,
+        preflight=preflight,
+        role="main",
+        name="PREFLIGHT.json",
+        value=report,
+    )
+    _, plan = finalizer._formal_bundle(bundle)
+
+    with pytest.raises(finalizer.Formal550LocalError, match="preflight plan binding"):
+        finalizer._validate_role_contract(
+            role="main",
+            preflight_root=preflight / "main",
+            bundle_root=bundle,
+            plan=plan,
         )
 
 

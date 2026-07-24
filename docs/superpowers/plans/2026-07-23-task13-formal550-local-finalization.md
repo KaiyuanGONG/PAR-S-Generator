@@ -215,13 +215,14 @@ def build_notebook(
 
 Verified locally on 2026-07-24 in the `SPECT` Conda environment.
 
-- Real immutable-input validation passed for all 550 cases: 500 `main`, 50 `negative`, all node/master/case/quartet bindings, exact frozen plan schemas, and exact JSON value types. A resumed validation completed in 35.8 seconds after the fresh validation pass.
+- Real immutable-input validation passed for all 550 cases: 500 `main`, 50 `negative`, all node/master/case/quartet bindings, recomputed generation/split semantic self-hashes, exact generation-to-split bindings, exact frozen plan schemas, and exact JSON value types. The strict resumed validation passed again after the final trust-chain hardening.
 - The downloaded archive remained unchanged at SHA-256 `fecbd2d485d3f28dab8e195b208d9a9b5a115cf05d7fe1741ab11e3dc8496c74`.
 - Two bounded runs were performed under the dedicated non-authoritative smoke root `C:\Users\86187\AppData\Local\Temp\pars_task6_formal550_smoke_20260724_019f9401`. The first wrote `case_00000`; the resumed run hash-verified and skipped it, then wrote `case_00001`. Progress is deliberately paused at `main=2/500`, `negative=0/50`.
 - No `main/DATASET_COMPLETE.json`, `negative/DATASET_COMPLETE.json`, or campaign `FORMAL550_COMPLETE.json` exists in the smoke root. The root is preserved for audit and may be deleted later only as that exact dedicated directory.
 - A bounded pause is successful operational behavior but returns process code `3`; wrappers such as `conda run` may therefore display a non-zero wrapper status. Inspect the emitted JSON (`"status": "paused"`) and `PROGRESS.json`.
-- Final focused regressions passed: core writer/freeze/Formal550 matrix `114 passed`; automatic acceptance matrix `68 passed` with 13 existing Matplotlib/Pyparsing deprecation warnings; notebook matrix `12 passed` with one existing Windows ZMQ warning; PAR-S_2 loader matrix `17 passed`. The three new Python entry points compiled successfully.
-- The deterministic notebook contains no stored outputs and has SHA-256 `a389612453f21c47371b63b57ee9d8d8aa1721a84484a537ed363fa8e8f152e5`.
+- The automatic acceptance now resolves coordinate evidence through the frozen Task12G chain: manual release SHA-256 `aa2eb5621cef6d5e8a2a952f041963743ed83fcd5f814813fcf24a4eb455cf96`, automatic acceptance SHA-256 `3e81bc365cd88325c2cca40af75233a5550b0025102c006bf06f43378f1541a9`, and coordinate report SHA-256 `12b83f5c0627d824cbb408c8042c159dfff9afdf39143a511dfb88f1c259108a`.
+- Final focused regressions passed: core writer/freeze/Formal550 matrix `121 passed`; automatic acceptance matrix `72 passed` with 13 existing Matplotlib/Pyparsing deprecation warnings; notebook matrix `12 passed` with one existing Windows ZMQ warning; PAR-S_2 loader matrix `17 passed`. The three new Python entry points compiled successfully.
+- The deterministic notebook contains 15 cells, 7 code cells, no stored outputs, and no removable `assert` integrity checks. Its SHA-256 is `7568633982392b366e50bc9a14848423ff2d6db199ef403f90c35271dc4eefcc`.
 - The complete 550-case V2 campaign and its automatic acceptance evidence were intentionally not materialized during smoke verification. The implementation and resume path are ready; the commands below perform that long-running production work.
 
 From this worktree, start the full writer with immutable defaults:

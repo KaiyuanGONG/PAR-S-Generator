@@ -108,6 +108,18 @@ SPLIT_PLAN_KEYS = frozenset(
         "sha256",
     }
 )
+GENERATION_ENTRY_KEYS = frozenset(
+    {
+        "case_id",
+        "case_family_id",
+        "profile_id",
+        "split",
+        "population_weight",
+        "sampling_probability",
+        "mismatch_challenge",
+        "challenge_labels",
+    }
+)
 
 REQUIRED_ARTIFACTS = (
     "phantom_npz",
@@ -347,43 +359,71 @@ def _validate_role_entries(
         dataset.get("dataset_id") != expected["dataset_id"]
         or dataset.get("dataset_version") != "2.0.0"
         or dataset.get("dataset_role") != role
-        or int(dataset.get("case_count", -1)) != count
+        or type(dataset.get("case_count")) is not int
+        or dataset.get("case_count") != count
     ):
         raise Formal550LocalError(f"{role} dataset identity mismatch")
-    ids = tuple(str(item.get("case_id")) for item in entries)
+    string_fields = ("case_id", "case_family_id", "profile_id", "split")
+    for item in entries:
+        if (
+            set(item) != GENERATION_ENTRY_KEYS
+            or any(type(item.get(field)) is not str for field in string_fields)
+            or type(item.get("population_weight")) is not float
+            or type(item.get("sampling_probability")) is not float
+            or type(item.get("mismatch_challenge")) is not bool
+            or type(item.get("challenge_labels")) is not list
+            or any(
+                type(label) is not str
+                for label in item.get("challenge_labels", [])
+            )
+        ):
+            raise Formal550LocalError(f"{role} entry schema/type mismatch")
+    ids = tuple(item["case_id"] for item in entries)
     expected_ids = tuple(
         f"{expected['prefix']}_{index:05d}" for index in range(count)
     )
     if ids != expected_ids:
         raise Formal550LocalError(f"{role} case identity/order mismatch")
-    if Counter(str(item.get("split")) for item in entries) != expected["splits"]:
+    expected_families = tuple(
+        (
+            f"family_{index:05d}"
+            if role == "main"
+            else f"negative_family_{index:05d}"
+        )
+        for index in range(count)
+    )
+    if tuple(item["case_family_id"] for item in entries) != expected_families:
+        raise Formal550LocalError(f"{role} case-family identity/order mismatch")
+    if Counter(item["split"] for item in entries) != expected["splits"]:
         raise Formal550LocalError(f"{role} split policy mismatch")
     if any(item.get("profile_id") != expected["profile_id"] for item in entries):
         raise Formal550LocalError(f"{role} profile/challenge policy mismatch")
-    if role == "main" and any(
-        item.get("mismatch_challenge") is not False for item in entries
+    if any(
+        item["mismatch_challenge"] is not False
+        or item["challenge_labels"] != []
+        for item in entries
     ):
-        raise Formal550LocalError("main policy forbids mismatch challenges")
+        raise Formal550LocalError(f"{role} policy forbids challenge labels")
     if role == "negative":
         if any(
-            float(item.get("population_weight", -1.0)) != 0.0
+            item["population_weight"] != 0.0
             for item in entries
         ) or not math.isclose(
-            sum(float(item.get("sampling_probability", -1.0)) for item in entries),
+            sum(item["sampling_probability"] for item in entries),
             1.0,
             rel_tol=0.0,
             abs_tol=1e-12,
-        ) or any(float(item.get("sampling_probability", -1.0)) <= 0.0 for item in entries):
+        ) or any(item["sampling_probability"] <= 0.0 for item in entries):
             raise Formal550LocalError(
                 "negative policy requires zero population weights and normalized sampling"
             )
     else:
         if any(
-            float(item.get("population_weight", -1.0)) != 1.0
-            or float(item.get("sampling_probability", 0.0)) <= 0.0
+            item["population_weight"] != 1.0
+            or item["sampling_probability"] <= 0.0
             for item in entries
         ) or not math.isclose(
-            sum(float(item["sampling_probability"]) for item in entries),
+            sum(item["sampling_probability"] for item in entries),
             1.0,
             rel_tol=0.0,
             abs_tol=1e-12,
@@ -578,6 +618,24 @@ def _validate_role_contract(
         raise Formal550LocalError(f"{role} generation plan keys mismatch")
     if set(split) != SPLIT_PLAN_KEYS:
         raise Formal550LocalError(f"{role} split plan keys mismatch")
+    generation_content = {
+        key: value for key, value in generation.items() if key != "sha256"
+    }
+    split_content = {
+        key: value for key, value in split.items() if key != "sha256"
+    }
+    if (
+        type(generation.get("sha256")) is not str
+        or generation["sha256"] != sha256_json(generation_content)
+    ):
+        raise Formal550LocalError(f"{role} generation plan SHA-256 mismatch")
+    if (
+        type(split.get("sha256")) is not str
+        or split["sha256"] != sha256_json(split_content)
+    ):
+        raise Formal550LocalError(f"{role} split plan SHA-256 mismatch")
+    if generation.get("split_plan_sha256") != split["sha256"]:
+        raise Formal550LocalError(f"{role} generation/split-plan binding mismatch")
     if (
         generation.get("schema_version") != "pars_generation_plan_v2"
         or split.get("schema_version") != "pars_split_plan_v2"
@@ -619,6 +677,20 @@ def _validate_role_contract(
         raise Formal550LocalError(f"{role} preflight summaries are malformed")
     entries = tuple(dict(item) for item in raw_entries)
     expected_case_ids = _validate_role_entries(role, entries, dataset)
+    expected_family_to_split = {
+        item["case_family_id"]: item["split"] for item in entries
+    }
+    family_seeds = split.get("family_seeds")
+    if split.get("family_to_split") != expected_family_to_split:
+        raise Formal550LocalError(
+            f"{role} split-plan family assignments mismatch"
+        )
+    if (
+        not isinstance(family_seeds, Mapping)
+        or set(family_seeds) != set(expected_family_to_split)
+        or any(type(value) is not int for value in family_seeds.values())
+    ):
+        raise Formal550LocalError(f"{role} split-plan family seeds malformed")
     summaries = {str(item.get("case_id")): dict(item) for item in raw_summaries}
     if tuple(summaries) != expected_case_ids:
         raise Formal550LocalError(f"{role} preflight case identities/order mismatch")
@@ -642,10 +714,15 @@ def _validate_role_contract(
     binding = plan_preflights[role]
     if binding.get("relative_path") != f"plans/{role}/PREFLIGHT.json":
         raise Formal550LocalError(f"Task13 plan {role} preflight path mismatch")
+    if (
+        report.get("generation_plan_sha256") != generation["sha256"]
+        or report.get("split_plan_sha256") != split["sha256"]
+    ):
+        raise Formal550LocalError(f"{role} preflight plan binding mismatch")
     expected_bindings = {
         "sha256": sha256_file(report_path),
-        "generation_plan_sha256": report.get("generation_plan_sha256"),
-        "split_plan_sha256": report.get("split_plan_sha256"),
+        "generation_plan_sha256": generation["sha256"],
+        "split_plan_sha256": split["sha256"],
     }
     if any(binding.get(key) != value for key, value in expected_bindings.items()):
         raise Formal550LocalError(f"Task13 plan {role} preflight binding mismatch")

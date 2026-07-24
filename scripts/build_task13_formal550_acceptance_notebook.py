@@ -113,9 +113,20 @@ def resolve_role_artifact(root, artifact):
     }
 
 
+def require(condition, message):
+    if not condition:
+        raise ValueError(message)
+
+
 automatic, _ = read_json_bytes(ACCEPTANCE_JSON)
-assert automatic["schema_version"] == EXPECTED_ACCEPTANCE_SCHEMA
-assert automatic["notebook_authority"] == "informational_read_only"
+require(
+    automatic["schema_version"] == EXPECTED_ACCEPTANCE_SCHEMA,
+    "automatic acceptance schema mismatch",
+)
+require(
+    automatic["notebook_authority"] == "informational_read_only",
+    "notebook authority mismatch",
+)
 
 gate_documents = {
     row["gate_id"]: read_bound_gate(row) for row in automatic['gate_rows']
@@ -124,7 +135,10 @@ generator_gate = gate_documents["formal550_generator_gate_v1"]
 main_loader_gate = gate_documents["formal550_main_loader_gate_v1"]
 negative_loader_gate = gate_documents["formal550_negative_loader_gate_v1"]
 coordinate_gate = gate_documents["projection_coordinate_gate_v2"]
-assert generator_gate["schema_version"] == EXPECTED_GENERATOR_SCHEMA
+require(
+    generator_gate["schema_version"] == EXPECTED_GENERATOR_SCHEMA,
+    "generator gate schema mismatch",
+)
 
 main_marker, main_manifest_rows = load_role_manifest(
     "main", MAIN_ROOT, generator_gate["dataset_manifests"]["main"]
@@ -134,8 +148,14 @@ negative_marker, negative_manifest_rows = load_role_manifest(
     NEGATIVE_ROOT,
     generator_gate["dataset_manifests"]["negative"],
 )
-assert main_marker["case_count"] == automatic["role_case_counts"]["main"]
-assert negative_marker["case_count"] == automatic["role_case_counts"]["negative"]
+require(
+    main_marker["case_count"] == automatic["role_case_counts"]["main"],
+    "main role case count mismatch",
+)
+require(
+    negative_marker["case_count"] == automatic["role_case_counts"]["negative"],
+    "negative role case count mismatch",
+)
 
 role_roots = {"main": MAIN_ROOT, "negative": NEGATIVE_ROOT}
 visual_registry = {}
@@ -151,7 +171,10 @@ for role, rows in (
     }
 
 case_frame = pd.DataFrame(generator_gate["cases"])
-assert len(case_frame) == automatic["case_count"]
+require(
+    len(case_frame) == automatic["case_count"],
+    "generator gate case count mismatch",
+)
 for role in ("main", "negative"):
     audited = set(case_frame.loc[case_frame["dataset_role"] == role, "case_id"])
     if audited != set(visual_registry[role]):

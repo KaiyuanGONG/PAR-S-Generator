@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ast
 import hashlib
 import json
 import sys
@@ -262,6 +263,13 @@ def test_notebook_source_has_no_writes_network_processes_or_manual_notes(
     )
     for token in forbidden:
         assert token not in source
+    notebook = nbformat.read(output, as_version=4)
+    assert not any(
+        isinstance(node, ast.Assert)
+        for cell in notebook.cells
+        if cell.cell_type == "code"
+        for node in ast.walk(ast.parse(str(cell.source)))
+    )
     assert "automatic_gate_passed =" not in source
     assert "automatic['status'] =" not in source
 
