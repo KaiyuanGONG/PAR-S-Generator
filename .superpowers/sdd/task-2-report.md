@@ -45,4 +45,4 @@ The warning is a pre-existing pytest cache permission warning for `.pytest_cache
 
 - Reviewed role policies against the actual Task13 preflight builder: negative controls have zero population weight but normalized sampling probability (1/50), rather than zero sampling probability.
 - The validator deliberately stops after archive/input contract validation. It does not inspect node result quartets or invoke SIMIND; those later responsibilities are outside Task 2.
-- Commit: pending.
+- Primary implementation commit: `104e01c` (`Add Task13 formal550 archive validation`).
