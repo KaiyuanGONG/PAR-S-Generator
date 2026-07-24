@@ -324,13 +324,28 @@ def _formal_input_roots(tmp_path: Path) -> tuple[Path, Path, Path]:
         generation = {
             "schema_version": "pars_generation_plan_v2",
             **_generation_dataset(role),
+            "profile_id": (
+                "population_tare_hcc_nopvi_v2"
+                if role == "main"
+                else "negative_control_v2"
+            ),
+            "sha256": "a" * 64,
+            "split_plan_sha256": "b" * 64,
             "entries": entries,
         }
         split = {
             "schema_version": "pars_split_plan_v2",
             "dataset_id": _role_dataset(role)["dataset_id"],
+            "family_seeds": {},
+            "family_to_split": {},
             "global_seed": _role_dataset(role)["global_seed"],
+            "profile_id": (
+                "population_tare_hcc_nopvi_v2"
+                if role == "main"
+                else "negative_control_v2"
+            ),
             "ratios": _role_dataset(role)["split_ratios"],
+            "sha256": "c" * 64,
         }
         _write_json(role_root / "GENERATION_PLAN.json", generation)
         _write_json(role_root / "SPLIT_PLAN.json", split)
@@ -506,6 +521,11 @@ def test_validate_formal_inputs_accepts_full_frozen_role_dataset_bindings(
         ("negative", "global_seed", 20260719),
         ("main", "split_ratios", {"train": 0.7, "val": 0.2, "test": 0.1}),
         ("negative", "unexpected_field", True),
+        ("main", "family_size", True),
+        ("negative", "global_seed", 20260718.0),
+        ("negative", "split_ratios", {"train": False, "val": False, "test": True}),
+        ("negative", "split_ratios", {"train": 0, "val": 0, "test": 1}),
+        ("negative", "case_count", 50.0),
     ),
 )
 def test_validate_formal_inputs_rejects_task13_role_dataset_frozen_field_drift(
@@ -542,6 +562,21 @@ def test_validate_formal_inputs_rejects_task13_role_dataset_frozen_field_drift(
             "ratios",
             {"train": 0.7, "val": 0.2, "test": 0.1},
         ),
+        ("main", "GENERATION_PLAN.json", "family_size", True),
+        ("negative", "GENERATION_PLAN.json", "global_seed", 20260718.0),
+        ("negative", "GENERATION_PLAN.json", "case_count", 50.0),
+        (
+            "negative",
+            "SPLIT_PLAN.json",
+            "ratios",
+            {"train": False, "val": False, "test": True},
+        ),
+        (
+            "negative",
+            "SPLIT_PLAN.json",
+            "ratios",
+            {"train": 0, "val": 0, "test": 1},
+        ),
     ),
 )
 def test_validate_formal_inputs_rejects_preflight_frozen_field_drift(
@@ -562,6 +597,64 @@ def test_validate_formal_inputs_rejects_preflight_frozen_field_drift(
         role=role,
         name=name,
         value={**value, field: wrong_value},
+    )
+    monkeypatch.setattr(finalizer, "_validate_downloaded_results", lambda **_: None)
+
+    with pytest.raises(finalizer.Formal550LocalError, match=f"{role} .* mismatch"):
+        finalizer.validate_formal_inputs(results, bundle, preflight)
+
+
+def test_validate_formal_inputs_rejects_extra_task13_dataset_role(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    results, bundle, preflight = _formal_input_roots(tmp_path)
+    plan_path = bundle / "TASK13_PLAN.json"
+    plan = finalizer.read_json(plan_path)
+    datasets = {key: dict(value) for key, value in plan["datasets"].items()}
+    datasets["shadow"] = dict(datasets["main"])
+    _write_json(plan_path, {**plan, "datasets": datasets})
+    _refresh_bundle_binding(results, bundle)
+    monkeypatch.setattr(finalizer, "_validate_downloaded_results", lambda **_: None)
+
+    with pytest.raises(
+        finalizer.Formal550LocalError,
+        match="Task13 plan role dataset bindings mismatch",
+    ):
+        finalizer.validate_formal_inputs(results, bundle, preflight)
+
+
+@pytest.mark.parametrize(
+    ("role", "name", "extra_fields"),
+    (
+        ("main", "GENERATION_PLAN.json", {"unexpected_field": True}),
+        ("negative", "SPLIT_PLAN.json", {"unexpected_field": True}),
+        (
+            "main",
+            "GENERATION_PLAN.json",
+            {"split_ratios": {"train": 0.8, "val": 0.1, "test": 0.1}},
+        ),
+        ("negative", "SPLIT_PLAN.json", {"family_size": 1}),
+        ("main", "SPLIT_PLAN.json", {"dataset_role": "main"}),
+    ),
+)
+def test_validate_formal_inputs_rejects_extra_or_misplaced_preflight_keys(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    role: str,
+    name: str,
+    extra_fields: dict[str, object],
+) -> None:
+    results, bundle, preflight = _formal_input_roots(tmp_path)
+    path = preflight / role / name
+    value = finalizer.read_json(path)
+    _rewrite_bundled_preflight_file(
+        results=results,
+        bundle=bundle,
+        preflight=preflight,
+        role=role,
+        name=name,
+        value={**value, **extra_fields},
     )
     monkeypatch.setattr(finalizer, "_validate_downloaded_results", lambda **_: None)
 

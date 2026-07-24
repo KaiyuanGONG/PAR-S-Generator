@@ -81,6 +81,33 @@ _SHA256 = re.compile(r"[0-9a-f]{64}")
 ROLE_PROGRESS_SCHEMA = "pars_v2_task13_formal550_role_progress_v1"
 CAMPAIGN_COMPLETE_SCHEMA = "pars_v2_task13_formal550_complete_v1"
 CAMPAIGN_COMPLETE_FILENAME = "FORMAL550_COMPLETE.json"
+GENERATION_PLAN_KEYS = frozenset(
+    {
+        "case_count",
+        "dataset_id",
+        "dataset_role",
+        "dataset_version",
+        "entries",
+        "family_size",
+        "global_seed",
+        "profile_id",
+        "schema_version",
+        "sha256",
+        "split_plan_sha256",
+    }
+)
+SPLIT_PLAN_KEYS = frozenset(
+    {
+        "dataset_id",
+        "family_seeds",
+        "family_to_split",
+        "global_seed",
+        "profile_id",
+        "ratios",
+        "schema_version",
+        "sha256",
+    }
+)
 
 REQUIRED_ARTIFACTS = (
     "phantom_npz",
@@ -508,6 +535,24 @@ def _role_dataset(role: str) -> Mapping[str, object]:
     return datasets[role]
 
 
+def _exact_contract_value(observed: object, expected: object) -> bool:
+    """Compare frozen JSON values without Python's numeric type coercion."""
+
+    if type(observed) is not type(expected):
+        return False
+    if isinstance(expected, dict):
+        return set(observed) == set(expected) and all(
+            _exact_contract_value(observed[key], value)
+            for key, value in expected.items()
+        )
+    if isinstance(expected, list):
+        return len(observed) == len(expected) and all(
+            _exact_contract_value(observed_item, expected_item)
+            for observed_item, expected_item in zip(observed, expected)
+        )
+    return observed == expected
+
+
 def _validate_role_contract(
     *,
     role: str,
@@ -529,6 +574,10 @@ def _validate_role_contract(
         bundled = bundle_root / "plans" / role / name
         if not bundled.is_file() or local.read_bytes() != bundled.read_bytes():
             raise Formal550LocalError(f"uploaded/local {role} {label} bytes differ")
+    if set(generation) != GENERATION_PLAN_KEYS:
+        raise Formal550LocalError(f"{role} generation plan keys mismatch")
+    if set(split) != SPLIT_PLAN_KEYS:
+        raise Formal550LocalError(f"{role} split plan keys mismatch")
     if (
         generation.get("schema_version") != "pars_generation_plan_v2"
         or split.get("schema_version") != "pars_split_plan_v2"
@@ -544,7 +593,9 @@ def _validate_role_contract(
     observed_generation_dataset = {
         key: generation.get(key) for key in expected_generation_dataset
     }
-    if observed_generation_dataset != expected_generation_dataset:
+    if not _exact_contract_value(
+        observed_generation_dataset, expected_generation_dataset
+    ):
         raise Formal550LocalError(f"{role} generation dataset identity mismatch")
     expected_split_dataset = {
         "dataset_id": dataset["dataset_id"],
@@ -554,7 +605,7 @@ def _validate_role_contract(
     observed_split_dataset = {
         key: split.get(key) for key in expected_split_dataset
     }
-    if observed_split_dataset != expected_split_dataset:
+    if not _exact_contract_value(observed_split_dataset, expected_split_dataset):
         raise Formal550LocalError(f"{role} split dataset identity mismatch")
     raw_entries = generation.get("entries")
     raw_summaries = report.get("cases")
@@ -818,19 +869,28 @@ def validate_formal_inputs(
         for role in ("main", "negative")
     }
     campaign = plan.get("dataset")
-    if not isinstance(campaign, Mapping) or campaign != {
+    expected_campaign = {
         "dataset_id": "PAR-S-V2-FORMAL550",
         "dataset_version": "2.0.0",
         "case_count": 550,
-    }:
+    }
+    if not isinstance(campaign, Mapping) or not _exact_contract_value(
+        campaign, expected_campaign
+    ):
         raise Formal550LocalError("Task13 campaign identity mismatch")
     expected_ids = {
         role: contract.expected_case_ids for role, contract in contracts.items()
     }
     planned_datasets = plan.get("datasets")
-    if not isinstance(planned_datasets, Mapping) or any(
-        planned_datasets.get(role) != _role_dataset(role)
-        for role in ("main", "negative")
+    if (
+        not isinstance(planned_datasets, Mapping)
+        or set(planned_datasets) != {"main", "negative"}
+        or any(
+            not _exact_contract_value(
+                planned_datasets.get(role), _role_dataset(role)
+            )
+            for role in ("main", "negative")
+        )
     ):
         raise Formal550LocalError("Task13 plan role dataset bindings mismatch")
     plan_cases = plan.get("cases")
