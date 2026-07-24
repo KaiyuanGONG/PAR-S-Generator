@@ -31,9 +31,9 @@
 - Consumes: `PreparedPilotCaseV2` from `prepare_negative_case`.
 - Produces: `build_completed_metadata(...)` output with `injection_tumor_coverage_fraction=1.0` and `tumor_volume_fraction_perfused=0.0` when tumor support is empty.
 
-- [ ] Write a failing test that constructs a negative prepared case and proves completed metadata currently divides by zero.
-- [ ] Run `python -m pytest tests/test_task13_formal550_local.py::test_completed_metadata_supports_tumor_negative_case -q` and confirm the expected failure.
-- [ ] Guard the two tumor-derived fractions in `build_completed_metadata` while leaving positive-case behavior unchanged:
+- [x] Write a failing test that constructs a negative prepared case and proves completed metadata currently divides by zero.
+- [x] Run `python -m pytest tests/test_task13_formal550_local.py::test_completed_metadata_supports_tumor_negative_case -q` and confirm the expected failure.
+- [x] Guard the two tumor-derived fractions in `build_completed_metadata` while leaving positive-case behavior unchanged:
 
 ```python
 tumor_voxels = int(np.count_nonzero(tumor_union))
@@ -44,8 +44,8 @@ tumor_fraction_perfused = (
 )
 ```
 
-- [ ] Re-run the focused test and existing negative/case-writer tests.
-- [ ] Commit the independently testable metadata change.
+- [x] Re-run the focused test and existing negative/case-writer tests.
+- [x] Commit the independently testable metadata change.
 
 ### Task 2: Safe Task13 archive validation and role contracts
 
@@ -57,9 +57,9 @@ tumor_fraction_perfused = (
 - Consumes: downloaded `task13_formal550_results.tar.gz`, its sidecar, `task13_formal550_preflight_v1/{main,negative}`, and the immutable upload bundle.
 - Produces: `stage_results_archive(...)`, `validate_formal_inputs(...)`, and role contracts for `main` and `negative`.
 
-- [ ] Write failing tests for path-traversal rejection, archive SHA mismatch, exact role counts/splits, role-specific IDs, master/schema binding, and prohibition of local SIMIND execution.
-- [ ] Run the new tests and confirm each fails because the Task13 local finalizer does not exist.
-- [ ] Implement atomic safe extraction using Python tar filtering and a staging completion marker bound to the archive SHA:
+- [x] Write failing tests for path-traversal rejection, archive SHA mismatch, exact role counts/splits, role-specific IDs, master/schema binding, and prohibition of local SIMIND execution.
+- [x] Run the new tests and confirm each fails because the Task13 local finalizer does not exist.
+- [x] Implement atomic safe extraction using Python tar filtering and a staging completion marker bound to the archive SHA:
 
 ```python
 def stage_results_archive(
@@ -75,7 +75,7 @@ def stage_results_archive(
     return extract_archive_atomically(archive, staging_root, resume=resume)
 ```
 
-- [ ] Implement bundle/preflight/master/node/case validation using the Task13 runtime schemas and existing quartet validation:
+- [x] Implement bundle/preflight/master/node/case validation using the Task13 runtime schemas and existing quartet validation:
 
 ```python
 @dataclass(frozen=True)
@@ -89,9 +89,9 @@ class RoleContract:
     expected_case_ids: tuple[str, ...]
 ```
 
-- [ ] Implement `--validate-only`, `--resume`, and `--max-cases` argument contracts with immutable default paths.
-- [ ] Re-run the Task13 local tests and Task12F/Task13 regression tests.
-- [ ] Commit the archive and contract layer.
+- [x] Implement `--validate-only`, `--resume`, and `--max-cases` argument contracts with immutable default paths.
+- [x] Re-run the Task13 local tests and Task12F/Task13 regression tests.
+- [x] Commit the archive and contract layer.
 
 ### Task 3: Dual dataset writer, freeze, and campaign marker
 
@@ -103,11 +103,11 @@ class RoleContract:
 - Consumes: validated role contracts and downloaded completed SIMIND results.
 - Produces: `<output>/main/DATASET_COMPLETE.json`, `<output>/negative/DATASET_COMPLETE.json`, and `<output>/FORMAL550_COMPLETE.json`.
 
-- [ ] Write failing tests for main/negative dataset contracts, exact required artifacts, role-specific preparation, independent progress, resumability, and the campaign marker binding both manifest hashes.
-- [ ] Run the tests and confirm the missing writer behavior fails.
-- [ ] Regenerate deterministic main cases with `prepare_population_case` and negative cases with `prepare_negative_case`, prove byte identity against each frozen preflight, and wrap downloaded outputs without executing SIMIND.
-- [ ] Write/freeze each role independently using `write_case_v2` and `freeze_dataset`.
-- [ ] Emit role progress JSON and a campaign completion JSON only after both role freezes revalidate idempotently. The campaign marker has this exact top-level contract:
+- [x] Write failing tests for main/negative dataset contracts, exact required artifacts, role-specific preparation, independent progress, resumability, and the campaign marker binding both manifest hashes.
+- [x] Run the tests and confirm the missing writer behavior fails.
+- [x] Regenerate deterministic main cases with `prepare_population_case` and negative cases with `prepare_negative_case`, prove byte identity against each frozen preflight, and wrap downloaded outputs without executing SIMIND.
+- [x] Write/freeze each role independently using `write_case_v2` and `freeze_dataset`.
+- [x] Emit role progress JSON and a campaign completion JSON only after both role freezes revalidate idempotently. The campaign marker has this exact top-level contract:
 
 ```python
 {
@@ -123,8 +123,8 @@ class RoleContract:
 }
 ```
 
-- [ ] Re-run Task13 local, case-writer, dataset-freeze, negative, and Task12G regression tests.
-- [ ] Commit the writer/freeze layer.
+- [x] Re-run Task13 local, case-writer, dataset-freeze, negative, and Task12G regression tests.
+- [x] Commit the writer/freeze layer.
 
 ### Task 4: Formal automatic acceptance
 
@@ -136,11 +136,11 @@ class RoleContract:
 - Consumes: `FORMAL550_COMPLETE.json`, both role dataset roots, PAR-S_2 `validate_synthetic_dataset.py`, and frozen Task12G coordinate evidence.
 - Produces: `TASK13_FORMAL550_AUTOMATIC_ACCEPTANCE.json`, Markdown summary, per-role loader gates, projection/statistical gate, and progress/log records.
 
-- [ ] Write failing tests for exact campaign binding, both loader subprocess commands, 500/50 role counts, 400/50/50 plus test-only splits, negative zero-tumor semantics, projection shape/support/ratio threshold, inherited coordinate evidence, resume, and fail-closed final aggregation.
-- [ ] Run tests and confirm the script is missing.
-- [ ] Implement role loader stages with expected counts 500 and 50.
-- [ ] Implement all-case projection/artifact/statistical checks with the frozen threshold 80.0 and deterministic focus-case selection.
-- [ ] Bind every evidence file by SHA-256 in the final automatic acceptance JSON using:
+- [x] Write failing tests for exact campaign binding, both loader subprocess commands, 500/50 role counts, 400/50/50 plus test-only splits, negative zero-tumor semantics, projection shape/support/ratio threshold, inherited coordinate evidence, resume, and fail-closed final aggregation.
+- [x] Run tests and confirm the script is missing.
+- [x] Implement role loader stages with expected counts 500 and 50.
+- [x] Implement all-case projection/artifact/statistical checks with the frozen threshold 80.0 and deterministic focus-case selection.
+- [x] Bind every evidence file by SHA-256 in the final automatic acceptance JSON using:
 
 ```python
 {
@@ -159,8 +159,8 @@ class RoleContract:
 }
 ```
 
-- [ ] Re-run acceptance and PAR-S_2 loader regression tests.
-- [ ] Commit the automatic acceptance layer.
+- [x] Re-run acceptance and PAR-S_2 loader regression tests.
+- [x] Commit the automatic acceptance layer.
 
 ### Task 5: Read-only acceptance notebook
 
@@ -173,9 +173,9 @@ class RoleContract:
 - Consumes: frozen automatic acceptance JSON, role gate JSON, visual registry, and immutable dataset artifacts.
 - Produces: a deterministic notebook that displays gate structure, role/split summaries, cohort distributions, projection metrics, and slider-based focus cases without writing notes or gate results.
 
-- [ ] Write failing structural tests requiring explanatory Markdown, no write calls, no manual-note widgets, exact SIMIND/projector/clinical angle labels, and main/negative projection sliders.
-- [ ] Run the tests and confirm the builder/notebook are absent.
-- [ ] Implement the deterministic notebook builder and generate the notebook through the exact interface:
+- [x] Write failing structural tests requiring explanatory Markdown, no write calls, no manual-note widgets, exact SIMIND/projector/clinical angle labels, and main/negative projection sliders.
+- [x] Run the tests and confirm the builder/notebook are absent.
+- [x] Implement the deterministic notebook builder and generate the notebook through the exact interface:
 
 ```python
 def build_notebook(
@@ -193,8 +193,8 @@ def build_notebook(
     nbformat.write(notebook, output_path)
 ```
 
-- [ ] Run structural tests and execute the notebook against fixture evidence.
-- [ ] Commit the notebook layer.
+- [x] Run structural tests and execute the notebook against fixture evidence.
+- [x] Commit the notebook layer.
 
 ### Task 6: Real archive smoke verification and handoff
 
@@ -205,8 +205,45 @@ def build_notebook(
 - Consumes: the actual downloaded archive and frozen local preflight/upload roots.
 - Produces: verified commands for the user to run the full local writer, acceptance pipeline, and notebook.
 
-- [ ] Run Task13 `--validate-only` against the real 550-case archive and confirm all bindings pass.
-- [ ] Run a one-case bounded write into a disposable dedicated smoke root, confirm pause/resume semantics, then preserve or remove it only within the dedicated smoke directory.
-- [ ] Run the full focused regression suite and compile every new Python script.
-- [ ] Check git diff/status and confirm the downloaded archive hash is unchanged.
-- [ ] Update this checklist with observed verification results and commit the handoff.
+- [x] Run Task13 `--validate-only` against the real 550-case archive and confirm all bindings pass.
+- [x] Run a one-case bounded write into a disposable dedicated smoke root, confirm pause/resume semantics, then preserve or remove it only within the dedicated smoke directory.
+- [x] Run the full focused regression suite and compile every new Python script.
+- [x] Check git diff/status and confirm the downloaded archive hash is unchanged.
+- [x] Update this checklist with observed verification results and commit the handoff.
+
+## Observed Verification and Handoff
+
+Verified locally on 2026-07-24 in the `SPECT` Conda environment.
+
+- Real immutable-input validation passed for all 550 cases: 500 `main`, 50 `negative`, all node/master/case/quartet bindings, exact frozen plan schemas, and exact JSON value types. A resumed validation completed in 35.8 seconds after the fresh validation pass.
+- The downloaded archive remained unchanged at SHA-256 `fecbd2d485d3f28dab8e195b208d9a9b5a115cf05d7fe1741ab11e3dc8496c74`.
+- Two bounded runs were performed under the dedicated non-authoritative smoke root `C:\Users\86187\AppData\Local\Temp\pars_task6_formal550_smoke_20260724_019f9401`. The first wrote `case_00000`; the resumed run hash-verified and skipped it, then wrote `case_00001`. Progress is deliberately paused at `main=2/500`, `negative=0/50`.
+- No `main/DATASET_COMPLETE.json`, `negative/DATASET_COMPLETE.json`, or campaign `FORMAL550_COMPLETE.json` exists in the smoke root. The root is preserved for audit and may be deleted later only as that exact dedicated directory.
+- A bounded pause is successful operational behavior but returns process code `3`; wrappers such as `conda run` may therefore display a non-zero wrapper status. Inspect the emitted JSON (`"status": "paused"`) and `PROGRESS.json`.
+- Final focused regressions passed: core writer/freeze/Formal550 matrix `114 passed`; automatic acceptance matrix `68 passed` with 13 existing Matplotlib/Pyparsing deprecation warnings; notebook matrix `12 passed` with one existing Windows ZMQ warning; PAR-S_2 loader matrix `17 passed`. The three new Python entry points compiled successfully.
+- The deterministic notebook contains no stored outputs and has SHA-256 `a389612453f21c47371b63b57ee9d8d8aa1721a84484a537ed363fa8e8f152e5`.
+- The complete 550-case V2 campaign and its automatic acceptance evidence were intentionally not materialized during smoke verification. The implementation and resume path are ready; the commands below perform that long-running production work.
+
+From this worktree, start the full writer with immutable defaults:
+
+```powershell
+conda run -n SPECT python scripts\finalize_task13_formal550_local.py
+```
+
+If that run is interrupted, rerun the same command with `--resume`:
+
+```powershell
+conda run -n SPECT python scripts\finalize_task13_formal550_local.py --resume
+```
+
+After `D:\PFE-U\PAR\outputs\pars_v2_formal550_v1\FORMAL550_COMPLETE.json` exists, run the automatic acceptance pipeline. Use `--resume` only when continuing an already-created QA root:
+
+```powershell
+conda run -n SPECT python scripts\finalize_task13_formal550_acceptance.py
+```
+
+Finally regenerate the read-only review notebook from the frozen acceptance evidence:
+
+```powershell
+conda run -n SPECT python scripts\build_task13_formal550_acceptance_notebook.py
+```
