@@ -1,0 +1,91 @@
+{
+  "schema_version": "pars_v2_task13_formal550_manual_acceptance_v1",
+  "status": "pass",
+  "campaign": {
+    "dataset_id": "PAR-S-V2-FORMAL550",
+    "dataset_version": "2.0.0",
+    "case_count": 550,
+    "campaign_complete_sha256": "7e11de03c82455565574d785c6ec6a9cb2b2d2e05ccc33b3e763d77c5e4e5fd4",
+    "main_manifest_sha256": "b1fb588e0f1c6d3771a317b480704c403afc505d545b59b45dcc52f8f0bd3ffe",
+    "negative_manifest_sha256": "9dec479577633759c3ed2af838f5f2877dcfd930d81d7ff51d68f2fa43e82bc7"
+  },
+  "automatic_acceptance_v1": {
+    "status": "fail",
+    "automatic_gate_passed": false,
+    "sha256": "b2710e034a0bf8869c160fa32b9fce88d9fb899a3989483f1bd0e02afd633de7",
+    "generator_gate_sha256": "3ae7eaa0dcabec5fe46f9c56ff41581da35b6871d631074ce35134fb98ef9710",
+    "passed_case_count": 539,
+    "failed_case_count": 11,
+    "sole_failed_gate_id": "view_sum_ratio_at_most_80",
+    "preserved_unchanged": true
+  },
+  "manual_review": {
+    "status": "complete",
+    "review_date": "2026-07-25",
+    "decision_source": "explicit_user_instruction_after_notebook_review",
+    "decision": "classify_view_sum_ratio_as_nonblocking_diagnostic",
+    "rationale": "After visual review of the frozen 60-view projections and normal controls, the reviewer determined that per-view total-weight max/min modulation is not a data-quality failure for this campaign. All artifact, metadata, shape, finite/nonnegative, detector-support, centroid, coordinate, loader, and role-semantic checks pass.",
+    "reviewed_notebook": {
+      "relative_path": "notebook/Task13_Formal550_Acceptance_Review.ipynb",
+      "git_commit": "4f206cf2d4607cc69049b14adcfd33bc50deb0cd",
+      "sha256": "7568633982392b366e50bc9a14848423ff2d6db199ef403f90c35271dc4eefcc"
+    },
+    "previous_ratio_threshold": 80.0,
+    "observed_failed_ratio_range": [
+      80.29615918321053,
+      172.89813690218202
+    ],
+    "waived_blocking_gate_ids": [
+      "view_sum_ratio_at_most_80"
+    ],
+    "gate_reclassification": {
+      "gate_id": "view_sum_ratio_at_most_80",
+      "previous_classification": "blocking",
+      "manual_release_classification": "diagnostic_nonblocking",
+      "raw_measurements_preserved": true
+    },
+    "affected_case_ids": [
+      "case_00081",
+      "case_00159",
+      "case_00320",
+      "case_00340",
+      "case_00359",
+      "case_00411",
+      "case_00475",
+      "negative_00001",
+      "negative_00023",
+      "negative_00040",
+      "negative_00048"
+    ],
+    "other_failed_gate_ids": [],
+    "dataset_bytes_modified": false,
+    "cases_removed": false
+  },
+  "release": {
+    "release_contract_id": "pars_v2_task13_formal550_manual_release_v1",
+    "status": "pass",
+    "all_required_blocking_gates_passed": true,
+    "go_for_training": true,
+    "accepted_case_count": 550,
+    "role_case_counts": {
+      "main": 500,
+      "negative": 50
+    },
+    "main_split_counts": {
+      "train": 400,
+      "val": 50,
+      "test": 50
+    },
+    "negative_policy": "independent_test_only_population_weight_zero",
+    "gate_statuses": {
+      "generator_required_integrity_and_semantic_checks": "pass",
+      "main_loader": "pass",
+      "negative_loader": "pass",
+      "projection_coordinate": "pass",
+      "task12g_release_chain": "pass",
+      "view_sum_ratio": "diagnostic_nonblocking"
+    },
+    "automatic_v1_record_preserved": true,
+    "frozen_campaign_modified": false
+  }
+}

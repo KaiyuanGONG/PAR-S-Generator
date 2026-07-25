@@ -254,3 +254,25 @@ with:
 ```powershell
 conda run -n SPECT python scripts\build_task13_formal550_acceptance_notebook.py
 ```
+
+## Post-production manual release decision
+
+On 2026-07-25, after reviewing the frozen 60-view projections and normal
+controls in the read-only acceptance notebook, the user explicitly determined
+that per-view total-weight max/min modulation is not a data-quality failure for
+this campaign.
+
+- The immutable automatic v1 acceptance remains preserved as `FAIL`; its
+  SHA-256 remains
+  `b2710e034a0bf8869c160fa32b9fce88d9fb899a3989483f1bd0e02afd633de7`.
+- Only `view_sum_ratio_at_most_80` is reclassified from a blocking condition to
+  a diagnostic, non-blocking metric for the manual release contract.
+- No projection bytes were changed and no cases were removed.
+- Every remaining integrity, semantic, loader, coordinate, and inherited
+  release-chain condition passes.
+- The versioned manual release record is
+  `docs/reports/task13_formal550_manual_acceptance.json`, with SHA-256
+  `293b3e240fc6235690c1cb191c9c6335dbaa9c7de738bfafbba479c985b1e7be`.
+- The resulting manual release status is `PASS`,
+  `all_required_blocking_gates_passed=true`, and `go_for_training=true` for all
+  550 frozen cases under their existing split and role policies.
