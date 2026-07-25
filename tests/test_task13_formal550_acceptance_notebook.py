@@ -159,12 +159,20 @@ def _fixture_evidence(tmp_path: Path) -> tuple[Path, Path, Path]:
             "expected_count": 1,
             "observed_count": 1,
         },
+        # The frozen coordinate report has no top-level status or gate schema:
+        # Task4 normalizes its row from report_classification and freeze_gate.
         "projection_coordinate_gate_v2": {
             "schema_version": "pars_projection_alignment_report_v1",
-            "status": "pass",
             "report_classification": {
                 "schema_version": "projection_coordinate_gate_v2",
+                "role": "projection-coordinate-gate",
                 "blocking": True,
+                "transform_uniqueness_required": True,
+            },
+            "freeze_gate": {
+                "passed": True,
+                "frozen_transform_recovered": True,
+                "uniqueness_error": None,
             },
             "projection_coordinates": {
                 "coordinate_contract_id": "pars_simind_v8_xcat_zyx_sar_v1",
@@ -178,10 +186,16 @@ def _fixture_evidence(tmp_path: Path) -> tuple[Path, Path, Path]:
     for gate_id, value in gate_values.items():
         path = qa_root / f"{gate_id}.json"
         _write_json(path, value)
+        classification = value.get("report_classification")
+        row_schema = (
+            classification["schema_version"]
+            if isinstance(classification, dict)
+            else value["schema_version"]
+        )
         gate_rows.append(
             {
                 "gate_id": gate_id,
-                "schema_version": str(value["schema_version"]),
+                "schema_version": str(row_schema),
                 "status": "pass",
                 "blocking": True,
                 "path": str(path.resolve()),
@@ -378,6 +392,107 @@ def test_notebook_rejects_same_size_projection_tamper(tmp_path: Path) -> None:
     projection_path.write_bytes(payload)
 
     with pytest.raises(CellExecutionError, match="projection SHA-256 mismatch"):
+        _execute_notebook(output, tmp_path)
+
+
+def _rebind_coordinate_report(
+    acceptance_json: Path,
+    mutate: "callable[[dict], None]",
+) -> None:
+    """Mutate the coordinate report and re-bind its SHA-256 in the acceptance row."""
+
+    acceptance = json.loads(acceptance_json.read_text(encoding="utf-8"))
+    row = next(
+        item
+        for item in acceptance["gate_rows"]
+        if item["gate_id"] == "projection_coordinate_gate_v2"
+    )
+    report_path = Path(row["path"])
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    mutate(report)
+    _write_json(report_path, report)
+    row["sha256"] = _sha256(report_path)
+    _write_json(acceptance_json, acceptance)
+
+
+def test_notebook_accepts_coordinate_report_without_top_level_status(
+    tmp_path: Path,
+) -> None:
+    """The frozen report states its outcome in freeze_gate, not a top-level status."""
+
+    acceptance_json, main_root, negative_root = _fixture_evidence(tmp_path)
+    coordinate_row = next(
+        row
+        for row in json.loads(acceptance_json.read_text(encoding="utf-8"))["gate_rows"]
+        if row["gate_id"] == "projection_coordinate_gate_v2"
+    )
+    report = json.loads(Path(coordinate_row["path"]).read_text(encoding="utf-8"))
+    assert "status" not in report
+    assert coordinate_row["schema_version"] == "projection_coordinate_gate_v2"
+    output = tmp_path / "coordinate.ipynb"
+    build_notebook(
+        acceptance_json=acceptance_json,
+        output_path=output,
+        main_root=main_root,
+        negative_root=negative_root,
+    )
+
+    executed = _execute_notebook(output, tmp_path)
+
+    assert all(
+        cell_output.get("output_type") != "error"
+        for cell in executed.cells
+        for cell_output in cell.get("outputs", [])
+    )
+
+
+def test_notebook_rejects_coordinate_report_with_failed_freeze_gate(
+    tmp_path: Path,
+) -> None:
+    acceptance_json, main_root, negative_root = _fixture_evidence(tmp_path)
+
+    def _fail_freeze(report: dict) -> None:
+        report["freeze_gate"]["passed"] = False
+
+    _rebind_coordinate_report(acceptance_json, _fail_freeze)
+    output = tmp_path / "freeze_failed.ipynb"
+    build_notebook(
+        acceptance_json=acceptance_json,
+        output_path=output,
+        main_root=main_root,
+        negative_root=negative_root,
+    )
+
+    with pytest.raises(
+        CellExecutionError,
+        match="status mismatch for projection_coordinate_gate_v2",
+    ):
+        _execute_notebook(output, tmp_path)
+
+
+def test_notebook_rejects_coordinate_report_with_substituted_gate_schema(
+    tmp_path: Path,
+) -> None:
+    acceptance_json, main_root, negative_root = _fixture_evidence(tmp_path)
+
+    def _swap_schema(report: dict) -> None:
+        report["report_classification"]["schema_version"] = (
+            "projection_coordinate_gate_v1"
+        )
+
+    _rebind_coordinate_report(acceptance_json, _swap_schema)
+    output = tmp_path / "schema_swapped.ipynb"
+    build_notebook(
+        acceptance_json=acceptance_json,
+        output_path=output,
+        main_root=main_root,
+        negative_root=negative_root,
+    )
+
+    with pytest.raises(
+        CellExecutionError,
+        match="schema mismatch for projection_coordinate_gate_v2",
+    ):
         _execute_notebook(output, tmp_path)
 
 

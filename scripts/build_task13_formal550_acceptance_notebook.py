@@ -52,6 +52,8 @@ NEGATIVE_ROOT = Path(__NEGATIVE_ROOT__)
 EXPECTED_ACCEPTANCE_SCHEMA = "pars_v2_task13_formal550_automatic_acceptance_v1"
 EXPECTED_GENERATOR_SCHEMA = "formal550_generator_gate_v1"
 EXPECTED_PROJECTION_SHAPE = (60, 128, 128)
+COORDINATE_GATE_ID = "projection_coordinate_gate_v2"
+EXPECTED_COORDINATE_REPORT_SCHEMA = "pars_projection_alignment_report_v1"
 
 
 def read_json_bytes(path):
@@ -62,11 +64,35 @@ def read_json_bytes(path):
     return value, payload
 
 
+def gate_identity(gate_id, value):
+    """Recover the (schema_version, status) Task4 normalized into `gate_rows`.
+
+    The formal550 generator and loader gates state both at the top level. The
+    frozen coordinate report predates that convention: it carries its gate
+    identity in `report_classification` and its outcome in `freeze_gate`, so
+    reading a top-level `status` from it would compare against nothing.
+    """
+    if gate_id != COORDINATE_GATE_ID:
+        return value.get("schema_version"), value.get("status")
+    if value.get("schema_version") != EXPECTED_COORDINATE_REPORT_SCHEMA:
+        raise ValueError(f"coordinate report schema mismatch for {gate_id}")
+    classification = value.get("report_classification") or {}
+    freeze_gate = value.get("freeze_gate") or {}
+    passed = (
+        freeze_gate.get("passed") is True
+        and freeze_gate.get("frozen_transform_recovered") is True
+    )
+    return classification.get("schema_version"), "pass" if passed else "fail"
+
+
 def read_bound_gate(row):
     value, payload = read_json_bytes(Path(row["path"]))
     if hashlib.sha256(payload).hexdigest() != row["sha256"]:
         raise ValueError(f"SHA-256 mismatch for {row['gate_id']}")
-    if value.get("status") != row["status"]:
+    schema_version, status = gate_identity(row["gate_id"], value)
+    if schema_version != row["schema_version"]:
+        raise ValueError(f"schema mismatch for {row['gate_id']}")
+    if status != row["status"]:
         raise ValueError(f"status mismatch for {row['gate_id']}")
     return value
 
@@ -227,8 +253,11 @@ to this notebook.
 ## 1. Frozen inputs and authority boundary
 
 The setup reads the automatic acceptance JSON, verifies each referenced gate
-against the SHA-256 recorded in `gate_rows`, and reads both role manifests from
-their immutable roots. Projection paths are assembled into a display-only
+against the SHA-256, schema and status recorded in `gate_rows`, and reads both
+role manifests from their immutable roots. The frozen coordinate report states
+its gate identity in `report_classification` and its outcome in `freeze_gate`
+rather than at the top level, so its row is re-derived from those fields exactly
+as Task4 normalized them. Projection paths are assembled into a display-only
 `visual_registry`. Each selected projection is read once, checked against the
 manifest size and SHA-256, and displayed from that verified in-memory byte
 snapshot; files are never opened in a writable mode.
