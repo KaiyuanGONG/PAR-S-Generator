@@ -276,3 +276,36 @@ this campaign.
 - The resulting manual release status is `PASS`,
   `all_required_blocking_gates_passed=true`, and `go_for_training=true` for all
   550 frozen cases under their existing split and role policies.
+
+## Immutable local release packaging
+
+The formal local release is built by
+`scripts/build_task13_formal550_release.py`. The builder is fail-closed and
+does not edit the frozen campaign. Before packaging it independently verifies
+the campaign and role freeze markers, exact 500/50 case and manifest counts,
+manifest bindings, the preserved automatic FAIL, the versioned manual PASS,
+all loader/coordinate/Task12G evidence hashes, and the downloaded result
+archive sidecar.
+
+The release destination is:
+
+`D:\PFE-U\PAR\outputs\pars_v2_formal550_v1_release_v1`
+
+The payload contains the complete materialized campaign, QA evidence, external
+Task12G/coordinate evidence, the original downloaded result archive, the exact
+reviewed notebook blob, a clean source snapshot, a training handoff, and a
+SHA-256 inventory of every payload file. The preservation archive uses
+`tar+zstd`; it is streamed and inventoried again after creation.
+`RELEASE_COMPLETE.json` is written last and is authoritative only when its
+status is `complete`, `go_for_training=true`, and its SHA-256 sidecar matches.
+
+Run once from a clean committed worktree:
+
+```powershell
+conda run -n SPECT python scripts\build_task13_formal550_release.py
+```
+
+If a verified complete release already exists, the builder returns
+`already_complete`. Any future data or contract change must create a new
+versioned campaign and release directory; the v1 release is not to be edited
+in place.
