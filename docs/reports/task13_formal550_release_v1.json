@@ -1,0 +1,79 @@
+{
+  "schema_version": "pars_v2_task13_formal550_release_record_v1",
+  "status": "complete",
+  "release_id": "PAR-S-V2-FORMAL550-v2.0.0-release-v1",
+  "released_utc": "2026-07-25T17:42:30.514942Z",
+  "release_root": "D:\\PFE-U\\PAR\\outputs\\pars_v2_formal550_v1_release_v1",
+  "release_marker": {
+    "relative_path": "RELEASE_COMPLETE.json",
+    "sha256": "0d3040c3349246bc21408ab64e08498522864d29563e3b276fde53057170c614"
+  },
+  "archive": {
+    "relative_path": "PAR-S-V2-FORMAL550-v2.0.0-release-v1.tar.zst",
+    "format": "tar+zstd",
+    "bytes": 2103357066,
+    "sha256": "425c70abb16433e06603878961d4134fa483b7268d68b5f008ce24c8bfa6277e",
+    "member_count": 18201
+  },
+  "content_manifest": {
+    "relative_path": "CONTENT_SHA256SUMS.jsonl",
+    "sha256": "80e092786d87e7d810a189697e877bf8909834e015e7e39ef1f5aa0364ed9419",
+    "payload_file_count_excluding_manifest": 17089
+  },
+  "source_snapshot": {
+    "relative_path": "PAR-S-Generator-source-166e6427af33.tar.gz",
+    "git_commit": "166e6427af33ac516ba99701249ac170f7333178",
+    "sha256": "a8c40cd2f2b7119a254ceea34eb5e5bdcd1274ff4bd1f276561684ed9be88d1d"
+  },
+  "campaign": {
+    "dataset_id": "PAR-S-V2-FORMAL550",
+    "dataset_version": "2.0.0",
+    "case_count": 550,
+    "role_case_counts": {
+      "main": 500,
+      "negative": 50
+    },
+    "main_split_counts": {
+      "train": 400,
+      "val": 50,
+      "test": 50
+    },
+    "negative_split_counts": {
+      "train": 0,
+      "val": 0,
+      "test": 50
+    },
+    "main_manifest_sha256": "b1fb588e0f1c6d3771a317b480704c403afc505d545b59b45dcc52f8f0bd3ffe",
+    "negative_manifest_sha256": "9dec479577633759c3ed2af838f5f2877dcfd930d81d7ff51d68f2fa43e82bc7"
+  },
+  "authority": {
+    "campaign_complete_sha256": "7e11de03c82455565574d785c6ec6a9cb2b2d2e05ccc33b3e763d77c5e4e5fd4",
+    "automatic_acceptance_status": "fail_preserved",
+    "automatic_acceptance_sha256": "b2710e034a0bf8869c160fa32b9fce88d9fb899a3989483f1bd0e02afd633de7",
+    "manual_release_status": "pass",
+    "manual_acceptance_sha256": "293b3e240fc6235690c1cb191c9c6335dbaa9c7de738bfafbba479c985b1e7be",
+    "view_sum_ratio_classification": "diagnostic_nonblocking",
+    "frozen_campaign_modified": false,
+    "go_for_training": true
+  },
+  "training": {
+    "main_root": "D:\\PFE-U\\PAR\\outputs\\pars_v2_formal550_v1\\main",
+    "main_manifest": "D:\\PFE-U\\PAR\\outputs\\pars_v2_formal550_v1\\main\\case_manifest.jsonl",
+    "negative_root": "D:\\PFE-U\\PAR\\outputs\\pars_v2_formal550_v1\\negative",
+    "negative_manifest": "D:\\PFE-U\\PAR\\outputs\\pars_v2_formal550_v1\\negative\\case_manifest.jsonl",
+    "negative_policy": "independent_test_only_population_weight_zero"
+  },
+  "verification": {
+    "archive_sha256_sidecar": "pass",
+    "release_marker_sha256_sidecar": "pass",
+    "authority_chain": "pass",
+    "payload_inventory_before_archive": "pass",
+    "archive_stream_and_required_members": "pass",
+    "payload_inventory_after_archive": "pass",
+    "release_resume_verification": "already_complete",
+    "release_and_acceptance_tests": "53 passed",
+    "notebook_tests": "12 passed; 1 existing Windows ZMQ warning",
+    "pars2_loader_manifest_transform_tests": "24 passed; 1 pytest cache permission warning"
+  },
+  "write_policy": "immutable_do_not_modify_create_new_version"
+}

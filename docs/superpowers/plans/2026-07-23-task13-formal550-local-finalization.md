@@ -309,3 +309,29 @@ If a verified complete release already exists, the builder returns
 `already_complete`. Any future data or contract change must create a new
 versioned campaign and release directory; the v1 release is not to be edited
 in place.
+
+### Observed local release result
+
+The release completed on 2026-07-25 at
+`D:\PFE-U\PAR\outputs\pars_v2_formal550_v1_release_v1`.
+
+- `RELEASE_COMPLETE.json` reports `status=complete`,
+  `go_for_training=true`, and `frozen_campaign_modified=false`; its SHA-256 is
+  `0d3040c3349246bc21408ab64e08498522864d29563e3b276fde53057170c614`.
+- The complete preservation archive is
+  `PAR-S-V2-FORMAL550-v2.0.0-release-v1.tar.zst`, size
+  `2103357066` bytes, SHA-256
+  `425c70abb16433e06603878961d4134fa483b7268d68b5f008ce24c8bfa6277e`,
+  with 18,201 listed members.
+- `CONTENT_SHA256SUMS.jsonl` binds 17,089 payload files excluding itself and
+  has SHA-256
+  `80e092786d87e7d810a189697e877bf8909834e015e7e39ef1f5aa0364ed9419`.
+- The clean source snapshot is bound to commit
+  `166e6427af33ac516ba99701249ac170f7333178`.
+- A second builder invocation returned `already_complete`, archive and marker
+  sidecars matched, and all required dataset/manual/upstream members were
+  present.
+- Final regressions passed: release/acceptance `53 passed`; read-only notebook
+  `12 passed`; PAR-S_2 loader/manifest/transform `24 passed`.
+- The repository release record is
+  `docs/reports/task13_formal550_release_v1.json`.
