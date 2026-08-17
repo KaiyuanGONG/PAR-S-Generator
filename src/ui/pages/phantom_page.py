@@ -30,7 +30,6 @@ from core.phantom_generator import PhantomConfig, PhantomGenerator, PhantomResul
 from core.validation import validate_phantom_config
 from ui.app_state import AppState
 from ui.i18n import language_manager, tr
-from ui.pages.results_page import ResultsPage
 from ui.widgets.param_widgets import EnumControl, LabeledCheck, ParamGroup, SliderSpinControl
 from ui.widgets.slice_viewer import SliceViewer
 
@@ -64,6 +63,7 @@ class GenerateWorker(QThread):
 
 class PhantomPage(QWidget):
     phantom_generated = pyqtSignal(object)
+    phantom_configured = pyqtSignal()
 
     def __init__(self, app_state: AppState, parent=None):
         super().__init__(parent)
@@ -86,9 +86,8 @@ class PhantomPage(QWidget):
         self.tabs = QTabWidget()
         self.tabs.setDocumentMode(True)
         self.preview_tab = self._build_preview_tab()
-        self.batch_monitor = ResultsPage(self._app_state, include_output_viewer=False)
         self.tabs.addTab(self.preview_tab, "")
-        self.tabs.addTab(self.batch_monitor, "")
+        self.batch_monitor = None
         root.addWidget(self.tabs)
         self.retranslate_ui()
 
@@ -259,17 +258,14 @@ class PhantomPage(QWidget):
         batch_layout.addLayout(form_row)
 
         out_row = QHBoxLayout()
-        self.edit_output = QLineEdit(self._config.output_dir)
-        self.edit_output.setMinimumHeight(34)
-        self.btn_output = QPushButton()
-        self.btn_output.setMinimumHeight(34)
-        self.btn_output.clicked.connect(self._browse_output)
         self.btn_start_batch = QPushButton()
         self.btn_start_batch.setObjectName("success_btn")
         self.btn_start_batch.setMinimumHeight(38)
         self.btn_start_batch.clicked.connect(self._on_start_batch)
-        out_row.addWidget(self._field("Output directory", self.edit_output), stretch=1)
-        out_row.addWidget(self._field(None, self.btn_output))
+        note = QLabel("Case generation is written only inside the isolated run directory.")
+        note.setObjectName("page_subtitle")
+        note.setWordWrap(True)
+        out_row.addWidget(note, stretch=1)
         out_row.addWidget(self._field(None, self.btn_start_batch))
         batch_layout.addLayout(out_row)
         layout.addWidget(batch_bar)
@@ -292,16 +288,13 @@ class PhantomPage(QWidget):
 
     def retranslate_ui(self):
         self.tabs.setTabText(0, tr("Preview"))
-        self.tabs.setTabText(1, tr("Batch Monitor"))
         self.lbl_title.setText(tr("Generate"))
         self.lbl_subtitle.setText(tr("Tune one phantom, validate the workflow, then launch the reproducible batch in the second tab."))
         self.lbl_preview_title.setText(tr("Preview"))
         self.btn_preview.setText(tr("⬡  Preview Single Case"))
         self.btn_save_cfg.setText(tr("Save Config"))
         self.btn_load_cfg.setText(tr("Load Config"))
-        self.btn_start_batch.setText(tr("▶  Start Batch"))
-        self.btn_output.setText(tr("Browse..."))
-        self.edit_output.setPlaceholderText(tr("Output directory path..."))
+        self.btn_start_batch.setText("Apply to run")
 
         for chk in [self.chk_volume_advanced, self.chk_liver_advanced, self.chk_tumor_advanced, self.chk_activity_advanced]:
             chk.setText("")
@@ -357,14 +350,14 @@ class PhantomPage(QWidget):
         cfg.target_left_ratio = float(self.ctrl_left_ratio.value())
         cfg.smooth_sigma = float(self.ctrl_smooth.value())
 
-        # Tumor count and contrast sliders are preview-only controls.
-        # Batch generation uses tumor_count_min/max and tumor_contrast_min/max
-        # from the config as fixed range parameters — sliders do NOT touch them.
-        # Guard: if an old bug collapsed min==max, restore the defaults.
-        if cfg.tumor_count_max <= cfg.tumor_count_min:
-            cfg.tumor_count_max = 5
-        if cfg.tumor_contrast_max <= cfg.tumor_contrast_min:
-            cfg.tumor_contrast_max = 8.0
+        # This page currently exposes single-value controls.  Treat them as an
+        # explicit fixed profile for both preview and batch so the displayed
+        # settings are the settings that actually run.  Range sampling remains
+        # available through a loaded config/expert workflow.
+        cfg.tumor_count_min = int(self.ctrl_tumor_count.value())
+        cfg.tumor_count_max = int(self.ctrl_tumor_count.value())
+        cfg.tumor_contrast_min = float(self.ctrl_contrast.value())
+        cfg.tumor_contrast_max = float(self.ctrl_contrast.value())
 
         cfg.tumor_mode_policy = self.ctrl_tumor_mode.value()
         cfg.total_counts = float(self.ctrl_counts.value()) * 1e4
@@ -374,7 +367,7 @@ class PhantomPage(QWidget):
         seed_text = self.edit_seed.text().strip()
         cfg.global_seed = int(seed_text) if seed_text else 0
         cfg.use_global_seed = self.chk_use_seed.isChecked()
-        cfg.output_dir = self.edit_output.text().strip()
+        cfg.output_dir = "managed_by_pipeline"
         return cfg
 
     def _collect_preview_overrides(self) -> PreviewOverrides:
@@ -435,10 +428,8 @@ class PhantomPage(QWidget):
     def _on_start_batch(self):
         if not self._validate_current_config("Batch start", preview=False):
             return
-        if self._app_state.settings.autosave_config:
-            self._autosave_batch_config(self._config)
-        self.tabs.setCurrentIndex(1)
-        self.batch_monitor.start_batch()
+        self.btn_start_batch.setText("Applied ✓")
+        self.phantom_configured.emit()
 
     @pyqtSlot(object)
     def _on_preview_done(self, result: PhantomResult):
@@ -461,11 +452,6 @@ class PhantomPage(QWidget):
         self.btn_preview.setEnabled(True)
         self.btn_preview.setText(tr("⬡  Preview Single Case"))
         QMessageBox.critical(self, tr("Generation Error"), f"{tr('Failed to generate phantom:')}\n{msg}")
-
-    def _browse_output(self):
-        path = QFileDialog.getExistingDirectory(self, tr("Select Output Directory"))
-        if path:
-            self.edit_output.setText(path)
 
     def _save_config(self):
         path, _ = QFileDialog.getSaveFileName(self, tr("Save Configuration"), "", "JSON Files (*.json)")
@@ -537,7 +523,6 @@ class PhantomPage(QWidget):
         self.spin_n_cases.setValue(cfg.n_cases)
         self.edit_seed.setText(str(cfg.global_seed))
         self.chk_use_seed.setChecked(cfg.use_global_seed)
-        self.edit_output.setText(cfg.output_dir)
 
     def _autosave_batch_config(self, cfg: PhantomConfig):
         output_dir = Path(cfg.output_dir)
@@ -545,10 +530,5 @@ class PhantomPage(QWidget):
         cfg.save(output_dir / "last_batch_config.json")
 
     def _on_settings_changed(self, settings):
-        current = self.edit_output.text().strip()
-        if not current or current == self._last_settings_output:
-            self.edit_output.setText(settings.default_output)
         self._last_settings_output = settings.default_output
-
-
 

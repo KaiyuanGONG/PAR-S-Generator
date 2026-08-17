@@ -25,6 +25,12 @@ DEFAULT_SETTINGS: dict[str, Any] = {
     "perf": {
         "autosave": True,
     },
+    "simulation": {
+        "nn_multiplier": 10,
+        "max_parallel": 3,
+        "skip_completed": True,
+        "custom_overrides": [],
+    },
 }
 
 

@@ -23,7 +23,13 @@ from ui.app_state import AppState
 from ui.i18n import language_manager, tr
 from ui.pages.phantom_page import PhantomPage
 from ui.pages.settings_page import AboutDialog, SettingsDialog
-from ui.pages.simulation_page import SimulationPage
+from ui.pages.pipeline_pages import (
+    FinalizePage,
+    ProjectProtocolPage,
+    QCDatasetPage,
+    RunPage,
+    SimulationSetupPage,
+)
 
 
 class NavButton(QPushButton):
@@ -71,7 +77,16 @@ class Sidebar(QWidget):
         brand_layout.addWidget(self.lbl_title)
         layout.addWidget(self.brand)
 
-        for icon, label in [("⬡", "Generate"), ("▶", "Simulate")]:
+        # This is a real ordered production sequence, so numbering carries
+        # operational meaning rather than acting as decoration.
+        for icon, label in [
+            ("01", "Project / Protocol"),
+            ("02", "Phantom"),
+            ("03", "Simulation"),
+            ("04", "Run"),
+            ("05", "QC / Dataset"),
+            ("06", "Finalize"),
+        ]:
             btn = NavButton(icon, label)
             btn.clicked.connect(lambda checked=False, idx=len(self._buttons): self._on_nav_click(idx))
             self._buttons.append(btn)
@@ -82,7 +97,7 @@ class Sidebar(QWidget):
         card_layout = QVBoxLayout(self.project_card)
         card_layout.setContentsMargins(16, 16, 16, 16)
         card_layout.setSpacing(6)
-        self.lbl_version = QLabel("v0.3.0")
+        self.lbl_version = QLabel("DATA PREP · v0.5.0")
         self.lbl_version.setObjectName("version_label")
         card_layout.addWidget(self.lbl_version)
         layout.addStretch()
@@ -155,10 +170,22 @@ class MainWindow(QMainWindow):
         self.stack.setObjectName("content_area")
         root_layout.addWidget(self.stack, stretch=1)
 
+        self.project_page = ProjectProtocolPage(self.app_state)
         self.generate_page = PhantomPage(self.app_state)
-        self.simulation_page = SimulationPage(self.app_state)
-        self.stack.addWidget(self.generate_page)
-        self.stack.addWidget(self.simulation_page)
+        self.simulation_page = SimulationSetupPage(self.app_state)
+        self.run_page = RunPage(self.app_state)
+        self.qc_page = QCDatasetPage(self.app_state)
+        self.finalize_page = FinalizePage(self.app_state)
+        for page in (
+            self.project_page,
+            self.generate_page,
+            self.simulation_page,
+            self.run_page,
+            self.qc_page,
+            self.finalize_page,
+        ):
+            self.stack.addWidget(page)
+        self.generate_page.phantom_configured.connect(lambda: self._go_to_page(2))
 
     def _setup_statusbar(self):
         self.status_bar = QStatusBar()
@@ -166,7 +193,7 @@ class MainWindow(QMainWindow):
         self.retranslate_ui()
 
     def retranslate_ui(self):
-        self.status_bar.showMessage(f"{tr('Ready')}  |  PAR-S Generator v0.3.0")
+        self.status_bar.showMessage(f"{tr('Ready')}  |  PAR-S Data Preparation v0.5.0")
         self.sidebar.retranslate_ui()
         if hasattr(self.generate_page, "retranslate_ui"):
             self.generate_page.retranslate_ui()
@@ -179,6 +206,9 @@ class MainWindow(QMainWindow):
 
     def _on_page_changed(self, index: int):
         self.stack.setCurrentIndex(index)
+
+    def _go_to_page(self, index: int):
+        self.sidebar._on_nav_click(index)
 
     def _open_settings(self):
         if self._settings_dialog is None:

@@ -4,7 +4,7 @@ Shared application state for cross-page workflow.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from PyQt6.QtCore import QObject, pyqtSignal
@@ -31,6 +31,28 @@ class SimulationConfig:
     simind_exe: str = ""
     smc_file: str = ""
     sim_output_dir: str = "output/simind"
+    nn_multiplier: int = 10
+    max_parallel: int = 3
+    case_start: int = 0
+    case_end: int = 99999
+    skip_completed: bool = True
+    custom_overrides: list = field(default_factory=list)
+    simulation_mode: str = "prepare"
+    create_poisson_observation: bool = False
+    observation_scale: float = 1.0
+    observation_protocol_status: str = "toy"
+
+
+@dataclass
+class PipelineProjectConfig:
+    run_id: str = "liver-spect-run"
+    runs_root: str = "runs"
+    protocol_label: str = "GE 870 CZT current liver SPECT research protocol"
+    protocol_status: str = "pending_physics_validation"
+    source_activity_mbq: float = 60.0
+    exposure_time_s_per_projection: float | None = None
+    smc_index25_activity_time: float = 1704.0
+    activity_time_contract_status: str = "unresolved_60mbq_x_20s_vs_smc_index25_1704"
 
 
 class AppState(QObject):
@@ -39,6 +61,8 @@ class AppState(QObject):
     simulation_config_changed = pyqtSignal(object)
     batch_stats_changed = pyqtSignal(object)
     settings_changed = pyqtSignal(object)
+    project_config_changed = pyqtSignal(object)
+    current_run_changed = pyqtSignal(str)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -46,6 +70,8 @@ class AppState(QObject):
         self._settings = AppSettings()
         self._phantom_config = PhantomConfig()
         self._simulation_config = SimulationConfig()
+        self._project_config = PipelineProjectConfig()
+        self._current_run = ""
         self._last_preview: PhantomResult | None = None
         self._batch_stats: BatchStats | None = None
         self.load_settings()
@@ -72,6 +98,14 @@ class AppState(QObject):
         return self._simulation_config
 
     @property
+    def project_config(self) -> PipelineProjectConfig:
+        return self._project_config
+
+    @property
+    def current_run(self) -> str:
+        return self._current_run
+
+    @property
     def last_preview(self) -> PhantomResult | None:
         return self._last_preview
 
@@ -94,6 +128,7 @@ class AppState(QObject):
 
     def save_settings(self, settings: AppSettings) -> None:
         self._settings = settings
+        sim_cfg = self._simulation_config
         self._settings_store.save(
             {
                 "simind": {
@@ -109,6 +144,12 @@ class AppState(QObject):
                 },
                 "perf": {
                     "autosave": settings.autosave_config,
+                },
+                "simulation": {
+                    "nn_multiplier": sim_cfg.nn_multiplier,
+                    "max_parallel": sim_cfg.max_parallel,
+                    "skip_completed": sim_cfg.skip_completed,
+                    "custom_overrides": list(sim_cfg.custom_overrides),
                 },
             }
         )
@@ -139,6 +180,14 @@ class AppState(QObject):
         self._batch_stats = stats
         self.batch_stats_changed.emit(stats)
 
+    def set_project_config(self, config: PipelineProjectConfig) -> None:
+        self._project_config = config
+        self.project_config_changed.emit(config)
+
+    def set_current_run(self, path: str) -> None:
+        self._current_run = str(path)
+        self.current_run_changed.emit(self._current_run)
+
     def _sync_defaults_from_settings(self) -> None:
         self._phantom_config.output_dir = self._settings.default_output or self._phantom_config.output_dir
         self._simulation_config.npz_dir = self._phantom_config.output_dir
@@ -148,3 +197,15 @@ class AppState(QObject):
             self._simulation_config.interfile_dir = "output/interfile"
         if not self._simulation_config.sim_output_dir.strip():
             self._simulation_config.sim_output_dir = "output/simind"
+        # Load simulation runtime defaults from settings
+        payload = self._settings_store.load()
+        sim = payload.get("simulation", {})
+        self._simulation_config.nn_multiplier = int(sim.get("nn_multiplier", 10))
+        self._simulation_config.max_parallel = int(sim.get("max_parallel", 3))
+        self._simulation_config.skip_completed = self._as_bool(sim.get("skip_completed", True))
+        raw_ov = sim.get("custom_overrides", [])
+        self._simulation_config.custom_overrides = [
+            (int(pair[0]), str(pair[1]))
+            for pair in raw_ov
+            if isinstance(pair, (list, tuple)) and len(pair) == 2
+        ]

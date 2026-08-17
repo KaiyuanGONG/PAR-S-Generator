@@ -37,6 +37,8 @@ QMainWindow, QDialog, QWidget {
     text-align: left;
     font-size: 13px;
     margin: 2px 8px;
+    font-family: "Bahnschrift", "Segoe UI", sans-serif;
+    letter-spacing: 0.3px;
 }
 
 #nav_btn:hover {
@@ -55,6 +57,13 @@ QMainWindow, QDialog, QWidget {
     border: 1px solid #2d3139;
     border-radius: 10px;
     margin: 12px;
+}
+
+#project_card QLabel {
+    color: #f2b84b;
+    font-family: "Cascadia Mono", "Consolas", monospace;
+    font-size: 11px;
+    letter-spacing: 0.8px;
 }
 
 QPushButton#secondary_btn {

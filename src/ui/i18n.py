@@ -39,6 +39,12 @@ _STRINGS: dict[str, dict[str, str]] = {
     "Workflow": {"zh": "工作流", "fr": "Flux"},
     "Generate": {"zh": "生成", "fr": "Generation"},
     "Simulate": {"zh": "仿真", "fr": "Simulation"},
+    "Project / Protocol": {"zh": "项目 / 协议", "fr": "Projet / Protocole"},
+    "Phantom": {"zh": "体模", "fr": "Fantome"},
+    "Simulation": {"zh": "仿真", "fr": "Simulation"},
+    "Run": {"zh": "运行", "fr": "Execution"},
+    "QC / Dataset": {"zh": "质控 / 数据集", "fr": "QC / Jeu de donnees"},
+    "Finalize": {"zh": "封存", "fr": "Finaliser"},
     "Preview": {"zh": "预览", "fr": "Apercu"},
     "Batch Monitor": {"zh": "批量监控", "fr": "Suivi lot"},
     "Settings file": {"zh": "设置文件", "fr": "Fichier de config"},
@@ -336,6 +342,44 @@ _STRINGS: dict[str, dict[str, str]] = {
     "SIMIND process failed to start: {msg}": {"zh": "SIMIND 进程启动失败：{msg}", "fr": "Le processus SIMIND n'a pas pu demarrer : {msg}"},
     "Stopped by user.": {"zh": "已由用户停止。", "fr": "Arrete par l'utilisateur."},
     "Generated liver mask is empty. Adjust geometry parameters and retry.": {"zh": "生成的肝脏掩膜为空，请调整几何参数后重试。", "fr": "Le masque hepatique genere est vide. Ajustez les parametres geometriques puis reessayez."},
+
+    # ── Step 3: Batch Run ─────────────────────────────────────────
+    "Step 3: Batch Run": {"zh": "步骤3：批量运行", "fr": "Etape 3 : Execution lot"},
+    "NN multiplier:": {"zh": "NN 倍数:", "fr": "Multiplicateur NN :"},
+    "Max parallel:": {"zh": "最大并行数:", "fr": "Parallele max :"},
+    "Case range:": {"zh": "案例范围:", "fr": "Plage de cas :"},
+    "Skip completed cases": {"zh": "跳过已完成案例", "fr": "Ignorer les cas termines"},
+    "Custom overrides (/index:value):": {"zh": "自定义覆盖 (/索引:值):", "fr": "Surcharges personnalisees (/index:valeur) :"},
+    "Export .bat": {"zh": "导出 .bat", "fr": "Exporter .bat"},
+    "Run SIMIND Batch": {"zh": "运行 SIMIND 批处理", "fr": "Lancer lot SIMIND"},
+    "Stop": {"zh": "停止", "fr": "Arreter"},
+    "[INFO] Launching SIMIND batch: NN={nn}, parallel={par}": {"zh": "[INFO] 启动 SIMIND 批处理：NN={nn}，并行={par}", "fr": "[INFO] Lancement du lot SIMIND : NN={nn}, parallele={par}"},
+    "[WARN] SIMIND batch is already running.": {"zh": "[WARN] SIMIND 批处理已在运行。", "fr": "[WARN] Le lot SIMIND est deja en cours."},
+    "Running: {done}/{total} done, {failed} failed{eta}": {"zh": "运行中：完成 {done}/{total}，失败 {failed}{eta}", "fr": "En cours : {done}/{total} termines, {failed} echecs{eta}"},
+    "Batch complete: {count} cases.": {"zh": "批处理完成：{count} 个案例。", "fr": "Lot termine : {count} cas."},
+    "Batch done: {done} OK, {failed} failed.": {"zh": "批处理结束：{done} 个成功，{failed} 个失败。", "fr": "Lot termine : {done} OK, {failed} echecs."},
+    "Nothing to run.": {"zh": "无需运行。", "fr": "Rien a executer."},
+    "No binary files found. Run Step 1 first to convert .npz to interfile.": {"zh": "未找到二进制文件。请先运行步骤1将 .npz 转换为 interfile。", "fr": "Aucun fichier binaire trouve. Executez l'etape 1 pour convertir les .npz en interfile."},
+
+    # ── Override table ────────────────────────────────────────────
+    "override_col_index": {"zh": "索引", "fr": "Index"},
+    "override_col_value": {"zh": "值", "fr": "Valeur"},
+    "override_add": {"zh": "添加", "fr": "Ajouter"},
+    "override_remove": {"zh": "删除", "fr": "Supprimer"},
+
+    # ── SMC Viewer ────────────────────────────────────────────────
+    "SMC Parameters": {"zh": "SMC 参数", "fr": "Parametres SMC"},
+    "smc_no_file_loaded": {"zh": "未加载 .smc 文件", "fr": "Aucun fichier .smc charge"},
+    "smc_load_error": {"zh": "加载 .smc 文件失败：{path}", "fr": "Echec du chargement .smc : {path}"},
+    "smc_loaded": {"zh": "{name} — {desc}", "fr": "{name} — {desc}"},
+    "smc_cat_Energy & Source": {"zh": "能量与源", "fr": "Energie et source"},
+    "smc_cat_Crystal & Detector": {"zh": "晶体与探测器", "fr": "Cristal et detecteur"},
+    "smc_cat_Geometry": {"zh": "几何", "fr": "Geometrie"},
+    "smc_cat_Collimator": {"zh": "准直器", "fr": "Collimateur"},
+    "smc_cat_Matrix Sizes": {"zh": "矩阵尺寸", "fr": "Tailles de matrice"},
+    "smc_cat_CZT Hardware": {"zh": "CZT 硬件", "fr": "Materiel CZT"},
+    "smc_cat_Flags": {"zh": "仿真标志", "fr": "Drapeaux simulation"},
+    "smc_cat_DataFiles": {"zh": "数据文件", "fr": "Fichiers de donnees"},
 }
 
 

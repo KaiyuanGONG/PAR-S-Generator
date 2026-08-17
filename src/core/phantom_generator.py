@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Optional
 
 import numpy as np
-from scipy.ndimage import gaussian_filter
+from scipy.ndimage import binary_erosion, distance_transform_edt, gaussian_filter
 
 _GRID_CACHE: dict[tuple[int, int, int], tuple[np.ndarray, np.ndarray, np.ndarray]] = {}
 
@@ -39,6 +39,9 @@ class PhantomConfig:
     mu_diaphragm: float = 0.15
     mu_noise_amp: float = 0.015
     mu_noise_sigma: float = 2.0
+    mu_unit: str = "cm^-1"
+    mu_reference_energy_kev: float = 140.5
+    mu_contract_status: str = "pending_simind_ict_validation"
 
     # Liver base center (Z, Y, X) in normalized [-1,1] coords
     # X=0.10: liver CoM at 2.8cm right of midline (anatomically correct).
@@ -82,6 +85,9 @@ class PhantomConfig:
     cantlie_tilt_range: tuple = (-6.0, 10.0)
     cantlie_offset_range: tuple = (-0.05, 0.12)  # covers Cantlie plane at X~0.02-0.05
     cantlie_iter_max: int = 12
+    cantlie_tolerance: float = 0.005
+    cantlie_expand_step: float = 0.05
+    cantlie_expand_limit: float = 1.0
 
     # Tumors
     tumor_count_min: int = 1
@@ -93,6 +99,12 @@ class PhantomConfig:
     tumor_contrast_min: float = 2.0
     tumor_contrast_max: float = 8.0
     min_edge_dist_px: int = 4
+    tumor_min_liver_margin_mm: float = 4.42
+    tumor_overlap_gap_mm: float = 0.0
+    subcapsular_fraction: float = 0.0
+    subcapsular_max_depth_mm: float = 5.0
+    tumor_placement_attempts: int = 250
+    tumor_spec_attempts: int = 20
     tumor_modes: list = field(default_factory=lambda: ["ellipsoid", "spiculated"])
     tumor_mode_probs: list = field(default_factory=lambda: [0.7, 0.3])
     tumor_mode_policy: str = "random"
@@ -229,13 +241,15 @@ class Geometry3D:
         z0, z1 = max(0, int(cz - rz - 2)), min(shape[0], int(cz + rz + 2))
         y0, y1 = max(0, int(cy - ry - 2)), min(shape[1], int(cy + ry + 2))
         x0, x1 = max(0, int(cx - rx - 2)), min(shape[2], int(cx + rx + 2))
-        Z, Y, X = np.meshgrid(
-            np.linspace(-1, 1, z1 - z0),
-            np.linspace(-1, 1, y1 - y0),
-            np.linspace(-1, 1, x1 - x0),
-            indexing='ij'
-        )
-        body = (np.abs(X) ** p + np.abs(Y) ** p + np.abs(Z / elong) ** p) <= 1.0
+        # Express local coordinates in units of the requested semi-axes.  The
+        # previous implementation normalized the entire ``r + 2`` bounding
+        # box to [-1, 1], which silently inflated small lesions by up to 2
+        # voxels per side and applied elongation twice.
+        zz = (np.arange(z0, z1, dtype=np.float32) - float(cz)) / max(float(rz), 1e-6)
+        yy = (np.arange(y0, y1, dtype=np.float32) - float(cy)) / max(float(ry), 1e-6)
+        xx = (np.arange(x0, x1, dtype=np.float32) - float(cx)) / max(float(rx), 1e-6)
+        Z, Y, X = np.meshgrid(zz, yy, xx, indexing='ij')
+        body = (np.abs(X) ** p + np.abs(Y) ** p + np.abs(Z) ** p) <= 1.0
         full = np.zeros(shape, dtype=bool)
         full[z0:z1, y0:y1, x0:x1] = body
         return full
@@ -287,15 +301,27 @@ class PhantomResult:
     left_mask: np.ndarray         # bool
     right_mask: np.ndarray        # bool
     tumor_masks: list             # list of bool arrays
-    tumor_diameters_mm: list      # list of floats (diameter, not radius)
+    tumor_diameters_mm: list      # measured equivalent-sphere diameters
+    tumor_nominal_diameters_mm: list
     tumor_modes_used: list        # list of str
+    tumor_metadata: list          # measured, auditable lesion records
     perfusion_mode: str
     total_counts_actual: float
     liver_volume_ml: float
     left_ratio: float
+    cantlie_target_ratio: float
+    cantlie_offset: float
+    cantlie_tilt_deg: float
+    cantlie_converged: bool
+    cantlie_iterations: int
+    cantlie_abs_error: float
+    cantlie_search_evidence: dict
     n_tumors: int
     voxel_size_mm: float
     volume_shape: tuple
+    mu_unit: str
+    mu_reference_energy_kev: float
+    mu_contract_status: str
     generation_time_s: float
 
     def save(self, output_dir: Path):
@@ -325,7 +351,23 @@ class PhantomResult:
             "left_ratio": float(self.left_ratio),
             "n_tumors": self.n_tumors,
             "tumor_diameters_mm": [float(d) for d in self.tumor_diameters_mm],
+            "tumor_nominal_diameters_mm": [float(d) for d in self.tumor_nominal_diameters_mm],
             "tumor_modes": self.tumor_modes_used,
+            "tumors": self.tumor_metadata,
+            "cantlie": {
+                "offset": float(self.cantlie_offset),
+                "tilt_deg": float(self.cantlie_tilt_deg),
+                "target_left_ratio": float(self.cantlie_target_ratio),
+                "converged": bool(self.cantlie_converged),
+                "iterations": int(self.cantlie_iterations),
+                "abs_error": float(self.cantlie_abs_error),
+                "search": self.cantlie_search_evidence,
+            },
+            "attenuation_contract": {
+                "unit": self.mu_unit,
+                "reference_energy_kev": float(self.mu_reference_energy_kev),
+                "status": self.mu_contract_status,
+            },
             "voxel_size_mm": self.voxel_size_mm,
             "volume_shape": list(self.volume_shape),
             "generation_time_s": self.generation_time_s,
@@ -373,6 +415,83 @@ class PhantomGenerator:
         if overrides and overrides.exact_tumor_count is not None:
             return overrides.exact_tumor_count
         return rng.integers(self.cfg.tumor_count_min, self.cfg.tumor_count_max + 1)
+
+    @staticmethod
+    def _surface(mask: np.ndarray) -> np.ndarray:
+        if not np.any(mask):
+            return np.zeros_like(mask, dtype=bool)
+        return mask & ~binary_erosion(mask, border_value=0)
+
+    def _split_liver_to_target(self, liver: np.ndarray, tilt: float) -> tuple:
+        """Find a Cantlie offset, expanding the bracket when necessary."""
+        cfg = self.cfg
+        liver_vol = int(liver.sum())
+
+        def evaluate(offset: float):
+            left, right = Geometry3D.split_liver_lobes(
+                liver, cfg.volume_shape, tilt_deg=tilt, offset=offset
+            )
+            return float(left.sum() / liver_vol), left, right
+
+        initial_lo, initial_hi = map(float, cfg.cantlie_offset_range)
+        lo, hi = initial_lo, initial_hi
+        ratio_lo, _, _ = evaluate(lo)
+        ratio_hi, _, _ = evaluate(hi)
+        expansions = 0
+        while not (ratio_lo <= cfg.target_left_ratio <= ratio_hi):
+            changed = False
+            if ratio_lo > cfg.target_left_ratio and lo > -cfg.cantlie_expand_limit:
+                lo = max(-cfg.cantlie_expand_limit, lo - cfg.cantlie_expand_step)
+                ratio_lo, _, _ = evaluate(lo)
+                changed = True
+            if ratio_hi < cfg.target_left_ratio and hi < cfg.cantlie_expand_limit:
+                hi = min(cfg.cantlie_expand_limit, hi + cfg.cantlie_expand_step)
+                ratio_hi, _, _ = evaluate(hi)
+                changed = True
+            expansions += 1
+            if not changed or expansions > 50:
+                break
+
+        expanded_lo, expanded_hi = lo, hi
+        bracketed = bool(ratio_lo <= cfg.target_left_ratio <= ratio_hi)
+        search_evidence = {
+            "initial_offset_range": [float(initial_lo), float(initial_hi)],
+            "expanded_offset_range": [float(expanded_lo), float(expanded_hi)],
+            "expansions": int(expansions),
+            "expanded_beyond_initial_range": bool(expansions > 0),
+            "target_bracketed": bracketed,
+            "hit_expansion_limit": bool(
+                not bracketed
+                and (np.isclose(lo, -cfg.cantlie_expand_limit) or np.isclose(hi, cfg.cantlie_expand_limit))
+            ),
+        }
+
+        if not bracketed:
+            candidates = [(abs(ratio_lo - cfg.target_left_ratio), lo),
+                          (abs(ratio_hi - cfg.target_left_ratio), hi)]
+            best_offset = min(candidates)[1]
+            ratio, left, right = evaluate(best_offset)
+            search_evidence["solution_on_search_boundary"] = True
+            return left, right, best_offset, False, 0, abs(ratio - cfg.target_left_ratio), search_evidence
+
+        iterations = 0
+        best_offset = (lo + hi) / 2.0
+        left = right = None
+        ratio = 0.0
+        for iterations in range(1, cfg.cantlie_iter_max + 1):
+            best_offset = (lo + hi) / 2.0
+            ratio, left, right = evaluate(best_offset)
+            if abs(ratio - cfg.target_left_ratio) <= cfg.cantlie_tolerance:
+                break
+            if ratio < cfg.target_left_ratio:
+                lo = best_offset
+            else:
+                hi = best_offset
+        error = abs(ratio - cfg.target_left_ratio)
+        search_evidence["solution_on_search_boundary"] = bool(
+            np.isclose(best_offset, expanded_lo) or np.isclose(best_offset, expanded_hi)
+        )
+        return left, right, best_offset, error <= cfg.cantlie_tolerance, iterations, error, search_evidence
 
     def generate_one(self, case_id: int, seed: Optional[int] = None, overrides: PreviewOverrides | None = None) -> PhantomResult:
         t0 = time.time()
@@ -433,23 +552,17 @@ class PhantomGenerator:
         if liver_vol <= 0:
             raise RuntimeError("Generated liver mask is empty. Adjust geometry parameters and retry.")
 
-        # ── 2. Lobe splitting (Cantlie plane) — bisection method ──
+        # ── 2. Lobe splitting (Cantlie plane) ──
         tilt = rng.uniform(*cfg.cantlie_tilt_range)
-        lo, hi = cfg.cantlie_offset_range[0], cfg.cantlie_offset_range[1]
-
-        for _ in range(cfg.cantlie_iter_max):
-            mid = (lo + hi) / 2.0
-            left_lobe, _ = Geometry3D.split_liver_lobes(liver, shape, tilt_deg=tilt, offset=mid)
-            if liver_vol > 0:
-                ratio = left_lobe.sum() / liver_vol
-                # Higher offset → larger left region; lower offset → smaller left region
-                if ratio < cfg.target_left_ratio:
-                    lo = mid   # need higher offset to grow left
-                else:
-                    hi = mid   # need lower offset to shrink left
-
-        best_offset = (lo + hi) / 2.0
-        left_mask, right_mask = Geometry3D.split_liver_lobes(liver, shape, tilt_deg=tilt, offset=best_offset)
+        (
+            left_mask,
+            right_mask,
+            best_offset,
+            cantlie_converged,
+            cantlie_iterations,
+            cantlie_abs_error,
+            cantlie_search_evidence,
+        ) = self._split_liver_to_target(liver, float(tilt))
         actual_left_ratio = left_mask.sum() / liver_vol if liver_vol > 0 else 0.5
 
         # ── 3. μ-map ──
@@ -520,65 +633,91 @@ class PhantomGenerator:
         n_tumors = self._resolve_tumor_count(rng, placement_indices, overrides)
 
         tumor_masks = []
-        tumor_diameters_mm = []
+        tumor_nominal_diameters_mm = []
         tumor_modes_used = []
-        tumor_centers = []  # (cz, cy, cx, radius_vox)
+        tumor_records = []
+        liver_distance = distance_transform_edt(liver)
+        occupied = np.zeros(shape, dtype=bool)
 
-        for _ in range(n_tumors):
-            # Sample size
-            bin_idx = rng.choice(len(cfg.tumor_size_bins_mm), p=cfg.tumor_probs)
-            r_min_mm, r_max_mm = cfg.tumor_size_bins_mm[bin_idx]
-            radius_mm = rng.uniform(r_min_mm / 2, r_max_mm / 2)
-            radius_vox = radius_mm / cfg.voxel_size_mm
-
-            # Sample mode
-            mode = self._resolve_tumor_mode(rng, overrides)
-
-            # Sample position inside the active lobe, away from edges
+        for tumor_id in range(n_tumors):
             placed = False
-            for attempt in range(50):
-                idx = placement_indices[rng.integers(len(placement_indices))]
-                cz, cy, cx = int(idx[0]), int(idx[1]), int(idx[2])
+            chosen_mask = None
+            chosen_center = None
+            chosen_elong = 1.0
+            # If a sampled lesion cannot fit the selected lobe without
+            # clipping, resample its specification instead of silently
+            # clipping it or returning fewer lesions than requested.
+            for _spec_attempt in range(cfg.tumor_spec_attempts):
+                bin_idx = rng.choice(len(cfg.tumor_size_bins_mm), p=cfg.tumor_probs)
+                r_min_mm, r_max_mm = cfg.tumor_size_bins_mm[bin_idx]
+                radius_mm = rng.uniform(r_min_mm / 2, r_max_mm / 2)
+                radius_vox = radius_mm / cfg.voxel_size_mm
+                mode = self._resolve_tumor_mode(rng, overrides)
+                is_subcapsular = bool(rng.random() < cfg.subcapsular_fraction)
 
-                # Edge margin: at least radius_vox or min_edge_dist_px, whichever is larger
-                margin = max(cfg.min_edge_dist_px, int(np.ceil(radius_vox)))
-                edge_ok = (cz >= margin and cz < shape[0] - margin and
-                           cy >= margin and cy < shape[1] - margin and
-                           cx >= margin and cx < shape[2] - margin)
-                if not edge_ok:
-                    continue
+                for _center_attempt in range(cfg.tumor_placement_attempts):
+                    idx = placement_indices[rng.integers(len(placement_indices))]
+                    cz, cy, cx = int(idx[0]), int(idx[1]), int(idx[2])
 
-                # Size-aware center distance: no overlap = r_new + r_prev + 2 vox gap
-                center_ok = all(
-                    np.sqrt((pc - cz) ** 2 + (pd - cy) ** 2 + (pe - cx) ** 2)
-                    >= radius_vox + pr + 2
-                    for pc, pd, pe, pr in tumor_centers
-                ) if tumor_centers else True
+                    # Retain the FOV guard as a cheap pre-filter, but liver-surface
+                    # distance below is the authoritative anatomical constraint.
+                    margin = max(cfg.min_edge_dist_px, int(np.ceil(radius_vox)))
+                    edge_ok = (cz >= margin and cz < shape[0] - margin and
+                               cy >= margin and cy < shape[1] - margin and
+                               cx >= margin and cx < shape[2] - margin)
+                    if not edge_ok:
+                        continue
 
-                if not center_ok:
-                    continue
+                    center_depth_mm = max(float(liver_distance[cz, cy, cx]) - 1.0, 0.0) * cfg.voxel_size_mm
+                    if is_subcapsular:
+                        if center_depth_mm > radius_mm + cfg.subcapsular_max_depth_mm:
+                            continue
+                    elif center_depth_mm < radius_mm + cfg.tumor_min_liver_margin_mm:
+                        continue
 
-                placed = True
-                tumor_centers.append((cz, cy, cx, radius_vox))
-                break
+                    if mode == "spiculated":
+                        candidate = Geometry3D.create_spiculated_tumor(
+                            shape, (cz, cy, cx), radius_vox,
+                            roughness=cfg.spiculated_roughness,
+                            spiciness=cfg.spiculated_spiciness, rng=rng
+                        )
+                        elong = 1.0
+                    else:
+                        elong = rng.uniform(0.7, 1.3)
+                        candidate = Geometry3D.create_superellipsoid(
+                            shape, (cz, cy, cx), radius_vox, p=2.0, elong=elong
+                        )
 
-            if not placed:
-                continue
+                    if not np.any(candidate) or np.any(candidate & ~liver):
+                        continue
+                    if np.any(candidate & occupied):
+                        continue
+                    if cfg.tumor_overlap_gap_mm > 0 and np.any(occupied):
+                        gap_vox = cfg.tumor_overlap_gap_mm / cfg.voxel_size_mm
+                        distance_to_occupied = distance_transform_edt(~occupied)
+                        if float(distance_to_occupied[candidate].min()) < gap_vox:
+                            continue
 
-            # Generate tumor mask
-            if mode == "spiculated":
-                tmask = Geometry3D.create_spiculated_tumor(
-                    shape, (cz, cy, cx), radius_vox,
-                    roughness=cfg.spiculated_roughness,
-                    spiciness=cfg.spiculated_spiciness, rng=rng
+                    surface_margin_mm = max(float(liver_distance[candidate].min()) - 1.0, 0.0) * cfg.voxel_size_mm
+                    if not is_subcapsular and surface_margin_mm + 1e-6 < cfg.tumor_min_liver_margin_mm:
+                        continue
+
+                    placed = True
+                    chosen_mask = candidate
+                    chosen_center = (cz, cy, cx)
+                    chosen_elong = float(elong)
+                    break
+                if placed:
+                    break
+
+            if not placed or chosen_mask is None or chosen_center is None:
+                raise RuntimeError(
+                    f"Unable to place tumor {tumor_id + 1}/{n_tumors} without clipping or overlap "
+                    f"after {cfg.tumor_spec_attempts} specification attempts."
                 )
-            else:  # ellipsoid
-                elong = rng.uniform(0.7, 1.3)
-                tmask = Geometry3D.create_superellipsoid(shape, (cz, cy, cx), radius_vox, p=2.0, elong=elong)
 
-            tmask = tmask & liver
-            if tmask.sum() == 0:
-                continue
+            tmask = chosen_mask
+            cz, cy, cx = chosen_center
 
             # Per-tumor contrast: TNR range 2–8 based on Tc-99m MAA hepatic arterial
             # scintigraphy (Ho et al. 1997, J Nucl Med: median 3.4, range 1.5–12)
@@ -590,8 +729,20 @@ class PhantomGenerator:
             activity[tmask] = base_val * contrast
 
             tumor_masks.append(tmask)
-            tumor_diameters_mm.append(float(radius_mm * 2))
+            occupied |= tmask
+            tumor_nominal_diameters_mm.append(float(radius_mm * 2))
             tumor_modes_used.append(mode)
+            tumor_records.append(
+                {
+                    "id": int(tumor_id),
+                    "center_vox": [int(cz), int(cy), int(cx)],
+                    "mode": mode,
+                    "elongation": chosen_elong,
+                    "nominal_diameter_mm": float(radius_mm * 2),
+                    "target_contrast": float(contrast),
+                    "placement_stratum": "subcapsular" if is_subcapsular else "central",
+                }
+            )
 
         # PSF is handled by SIMIND internally (collimator/detector model).
         # Do NOT blur here — SIMIND source input must be the clean activity map.
@@ -604,9 +755,47 @@ class PhantomGenerator:
 
         total_counts_actual = float(activity.sum())
 
+        # Derive all lesion measurements from the final masks/activity rather
+        # than from sampled parameters.  These records are the auditable truth
+        # used by QC and manifests.
+        tumor_union = np.zeros(shape, dtype=bool)
+        for tmask in tumor_masks:
+            tumor_union |= tmask
+        voxel_volume_ml = (cfg.voxel_size_mm / 10.0) ** 3
+        liver_boundary = self._surface(liver)
+        tumor_diameters_mm = []
+        for record, tmask in zip(tumor_records, tumor_masks):
+            volume_ml = float(tmask.sum() * voxel_volume_ml)
+            effective_diameter_mm = float(2.0 * ((3.0 * volume_ml * 1000.0) / (4.0 * np.pi)) ** (1.0 / 3.0))
+            surface = self._surface(tmask)
+            contact_fraction = float((surface & liver_boundary).sum() / max(int(surface.sum()), 1))
+            surface_margin_mm = max(float(liver_distance[tmask].min()) - 1.0, 0.0) * cfg.voxel_size_mm
+            left_overlap = int((tmask & left_mask).sum())
+            right_overlap = int((tmask & right_mask).sum())
+            lobe = "left" if left_overlap >= right_overlap else "right"
+            local_lobe = left_mask if lobe == "left" else right_mask
+            local_bg = local_lobe & ~tumor_union
+            global_bg = liver & ~tumor_union
+            tumor_mean = float(activity[tmask].mean())
+            local_mean = float(activity[local_bg].mean()) if np.any(local_bg) else 0.0
+            global_mean = float(activity[global_bg].mean()) if np.any(global_bg) else 0.0
+            record.update(
+                {
+                    "lobe": lobe,
+                    "voxel_count": int(tmask.sum()),
+                    "volume_ml": volume_ml,
+                    "effective_diameter_mm": effective_diameter_mm,
+                    "surface_margin_mm": float(surface_margin_mm),
+                    "boundary_contact_fraction": contact_fraction,
+                    "tnr_local": float(tumor_mean / local_mean) if local_mean > 0 else None,
+                    "tnr_global": float(tumor_mean / global_mean) if global_mean > 0 else None,
+                    "overlaps": [],
+                }
+            )
+            tumor_diameters_mm.append(effective_diameter_mm)
+
         # ── 6. Metadata ──
-        vox_vol_ml = (cfg.voxel_size_mm / 10) ** 3  # cm³ = mL
-        liver_volume_ml = float(liver.sum() * vox_vol_ml)
+        liver_volume_ml = float(liver.sum() * voxel_volume_ml)
 
         result = PhantomResult(
             case_id=case_id,
@@ -618,17 +807,28 @@ class PhantomGenerator:
             right_mask=right_mask,
             tumor_masks=tumor_masks,
             tumor_diameters_mm=tumor_diameters_mm,
+            tumor_nominal_diameters_mm=tumor_nominal_diameters_mm,
             tumor_modes_used=tumor_modes_used,
+            tumor_metadata=tumor_records,
             perfusion_mode=perfusion_mode,
             total_counts_actual=total_counts_actual,
             liver_volume_ml=liver_volume_ml,
             left_ratio=float(actual_left_ratio),
+            cantlie_target_ratio=float(cfg.target_left_ratio),
+            cantlie_offset=float(best_offset),
+            cantlie_tilt_deg=float(tilt),
+            cantlie_converged=bool(cantlie_converged),
+            cantlie_iterations=int(cantlie_iterations),
+            cantlie_abs_error=float(cantlie_abs_error),
+            cantlie_search_evidence=cantlie_search_evidence,
             n_tumors=len(tumor_masks),
             voxel_size_mm=cfg.voxel_size_mm,
             volume_shape=tuple(shape),
+            mu_unit=cfg.mu_unit,
+            mu_reference_energy_kev=cfg.mu_reference_energy_kev,
+            mu_contract_status=cfg.mu_contract_status,
             generation_time_s=time.time() - t0,
         )
         return result
-
 
 

@@ -87,6 +87,27 @@ def validate_phantom_config(config: PhantomConfig, preview: PreviewOverrides | N
             tr("Contrast min cannot be greater than Contrast max."),
         )
 
+    if not 0.0 <= config.subcapsular_fraction <= 1.0:
+        report.add_error(
+            "subcapsular_fraction.bounds",
+            tr("Subcapsular fraction must stay between 0 and 1."),
+        )
+    if config.tumor_min_liver_margin_mm < 0 or config.subcapsular_max_depth_mm < 0:
+        report.add_error(
+            "tumor_liver_distance.nonnegative",
+            tr("Tumor liver-surface distances must be non-negative."),
+        )
+    if config.tumor_overlap_gap_mm < 0:
+        report.add_error(
+            "tumor_overlap_gap.nonnegative",
+            tr("Tumor overlap gap must be non-negative."),
+        )
+    if config.mu_unit != "cm^-1":
+        report.add_warning(
+            "attenuation.unit_unverified",
+            tr("The bundled SIMIND workflow has only been prepared for attenuation values in cm^-1."),
+        )
+
     if config.n_cases < 1:
         report.add_error("n_cases.invalid", tr("Number of cases must be at least 1."))
 

@@ -1,0 +1,39 @@
+{
+  "canonical_projection_transform": "raw[::-1,::-1,:]",
+  "case_count": 500,
+  "cases_manifest": "cases.jsonl",
+  "cases_manifest_sha256": "78f7a90acbb652f62fa7eb17d48cc0b3ab04cc71a4e05fa61c52422a4ecc0330",
+  "classification": "legacy_weighted_mc_expectation_like_output",
+  "contract_version": 1,
+  "created_utc": "2026-08-17T19:04:11+00:00",
+  "dataset_id": "legacy-v1-weighted-mc",
+  "figure_manifest": "figures/figure_manifest.json",
+  "figure_manifest_sha256": "cb76a995e4fa564f338fd99216cd3c186a1e6152e348fac34834b8e6d0e82b26",
+  "file_inventory": "file_inventory.sha256",
+  "file_inventory_sha256": "3cbde45a9c7c0056e457b744a0a345e808c1725fd410a4240dce3d34182f5061",
+  "freeze_mode": "read_only_checksum_reference",
+  "known_ambiguities": [
+    "Folder name says 60Mbq20s while SMC Index-25 is 1704 (compatible with 60 MBq x 28.4 s, not 20 s).",
+    "Attenuation /FD unit/semantic is not verified by .ict readback.",
+    "Output matrix 128 yields a 31.5 cm square at 0.246 cm/pixel; 160/208 behavior is not yet controlled.",
+    "Legacy lesion metadata records nominal/requested size from the pre-fix generator."
+  ],
+  "noise_contract": "no_separate_observation_realization",
+  "production_command_evidence_first_case": "simind\\ge870_czt output\\SPECT_60Mbq20s\\case_0001 /FD:output\\trans_noNoise\\case_0001 /FS:output\\trans_noNoise\\case_0001 /NN:5",
+  "qc_summary": "qc_summary.json",
+  "qc_summary_sha256": "947e46d0ae4662ebe8e574ff0b7977cd360431ace30b4413f8ab1d4f2e40712f",
+  "scope": "synthetic_liver_spect_current_protocol_only",
+  "simind_binary": {
+    "path": "D:\\PFE-U\\PAR-S-Generator\\simind\\simind.exe",
+    "provenance_note": "Bundled binary checksum; historical .res command records simind path but does not itself prove binary identity.",
+    "sha256": "f984b8753f54b9f671f9fc1bcb2b45461e7cae8d027376b446dd1ed55a9a8319"
+  },
+  "smc": {
+    "path": "D:\\PFE-U\\PAR-S-Generator\\simind\\ge870_czt.smc",
+    "provenance_note": "Current bundled SMC checksum; historical .res embeds configuration summary but exact historical file identity is not independently proven.",
+    "sha256": "4d10eab246a7a6690663230d2f33aeb3c32f67c598af36b56d1575f0e3551d10"
+  },
+  "source_phantom_dir": "D:\\PFE-U\\PAR-S-Generator\\output\\syn3d_noNoise",
+  "source_projection_dir": "D:\\PFE-U\\PAR-S-Generator\\output\\SPECT_60Mbq20s",
+  "split_manifest": "splits.json"
+}

@@ -1,0 +1,19 @@
+{
+  "run_id": "qa-smoke-20260817",
+  "runs_root": "runs",
+  "phantom": {
+    "n_cases": 2,
+    "global_seed": 42,
+    "use_global_seed": true,
+    "output_dir": "managed_by_pipeline"
+  },
+  "simind_exe": "simind/simind.exe",
+  "smc_file": "simind/ge870_czt.smc",
+  "nn_multiplier": 5,
+  "simulation_mode": "mock",
+  "create_poisson_observation": true,
+  "observation_scale": 1.0,
+  "observation_protocol_status": "toy",
+  "protocol_status": "pending_physics_validation",
+  "activity_time_contract_status": "unresolved_60mbq_x_20s_vs_smc_index25_1704"
+}

@@ -1,0 +1,13 @@
+{
+  "artifacts": [
+    "D:\\PFE-U\\PAR-S-Generator\\manifests\\legacy-v1-weighted-mc\\figures\\data_flow.svg",
+    "D:\\PFE-U\\PAR-S-Generator\\manifests\\legacy-v1-weighted-mc\\figures\\legacy_distributions.png",
+    "D:\\PFE-U\\PAR-S-Generator\\manifests\\legacy-v1-weighted-mc\\figures\\legacy_distributions.svg",
+    "D:\\PFE-U\\PAR-S-Generator\\manifests\\legacy-v1-weighted-mc\\figures\\legacy_qc_flags.png",
+    "D:\\PFE-U\\PAR-S-Generator\\manifests\\legacy-v1-weighted-mc\\figures\\legacy_qc_flags.svg"
+  ],
+  "dataset_id": "legacy-v1-weighted-mc",
+  "note": "Legacy QC evidence; not a claim of valid physics or clinical noise.",
+  "row_count": 1459,
+  "source": "frozen cases.jsonl and qc_summary.json"
+}

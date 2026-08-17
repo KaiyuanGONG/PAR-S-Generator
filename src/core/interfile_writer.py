@@ -12,8 +12,12 @@ SIMIND XcatBinMap convention (Index-14 = -7, Index-15 = -7):
 from __future__ import annotations
 
 from pathlib import Path
+import os
 
 import numpy as np
+
+from pipeline.contracts import sha256_file
+from pipeline.simind import build_simind_tokens
 
 
 def write_bin(
@@ -32,7 +36,19 @@ def write_bin(
     """
     output_stem = Path(output_stem)
     bin_path = output_stem.parent / (output_stem.name + suffix + ".bin")
-    volume.astype(np.float32, copy=False).tofile(str(bin_path))
+    output_stem.parent.mkdir(parents=True, exist_ok=True)
+    encoded = np.asarray(volume, dtype=np.float32, order="C")
+    if encoded.ndim != 3 or not np.isfinite(encoded).all():
+        raise ValueError("SIMIND binary volumes must be finite 3D arrays")
+    temp = bin_path.with_name(f".{bin_path.name}.{os.getpid()}.tmp")
+    encoded.tofile(str(temp))
+    # Read back before publishing the file.  This makes dtype/order/length an
+    # executable contract instead of a comment beside an unchecked write.
+    decoded = np.fromfile(temp, dtype=np.float32)
+    if decoded.size != encoded.size or not np.array_equal(decoded.reshape(encoded.shape), encoded):
+        temp.unlink(missing_ok=True)
+        raise IOError(f"Binary read-back failed for {bin_path}")
+    temp.replace(bin_path)
     return bin_path
 
 
@@ -80,6 +96,23 @@ def convert_npz_to_interfile(
             "atn_bin": write_bin(mu_map, base, "_atn_av"),
         }
 
+    expected_bytes = int(activity.size) * np.dtype(np.float32).itemsize
+    for label in ("act_bin", "atn_bin"):
+        path = result[label]
+        if path.stat().st_size != expected_bytes:
+            raise IOError(f"Unexpected binary size after export: {path}")
+    result.update(
+        {
+            "shape": list(activity.shape),
+            "dtype": "float32",
+            "order": "C (Z,Y,X)",
+            "voxel_size_mm": float(voxel_size_mm),
+            "act_sha256": sha256_file(result["act_bin"]),
+            "atn_sha256": sha256_file(result["atn_bin"]),
+            "readback_verified": True,
+        }
+    )
+
     return result
 
 
@@ -109,12 +142,15 @@ def generate_simind_bat(
     output_dir: Path,
     bat_path: Path,
     photons_per_proj: int = 5_000_000,
+    nn_multiplier: int = 0,
+    custom_overrides: list[tuple[int, str]] | None = None,
 ) -> Path:
     """
     Generate a Windows .bat script to run SIMIND on all binary pairs.
 
     `photons_per_proj` is retained for backward compatibility but is informational only.
-    Actual photon histories are configured inside the selected `.smc` file.
+    `nn_multiplier` adds /NN:<value> to each SIMIND invocation (0 = omit).
+    `custom_overrides` adds /<index>:<value> CLI overrides.
     """
     interfile_dir = Path(interfile_dir).resolve()
     output_dir = Path(output_dir).resolve()
@@ -171,7 +207,18 @@ def generate_simind_bat(
         out_stem = output_dir / stem
         lines += [
             f'echo [{i + 1}/{len(act_bins)}] Processing {stem}...',
-            f'"%SIMIND%" {smc_stem} "{out_stem}" /FS:{stem} /FD:{stem}',
+            '"%SIMIND%" '
+            + " ".join(
+                f'"{token}"' if " " in token else token
+                for token in build_simind_tokens(
+                    smc_stem=smc_stem,
+                    output_stem=str(out_stem),
+                    source_stem=stem,
+                    density_stem=stem,
+                    nn_multiplier=nn_multiplier,
+                    overrides=custom_overrides or [],
+                )
+            ),
             "if errorlevel 1 (",
             f"    echo ERROR: Failed on {stem}",
             "    popd",
@@ -189,7 +236,13 @@ def generate_simind_bat(
     ]
 
     bat_path.parent.mkdir(parents=True, exist_ok=True)
-    with open(bat_path, "w", encoding="ascii", newline="\r\n") as f:
+    # Kept for API compatibility.  Pipeline-generated runs use the shared
+    # ``pipeline.simind`` contract; this legacy helper now at least writes
+    # atomically and is covered by the same binary read-back checks.
+    bat_path.parent.mkdir(parents=True, exist_ok=True)
+    temp = bat_path.with_name(f".{bat_path.name}.{os.getpid()}.tmp")
+    with open(temp, "w", encoding="ascii", newline="\r\n") as f:
         f.write("\n".join(lines))
+    temp.replace(bat_path)
 
     return bat_path
