@@ -1,0 +1,92 @@
+{
+  "attenuation_contract": {
+    "reference_energy_kev": 140.5,
+    "status": "verified_type7_mu_times_voxel_v10_current_h2o_protocol",
+    "unit": "cm^-1"
+  },
+  "cantlie": {
+    "abs_error": 0.0025096321317359394,
+    "converged": true,
+    "iterations": 4,
+    "offset": 0.109375,
+    "search": {
+      "expanded_beyond_initial_range": false,
+      "expanded_offset_range": [
+        -0.05,
+        0.12
+      ],
+      "expansions": 0,
+      "hit_expansion_limit": false,
+      "initial_offset_range": [
+        -0.05,
+        0.12
+      ],
+      "solution_on_search_boundary": false,
+      "target_bracketed": true
+    },
+    "target_left_ratio": 0.35,
+    "tilt_deg": -4.867640696355224
+  },
+  "failures": [],
+  "meta": "D:\\PFE-U\\PAR-S-Generator\\runs\\stage3-phantom-100-20260818\\phantom\\case_0043_meta.json",
+  "metrics": {
+    "activity_dtype": "float32",
+    "activity_sum": 79999.99078154564,
+    "left_ratio": 0.3525096321317359,
+    "liver_volume_ml": 1636.0902749359998,
+    "mu_dtype": "float32",
+    "mu_max": 0.30071428418159485,
+    "mu_min": 0.0,
+    "n_tumors": 3,
+    "shape": [
+      128,
+      128,
+      128
+    ],
+    "tumors": [
+      {
+        "effective_diameter_mm": 23.727450071479502,
+        "index": 0,
+        "mode": "spiculated",
+        "nominal_diameter_mm": 22.69689960159243,
+        "outside_liver_vox": 0,
+        "overlap_previous_vox": 0,
+        "placement_stratum": "central",
+        "surface_margin_mm": 9.88342046054907,
+        "tnr_from_saved_activity": 7.356551102544583,
+        "volume_vox": 81
+      },
+      {
+        "effective_diameter_mm": 46.9366304706419,
+        "index": 1,
+        "mode": "ellipsoid",
+        "nominal_diameter_mm": 47.69762318957337,
+        "outside_liver_vox": 0,
+        "overlap_previous_vox": 0,
+        "placement_stratum": "central",
+        "surface_margin_mm": 10.826744663101646,
+        "tnr_from_saved_activity": 11.2304594666628,
+        "volume_vox": 627
+      },
+      {
+        "effective_diameter_mm": 17.589792186315965,
+        "index": 2,
+        "mode": "spiculated",
+        "nominal_diameter_mm": 17.75658246219259,
+        "outside_liver_vox": 0,
+        "overlap_previous_vox": 0,
+        "placement_stratum": "central",
+        "surface_margin_mm": 12.50164789137816,
+        "tnr_from_saved_activity": 5.349729742598077,
+        "volume_vox": 33
+      }
+    ]
+  },
+  "npz": "D:\\PFE-U\\PAR-S-Generator\\runs\\stage3-phantom-100-20260818\\phantom\\case_0043.npz",
+  "sha256": {
+    "meta": "b69f7181999ffe3bf768bfe6028124ab775ef9282f5ee9ed56adcddd688e8bb9",
+    "npz": "e54f93f20d06e4b9ca0b68732c25429facba83b38155282d3c34e6dbcaac530b"
+  },
+  "status": "passed",
+  "warnings": []
+}

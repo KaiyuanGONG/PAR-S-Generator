@@ -1,0 +1,107 @@
+{
+  "completed_utc": "2026-08-18T07:57:05+00:00",
+  "experiment": "attenuation_ict",
+  "jobs": [
+    {
+      "artifacts": [],
+      "case_id": "water_column_mu_0p00",
+      "command": [
+        "D:\\PFE-U\\PAR-S-Generator\\simind\\simind.exe",
+        "attenuation_ict",
+        "water_column_mu_0p00",
+        "/FS:water_column_mu_0p00",
+        "/FD:water_column_mu_0p00",
+        "/NN:10000",
+        "/IN:x22,3x/84:4",
+        "/RR:9600"
+      ],
+      "log": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v9\\attenuation_ict\\logs\\water_column_mu_0p00.log",
+      "log_provenance": "current_run",
+      "qc": {
+        "a00": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v9\\attenuation_ict\\output\\water_column_mu_0p00.a00",
+        "canonical_transform": "raw[:,::-1,:]",
+        "exit_code": 0,
+        "failures": [
+          "missing_a00",
+          "missing_res",
+          "res_command_mismatch:/FS:water_column_mu_0p00,/FD:water_column_mu_0p00,/NN:10000,/IN:x22,3x/84:4",
+          "missing_mhd",
+          "artifact_relocation:SIMIND did not create primary projection: D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v9\\attenuation_ict\\input\\water_column_mu_0p00.a00"
+        ],
+        "metrics": {},
+        "mhd": {
+          "exists": false
+        },
+        "res": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v9\\attenuation_ict\\output\\water_column_mu_0p00.res",
+        "res_command_tokens_matched": false,
+        "res_completion_marker": false,
+        "res_effective": {
+          "available": false,
+          "source": "SIMIND .res"
+        },
+        "res_expected_command_tokens": [
+          "/FS:water_column_mu_0p00",
+          "/FD:water_column_mu_0p00",
+          "/NN:10000",
+          "/IN:x22,3x/84:4"
+        ],
+        "sha256": {},
+        "status": "failed"
+      },
+      "status": "failed",
+      "working_dir": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v9\\attenuation_ict\\input"
+    },
+    {
+      "artifacts": [],
+      "case_id": "water_column_mu_0p15",
+      "command": [
+        "D:\\PFE-U\\PAR-S-Generator\\simind\\simind.exe",
+        "attenuation_ict",
+        "water_column_mu_0p15",
+        "/FS:water_column_mu_0p15",
+        "/FD:water_column_mu_0p15",
+        "/NN:10000",
+        "/IN:x22,3x/84:4",
+        "/RR:9600"
+      ],
+      "log": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v9\\attenuation_ict\\logs\\water_column_mu_0p15.log",
+      "log_provenance": "current_run",
+      "qc": {
+        "a00": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v9\\attenuation_ict\\output\\water_column_mu_0p15.a00",
+        "canonical_transform": "raw[:,::-1,:]",
+        "exit_code": 0,
+        "failures": [
+          "missing_a00",
+          "missing_res",
+          "res_command_mismatch:/FS:water_column_mu_0p15,/FD:water_column_mu_0p15,/NN:10000,/IN:x22,3x/84:4",
+          "missing_mhd",
+          "artifact_relocation:SIMIND did not create primary projection: D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v9\\attenuation_ict\\input\\water_column_mu_0p15.a00"
+        ],
+        "metrics": {},
+        "mhd": {
+          "exists": false
+        },
+        "res": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v9\\attenuation_ict\\output\\water_column_mu_0p15.res",
+        "res_command_tokens_matched": false,
+        "res_completion_marker": false,
+        "res_effective": {
+          "available": false,
+          "source": "SIMIND .res"
+        },
+        "res_expected_command_tokens": [
+          "/FS:water_column_mu_0p15",
+          "/FD:water_column_mu_0p15",
+          "/NN:10000",
+          "/IN:x22,3x/84:4"
+        ],
+        "sha256": {},
+        "status": "failed"
+      },
+      "status": "failed",
+      "working_dir": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v9\\attenuation_ict\\input"
+    }
+  ],
+  "resume": false,
+  "started_utc": "2026-08-18T07:56:49+00:00",
+  "status": "failed"
+}

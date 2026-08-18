@@ -1,0 +1,175 @@
+{
+  "analysis_blockers": [],
+  "analyzed_utc": "2026-08-18T08:40:09+00:00",
+  "experiment": "attenuation_ict",
+  "missing_cases": [],
+  "observations": [
+    {
+      "a00_exists": false,
+      "air_artifact": {
+        "dtype": "float32",
+        "finite": true,
+        "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v10\\attenuation_ict\\output\\water_column_mu_0p00_air_w1.a00",
+        "sha256": "843a692313edcda2b2fd88dc490e30be51753881859d92153cb6b651b3dfef73",
+        "sum": 5289895.417359829,
+        "value_count": 983040
+      },
+      "air_artifact_suffix": "_air_w1.a00",
+      "case_id": "water_column_mu_0p00",
+      "ict_files": [
+        {
+          "byte_order": "LITTLEENDIAN",
+          "bytes": 8388608,
+          "bytes_per_pixel": 4,
+          "declared_units": "mu",
+          "dtype": "<f4",
+          "finite_fraction": 1.0,
+          "header": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v10\\attenuation_ict\\output\\water_column_mu_0p00.hct",
+          "max": 0.0,
+          "mean": 0.0,
+          "min": 0.0,
+          "modal_positive_value": null,
+          "number_format": "short float",
+          "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v10\\attenuation_ict\\output\\water_column_mu_0p00.ict",
+          "sha256": "2daeb1f36095b44b318410b3f4e8b5d989dcc7bb023d1426c492dab0a3053e74",
+          "shape": [
+            128,
+            128,
+            128
+          ],
+          "unique_positive_values": [],
+          "value_count": 2097152
+        }
+      ],
+      "primary_artifact": {
+        "dtype": "float32",
+        "finite": true,
+        "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v10\\attenuation_ict\\output\\water_column_mu_0p00_pri_w1.a00",
+        "sha256": "843a692313edcda2b2fd88dc490e30be51753881859d92153cb6b651b3dfef73",
+        "sum": 5289895.417359829,
+        "value_count": 983040
+      },
+      "primary_artifact_suffix": "_pri_w1.a00"
+    },
+    {
+      "a00_exists": false,
+      "air_artifact": {
+        "dtype": "float32",
+        "finite": true,
+        "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v10\\attenuation_ict\\output\\water_column_mu_0p15_air_w1.a00",
+        "sha256": "162659f4c86f47b94761ae4128bc2f788e82720d14a81868b8ac57637674f158",
+        "sum": 5299655.431350708,
+        "value_count": 983040
+      },
+      "air_artifact_suffix": "_air_w1.a00",
+      "case_id": "water_column_mu_0p15",
+      "ict_files": [
+        {
+          "byte_order": "LITTLEENDIAN",
+          "bytes": 8388608,
+          "bytes_per_pixel": 4,
+          "declared_units": "mu",
+          "dtype": "<f4",
+          "finite_fraction": 1.0,
+          "header": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v10\\attenuation_ict\\output\\water_column_mu_0p15.hct",
+          "max": 0.1499778777360916,
+          "mean": 0.011326692067086697,
+          "min": 0.0,
+          "modal_positive_value": 0.1499778777360916,
+          "number_format": "short float",
+          "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v10\\attenuation_ict\\output\\water_column_mu_0p15.ict",
+          "sha256": "d6ec13a755aea88ebf9e260f3e7ef7138832becc45fb2e65276d622b0728a84e",
+          "shape": [
+            128,
+            128,
+            128
+          ],
+          "unique_positive_values": [
+            3.028779120486898e-29,
+            4.5431688311936243e-29,
+            6.057558240973797e-29,
+            2.131313831001927e-15,
+            3.196970852382009e-15,
+            4.262627662003854e-15,
+            5.3282844716256994e-15,
+            6.393941704764018e-15,
+            0.1499778777360916
+          ],
+          "value_count": 2097152
+        }
+      ],
+      "primary_artifact": {
+        "dtype": "float32",
+        "finite": true,
+        "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v10\\attenuation_ict\\output\\water_column_mu_0p15_pri_w1.a00",
+        "sha256": "0122cc33f8adaabd1f28e20263e179d67dfb6a2243c69e4310baf974d9fa6760",
+        "sum": 1412842.5596365929,
+        "value_count": 983040
+      },
+      "primary_artifact_suffix": "_pri_w1.a00"
+    },
+    {
+      "absolute_error_cm_inverse": 2.212226390838068e-05,
+      "control": "ict_internal_mu_readback",
+      "input_contract": {
+        "formula": "stored_value = mu_cm_inverse * voxel_size_cm",
+        "phantom_cross_sections": [
+          "h2o",
+          "h2o"
+        ],
+        "runtime_density_threshold_times_1000": 100,
+        "simind_assumed_reference_energy_kev": 140.5,
+        "simind_input_mode": "generic_xcat_type_minus_7",
+        "target_mu_cm_inverse": 0.15,
+        "target_stored_value": 0.0663,
+        "xcat_reference_energy_kev": 140.0
+      },
+      "maximum_absolute_error_cm_inverse": 0.002,
+      "mode": 3,
+      "observed_positive_median_mu_cm_inverse": 0.1499778777360916,
+      "passed": true,
+      "reference_max_absolute_value": 0.0,
+      "semantic": "internal_linear_attenuation_coefficient",
+      "target_mu_cm_inverse": 0.15,
+      "unit": "cm^-1"
+    },
+    {
+      "air_artifact_suffix": "_air_w1.a00",
+      "attenuated_air_sum": 5299655.431350708,
+      "attenuated_case": "water_column_mu_0p15",
+      "attenuated_primary_sum": 1412842.5596365929,
+      "control": "analytic_water_column_pair",
+      "expected_if_stored_value_is_per_voxel": 0.2655372889870278,
+      "expected_primary_ratio": 0.26553728898702783,
+      "ict_readback_passed": true,
+      "maximum_mu_absolute_error_cm_inverse": 0.02,
+      "maximum_ratio_relative_error": 0.1,
+      "mu_absolute_error_cm_inverse": 0.00044817525339035935,
+      "mu_cm_inverse": 0.15,
+      "observed_mu_cm_inverse": 0.14955182474660964,
+      "observed_primary_ratio": 0.26659139975002216,
+      "observed_total_projection_sum_ratio": null,
+      "path_length_cm": 8.84,
+      "path_length_vox": 20.0,
+      "per_voxel_hypothesis_relative_error": 0.003969727818701512,
+      "primary_artifact_suffix": "_pri_w1.a00",
+      "primary_control_valid": true,
+      "primary_observable": "attenuated-run primary sum divided by its same-run air sum",
+      "ratio_relative_error": 0.003969727818701302,
+      "ratio_used_for_gate": 0.26659139975002216,
+      "reference_air_sum": 5289895.417359829,
+      "reference_case": "water_column_mu_0p00",
+      "reference_primary_air_ratio": 1.0,
+      "reference_primary_sum": 5289895.417359829,
+      "scientific_verdict": "passed",
+      "stored_attenuation_value": 0.0663
+    }
+  ],
+  "pass_fail": {
+    "analytic_attenuation": "passed",
+    "ict_exists": "passed",
+    "mapping_identified": "passed"
+  },
+  "scientific_limit": "Automatic artifact analysis does not itself verify the acquisition protocol or physics claim.",
+  "status": "complete_scientific_gate_passed"
+}

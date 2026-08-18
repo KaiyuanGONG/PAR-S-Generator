@@ -16,7 +16,12 @@ from pathlib import Path
 from PyQt6.QtCore import QThread, pyqtSignal
 
 from pipeline.qc import validate_projection_artifacts
-from pipeline.simind import build_simind_tokens
+from pipeline.simind import (
+    assert_simind_artifact_paths_clear,
+    build_simind_tokens,
+    relocate_simind_artifacts,
+    simind_output_argument,
+)
 
 
 @dataclass
@@ -188,7 +193,7 @@ class SimindBatchWorker(QThread):
                 stem = queue[queue_idx]
                 queue_idx += 1
 
-                out_stem = str(output_dir / stem)
+                out_stem = simind_output_argument(output_dir / stem, interfile_dir)
                 cmd_args = build_simind_command(
                     smc_stem=smc_stem,
                     output_stem=out_stem,
@@ -199,6 +204,10 @@ class SimindBatchWorker(QThread):
                 )
 
                 try:
+                    assert_simind_artifact_paths_clear(
+                        interfile_dir / stem,
+                        output_dir / stem,
+                    )
                     proc = subprocess.Popen(
                         [str(simind_exe)] + cmd_args,
                         cwd=str(interfile_dir),
@@ -233,11 +242,26 @@ class SimindBatchWorker(QThread):
                         except Exception:
                             pass
 
+                    relocation_error = None
+                    if ret == 0:
+                        try:
+                            relocate_simind_artifacts(
+                                interfile_dir / stem,
+                                output_dir / stem,
+                            )
+                        except (FileExistsError, FileNotFoundError, OSError) as exc:
+                            relocation_error = exc
+
                     artifact_qc = validate_projection_artifacts(
                         output_dir / f"{stem}.a00",
                         require_mhd=True,
                         expected_command_tokens=(f"/FS:{stem}", f"/FD:{stem}"),
                     )
+                    if relocation_error is not None:
+                        artifact_qc["status"] = "failed"
+                        artifact_qc.setdefault("failures", []).append(
+                            f"artifact_relocation:{relocation_error}"
+                        )
                     a00_exists = (output_dir / f"{stem}.a00").exists()
                     if ret == 0 and artifact_qc["status"] == "passed":
                         elapsed = time.time() - start_time

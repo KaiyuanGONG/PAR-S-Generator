@@ -1,8 +1,9 @@
 """Quality-control primitives for phantom and projection artifacts.
 
 All functions are pure/read-only except for callers choosing to persist the
-returned dictionaries.  The canonical projection orientation is the one used
-by the current PAR-S_2 data loader and is recorded in every QC result.
+returned dictionaries.  The canonical projection orientation is the one
+validated for newly generated SIMIND data and is recorded in every QC result.
+The historical PAR-S_2 transform remains a separate legacy contract.
 """
 
 from __future__ import annotations
@@ -37,7 +38,7 @@ def load_projection(
             f"found {actual_bytes}"
         )
     raw = np.fromfile(path, dtype=np.float32).reshape(shape)
-    return raw[::-1, ::-1, :] if canonical else raw
+    return raw[:, ::-1, :] if canonical else raw
 
 
 def _completion_marker(res_path: Path) -> bool:
@@ -91,11 +92,13 @@ def validate_projection_artifacts(
     require_res: bool = True,
     require_mhd: bool = False,
     expected_command_tokens: tuple[str, ...] = (),
+    res_path: Path | None = None,
+    mhd_path: Path | None = None,
 ) -> dict[str, Any]:
     """Return strong, machine-readable completion and numerical QC evidence."""
     a00_path = Path(a00_path)
-    res_path = a00_path.with_suffix(".res")
-    mhd_path = a00_path.with_suffix(".mhd")
+    res_path = Path(res_path) if res_path is not None else a00_path.with_suffix(".res")
+    mhd_path = Path(mhd_path) if mhd_path is not None else a00_path.with_suffix(".mhd")
     failures: list[str] = []
     projection: np.ndarray | None = None
 
@@ -154,6 +157,8 @@ def validate_projection_artifacts(
             failures.append("negative_projection")
         positive = projection[projection > 0]
         row_col_support = np.any(projection > 0, axis=0)
+        view_sums = np.sum(projection, axis=(1, 2), dtype=np.float64)
+        view_sum_mean = float(np.mean(view_sums, dtype=np.float64))
         metrics = {
             "shape": list(projection.shape),
             "dtype": str(projection.dtype),
@@ -163,6 +168,14 @@ def validate_projection_artifacts(
             "nonzero_fraction": float(np.count_nonzero(projection) / projection.size),
             "noninteger_positive_fraction": (
                 float(np.mean(positive != np.floor(positive))) if positive.size else 0.0
+            ),
+            "view_sum_min": float(np.min(view_sums)),
+            "view_sum_median": float(np.median(view_sums)),
+            "view_sum_max": float(np.max(view_sums)),
+            "angular_cv": (
+                float(np.std(view_sums, dtype=np.float64) / view_sum_mean)
+                if view_sum_mean > 0.0
+                else 0.0
             ),
             "support_rows": np.flatnonzero(np.any(row_col_support, axis=1)).tolist(),
             "support_cols": np.flatnonzero(np.any(row_col_support, axis=0)).tolist(),
@@ -239,6 +252,11 @@ def phantom_qc(npz_path: Path, meta_path: Path | None = None) -> dict[str, Any]:
     normal_liver = liver & ~all_tumors
     liver_mean = float(activity[normal_liver].mean()) if np.any(normal_liver) else 0.0
     for index, tumor in enumerate(tumors):
+        saved_tumor = (
+            meta.get("tumors", [])[index]
+            if index < len(meta.get("tumors", []))
+            else {}
+        )
         volume_vox = int(tumor.sum())
         overlap_vox = int((occupied & tumor).sum())
         outside_vox = int((tumor & ~liver).sum())
@@ -246,6 +264,11 @@ def phantom_qc(npz_path: Path, meta_path: Path | None = None) -> dict[str, Any]:
         volume_mm3 = volume_vox * voxel_mm**3
         effective_diameter = (6.0 * volume_mm3 / np.pi) ** (1.0 / 3.0) if volume_vox else 0.0
         tumor_mean = float(activity[tumor].mean()) if volume_vox else 0.0
+        left_overlap = int((tumor & left).sum())
+        right_overlap = int((tumor & right).sum())
+        local_lobe = left if left_overlap >= right_overlap else right
+        local_background = local_lobe & ~all_tumors
+        local_mean = float(activity[local_background].mean()) if np.any(local_background) else 0.0
         tumor_records.append(
             {
                 "index": index,
@@ -255,13 +278,20 @@ def phantom_qc(npz_path: Path, meta_path: Path | None = None) -> dict[str, Any]:
                 "overlap_previous_vox": overlap_vox,
                 "surface_margin_mm": float(distance_to_surface[tumor].min()) if volume_vox else 0.0,
                 "tnr_from_saved_activity": tumor_mean / liver_mean if liver_mean > 0 else None,
+                "tnr_local_from_saved_activity": tumor_mean / local_mean if local_mean > 0 else None,
+                "nominal_diameter_mm": saved_tumor.get("nominal_diameter_mm"),
+                "target_contrast": saved_tumor.get("target_contrast"),
+                "mode": saved_tumor.get("mode"),
+                "placement_stratum": saved_tumor.get("placement_stratum"),
+                "perfusion_region": saved_tumor.get("perfusion_region"),
+                "sampled_size_bin_mm": saved_tumor.get("sampled_size_bin_mm"),
             }
         )
         if volume_vox == 0 or outside_vox or overlap_vox:
             failures.append(f"invalid_tumor_{index}")
 
     attenuation = meta.get("attenuation_contract", {})
-    if attenuation.get("status", "unrecorded") != "verified_by_simind_ict":
+    if not str(attenuation.get("status", "unrecorded")).startswith("verified"):
         warnings.append("attenuation_contract_not_verified_by_simind_ict")
 
     cantlie = meta.get("cantlie", {})
@@ -297,3 +327,325 @@ def phantom_qc(npz_path: Path, meta_path: Path | None = None) -> dict[str, Any]:
         "cantlie": cantlie or {"status": "unrecorded"},
     }
     return result
+
+
+def _distribution(values: list[float]) -> dict[str, float | int | None]:
+    array = np.asarray(values, dtype=np.float64)
+    array = array[np.isfinite(array)]
+    if not array.size:
+        return {"count": 0, "min": None, "q25": None, "median": None, "q75": None, "max": None, "mean": None, "std": None}
+    return {
+        "count": int(array.size),
+        "min": float(array.min()),
+        "q25": float(np.quantile(array, 0.25)),
+        "median": float(np.median(array)),
+        "q75": float(np.quantile(array, 0.75)),
+        "max": float(array.max()),
+        "mean": float(array.mean()),
+        "std": float(array.std(ddof=0)),
+    }
+
+
+def summarize_phantom_population(qc_records: list[dict[str, Any]]) -> dict[str, Any]:
+    """Aggregate case-level QC without inventing clinical prevalence claims."""
+    case_metrics = [record.get("metrics", {}) for record in qc_records]
+    tumors = [
+        tumor
+        for metrics in case_metrics
+        for tumor in metrics.get("tumors", [])
+    ]
+    diameters = [float(row["effective_diameter_mm"]) for row in tumors]
+    nominal = [
+        float(row["nominal_diameter_mm"])
+        for row in tumors
+        if row.get("nominal_diameter_mm") is not None
+    ]
+    diameter_ratios = [
+        float(row["effective_diameter_mm"]) / float(row["nominal_diameter_mm"])
+        for row in tumors
+        if row.get("nominal_diameter_mm") not in {None, 0}
+    ]
+    diameter_bins = {
+        "10_to_lt20_mm": sum(10 <= value < 20 for value in diameters),
+        "20_to_lt40_mm": sum(20 <= value < 40 for value in diameters),
+        "40_to_60_mm": sum(40 <= value <= 60 for value in diameters),
+        "outside_10_to_60_mm": sum(not (10 <= value <= 60) for value in diameters),
+    }
+    placement_counts: dict[str, int] = {}
+    mode_counts: dict[str, int] = {}
+    sampled_bin_counts: dict[str, int] = {}
+    perfusion_region_counts: dict[str, int] = {}
+    for row in tumors:
+        placement = str(row.get("placement_stratum") or "unrecorded")
+        mode = str(row.get("mode") or "unrecorded")
+        sampled_bin = row.get("sampled_size_bin_mm")
+        sampled_key = (
+            f"{float(sampled_bin[0]):g}_to_{float(sampled_bin[1]):g}_mm"
+            if isinstance(sampled_bin, (list, tuple)) and len(sampled_bin) == 2
+            else "unrecorded"
+        )
+        perfusion_region = str(row.get("perfusion_region") or "unrecorded")
+        placement_counts[placement] = placement_counts.get(placement, 0) + 1
+        mode_counts[mode] = mode_counts.get(mode, 0) + 1
+        sampled_bin_counts[sampled_key] = sampled_bin_counts.get(sampled_key, 0) + 1
+        perfusion_region_counts[perfusion_region] = perfusion_region_counts.get(perfusion_region, 0) + 1
+    tumor_count_distribution: dict[str, int] = {}
+    for metrics in case_metrics:
+        key = str(int(metrics.get("n_tumors", 0)))
+        tumor_count_distribution[key] = tumor_count_distribution.get(key, 0) + 1
+    passed_cases = sum(record.get("status") == "passed" for record in qc_records)
+    outside_voxels = sum(
+        int(row.get("outside_liver_vox", 0)) for row in tumors
+    )
+    overlap_voxels = sum(
+        int(row.get("overlap_previous_vox", 0)) for row in tumors
+    )
+    return {
+        "status": (
+            "passed"
+            if passed_cases == len(qc_records) and not outside_voxels and not overlap_voxels
+            else "failed"
+        ),
+        "case_count": len(qc_records),
+        "passed_case_count": passed_cases,
+        "failed_case_count": len(qc_records) - passed_cases,
+        "lesion_count": len(tumors),
+        "containment_outside_voxels": outside_voxels,
+        "overlap_voxels": overlap_voxels,
+        "case_distributions": {
+            "liver_volume_ml": _distribution(
+                [float(row.get("liver_volume_ml", np.nan)) for row in case_metrics]
+            ),
+            "left_ratio": _distribution(
+                [float(row.get("left_ratio", np.nan)) for row in case_metrics]
+            ),
+            "tumor_count": tumor_count_distribution,
+            "activity_sum": _distribution(
+                [float(row.get("activity_sum", np.nan)) for row in case_metrics]
+            ),
+        },
+        "lesion_distributions": {
+            "effective_diameter_mm": _distribution(diameters),
+            "nominal_diameter_mm": _distribution(nominal),
+            "effective_to_nominal_ratio": _distribution(diameter_ratios),
+            "surface_margin_mm": _distribution(
+                [float(row.get("surface_margin_mm", np.nan)) for row in tumors]
+            ),
+            "central_surface_margin_mm": _distribution(
+                [
+                    float(row.get("surface_margin_mm", np.nan))
+                    for row in tumors
+                    if row.get("placement_stratum") == "central"
+                ]
+            ),
+            "tnr_from_saved_activity": _distribution(
+                [
+                    float(row.get("tnr_from_saved_activity", np.nan))
+                    for row in tumors
+                    if row.get("tnr_from_saved_activity") is not None
+                ]
+            ),
+            "tnr_local_from_saved_activity": _distribution(
+                [
+                    float(row.get("tnr_local_from_saved_activity", np.nan))
+                    for row in tumors
+                    if row.get("tnr_local_from_saved_activity") is not None
+                ]
+            ),
+            "target_contrast": _distribution(
+                [
+                    float(row.get("target_contrast", np.nan))
+                    for row in tumors
+                    if row.get("target_contrast") is not None
+                ]
+            ),
+            "diameter_bins": diameter_bins,
+            "sampled_size_bins": sampled_bin_counts,
+            "placement_strata": placement_counts,
+            "perfusion_regions": perfusion_region_counts,
+            "morphology_modes": mode_counts,
+        },
+        "claim_boundary": (
+            "Generated-population QC for the current synthetic liver protocol; "
+            "not a clinical prevalence distribution."
+        ),
+    }
+
+
+def assess_stage3_phantom_population(
+    summary: dict[str, Any],
+    *,
+    size_bins_mm: list[list[float]],
+    size_probabilities: list[float],
+    tumor_count_min: int,
+    tumor_count_max: int,
+    mode_probabilities: dict[str, float],
+    target_left_ratio: float,
+    target_contrast_range: tuple[float, float],
+    central_margin_mm: float,
+) -> dict[str, Any]:
+    """Apply declared Stage-3 population gates to a 100-case phantom QC run.
+
+    These are generator-contract checks, not tests of clinical prevalence.
+    Proportion tolerances deliberately cover ordinary finite-sample variation
+    while still detecting the large acceptance bias found in the legacy loop.
+    """
+    case_count = int(summary.get("case_count", 0))
+    lesion_count = int(summary.get("lesion_count", 0))
+    lesion = summary.get("lesion_distributions", {})
+    case = summary.get("case_distributions", {})
+    checks: list[dict[str, Any]] = []
+
+    def add(name: str, passed: bool, **evidence: Any) -> None:
+        checks.append({"name": name, "status": "passed" if passed else "failed", **evidence})
+
+    add("case_count_100", case_count == 100, observed=case_count, expected=100)
+    add(
+        "all_case_qc_passed",
+        int(summary.get("passed_case_count", 0)) == case_count,
+        passed_case_count=int(summary.get("passed_case_count", 0)),
+    )
+    add(
+        "lesion_containment_and_nonoverlap",
+        int(summary.get("containment_outside_voxels", 0)) == 0
+        and int(summary.get("overlap_voxels", 0)) == 0,
+        outside_voxels=int(summary.get("containment_outside_voxels", 0)),
+        overlap_voxels=int(summary.get("overlap_voxels", 0)),
+    )
+
+    liver_volume = case.get("liver_volume_ml", {})
+    liver_min, liver_max = liver_volume.get("min"), liver_volume.get("max")
+    add(
+        "liver_volume_design_envelope_ml",
+        liver_min is not None and liver_max is not None
+        and float(liver_min) >= 900.0 and float(liver_max) <= 1900.0,
+        observed_min=liver_min,
+        observed_max=liver_max,
+        envelope=[900.0, 1900.0],
+    )
+    left_ratio = case.get("left_ratio", {})
+    left_min, left_max = left_ratio.get("min"), left_ratio.get("max")
+    left_tolerance = 0.006
+    add(
+        "cantlie_left_ratio",
+        left_min is not None and left_max is not None
+        and float(left_min) >= target_left_ratio - left_tolerance
+        and float(left_max) <= target_left_ratio + left_tolerance,
+        observed_min=left_min,
+        observed_max=left_max,
+        target=target_left_ratio,
+        tolerance=left_tolerance,
+    )
+
+    sampled_counts = lesion.get("sampled_size_bins", {})
+    bin_rows = []
+    bin_passed = lesion_count > 0 and len(size_bins_mm) == len(size_probabilities)
+    for bounds, expected in zip(size_bins_mm, size_probabilities):
+        key = f"{float(bounds[0]):g}_to_{float(bounds[1]):g}_mm"
+        observed_count = int(sampled_counts.get(key, 0))
+        observed = observed_count / lesion_count if lesion_count else 0.0
+        tolerance = 0.08 if float(expected) <= 0.2 else 0.10
+        passed = abs(observed - float(expected)) <= tolerance
+        bin_passed = bin_passed and passed
+        bin_rows.append(
+            {
+                "bin_mm": [float(bounds[0]), float(bounds[1])],
+                "count": observed_count,
+                "observed_fraction": observed,
+                "expected_fraction": float(expected),
+                "tolerance": tolerance,
+                "status": "passed" if passed else "failed",
+            }
+        )
+    add("sampled_size_strata", bin_passed, strata=bin_rows)
+    add(
+        "effective_diameters_match_declared_strata",
+        int(lesion.get("diameter_bins", {}).get("outside_10_to_60_mm", -1)) == 0,
+        observed=lesion.get("diameter_bins", {}),
+    )
+
+    mode_counts = lesion.get("morphology_modes", {})
+    mode_rows = []
+    mode_passed = lesion_count > 0
+    for mode, expected in mode_probabilities.items():
+        observed_count = int(mode_counts.get(mode, 0))
+        observed = observed_count / lesion_count if lesion_count else 0.0
+        passed = abs(observed - float(expected)) <= 0.10
+        mode_passed = mode_passed and passed
+        mode_rows.append(
+            {
+                "mode": mode,
+                "count": observed_count,
+                "observed_fraction": observed,
+                "expected_fraction": float(expected),
+                "tolerance": 0.10,
+                "status": "passed" if passed else "failed",
+            }
+        )
+    add("morphology_mode_distribution", mode_passed, modes=mode_rows)
+
+    tumor_counts = case.get("tumor_count", {})
+    count_values = list(range(int(tumor_count_min), int(tumor_count_max) + 1))
+    expected_count_fraction = 1.0 / len(count_values)
+    count_rows = []
+    count_passed = bool(count_values) and case_count > 0
+    for value in count_values:
+        observed_count = int(tumor_counts.get(str(value), 0))
+        observed = observed_count / case_count if case_count else 0.0
+        passed = abs(observed - expected_count_fraction) <= 0.10
+        count_passed = count_passed and passed
+        count_rows.append(
+            {
+                "tumor_count": value,
+                "case_count": observed_count,
+                "observed_fraction": observed,
+                "expected_fraction": expected_count_fraction,
+                "tolerance": 0.10,
+                "status": "passed" if passed else "failed",
+            }
+        )
+    add("uniform_tumor_count_distribution", count_passed, counts=count_rows)
+
+    target_contrast = lesion.get("target_contrast", {})
+    contrast_min, contrast_max = target_contrast.get("min"), target_contrast.get("max")
+    add(
+        "sampled_target_contrast_range",
+        contrast_min is not None and contrast_max is not None
+        and float(contrast_min) >= float(target_contrast_range[0])
+        and float(contrast_max) <= float(target_contrast_range[1]),
+        observed_min=contrast_min,
+        observed_max=contrast_max,
+        configured_range=list(target_contrast_range),
+    )
+    placement = lesion.get("placement_strata", {})
+    central_margin = lesion.get("central_surface_margin_mm", {})
+    margin_min = central_margin.get("min")
+    add(
+        "central_lesion_surface_margin",
+        margin_min is not None and float(margin_min) + 1e-6 >= central_margin_mm,
+        observed_min_mm=margin_min,
+        configured_min_mm=central_margin_mm,
+    )
+    fallback_count = int(placement.get("capacity_fallback_margin_relaxed", 0))
+    fallback_fraction = fallback_count / lesion_count if lesion_count else 0.0
+    add(
+        "capacity_fallback_is_bounded_and_explicit",
+        fallback_fraction <= 0.05,
+        lesion_count=fallback_count,
+        lesion_fraction=fallback_fraction,
+        maximum_fraction=0.05,
+        interpretation=(
+            "Fallback lesions remain fully contained and non-overlapping but do not carry "
+            "the configured central surface-margin guarantee."
+        ),
+    )
+
+    return {
+        "status": "passed" if all(row["status"] == "passed" for row in checks) else "failed",
+        "enforced": True,
+        "scope": (
+            "100-case generated-population contract for the current liver and GE 870 CZT protocol; "
+            "not a clinical prevalence claim"
+        ),
+        "checks": checks,
+    }

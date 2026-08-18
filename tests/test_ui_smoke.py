@@ -126,10 +126,23 @@ def test_raw_simind_indices_are_expert_only(app, monkeypatch, tmp_path):
     assert 'Index-25' not in page.smc_summary.toPlainText()
     assert 'Photon energy: 140 keV' in page.smc_summary.toPlainText()
     assert 'Source:' in page.smc_summary.toPlainText()
+    assert 'Effective GE detector override: 160 × 208 [Stage-3 promoted]' in page.smc_summary.toPlainText()
+    assert 'Type−7 attenuation: stored μ×0.442 cm; runtime density threshold: 100' in page.smc_summary.toPlainText()
+    assert 'locally supported nominal 60 MBq × 28.4 s' in page.smc_summary.toPlainText()
 
     page.chk_expert.setChecked(True)
     assert 'Index-25=1704' in page.smc_summary.toPlainText()
     assert 'Enabled Flags:' in page.smc_summary.toPlainText()
+    window.close()
+
+
+def test_project_protocol_defaults_to_locally_supported_activity_time(app, monkeypatch, tmp_path):
+    monkeypatch.setenv('PAR_S_SETTINGS_PATH', str(tmp_path / 'settings.json'))
+    window = MainWindow()
+    page = window.project_page
+    assert page.spin_activity.value() == pytest.approx(60.0)
+    assert float(page.edit_exposure.text()) == pytest.approx(28.4)
+    assert page.spin_index25.value() == pytest.approx(1704.0)
     window.close()
 
 

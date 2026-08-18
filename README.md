@@ -13,7 +13,7 @@ Generate → Phantom QC → float32 export → SIMIND plan/expectation
 
 Every invocation uses `runs/<run_id>/`; files from different runs are never globbed into one batch. `run.json` stores the effective configuration and stage evidence, `cases.jsonl` stores case-level provenance/QC, `splits.json` fixes the phantom-level partition, and `dataset_manifest.json` inventories packaged files by relative path, byte size and SHA-256 checksum. Resume accepts an artifact only when its hash and strong stage checks pass. A finalized manifest is immutable.
 
-Current scientific limitations are visible states, not hidden defaults. In particular, the `/FD` attenuation mapping, detector matrix/FOV, activity–time contract and verified count scale remain pending the prepared control experiments. See [decision gates](docs/DECISION_GATES.md).
+Current scientific limitations are visible states, not hidden defaults. Array/orientation, the scoped type−7 attenuation contract, native 160×208 detector FOV, the scoped 300-mm point/line response control and repeated `/RR`–`/NN` sampling controls passed. Local evidence supports the nominal 60 MBq × 28.4 s activity–time contract (SIMIND Index-25 = 1704) and defines an empirical observation distribution from eight de-identified raw TOMO series. Stage 3 promoted these contracts, passed a 100-case phantom-population QC run and finalized a ten-case corrected SIMIND pilot. This permits full corrected synthetic-data production under the unchanged protocol; it is not an absolute cps/MBq or model-performance claim. See [decision gates](docs/DECISION_GATES.md).
 
 ## Desktop application
 
@@ -33,7 +33,7 @@ The interface has six sequential data-preparation areas:
 5. **QC / Dataset** — stage evidence, case records and canonical projection view.
 6. **Finalize** — completeness checks and immutable manifest.
 
-The canonical projection transform is `raw[::-1, ::-1, :]`, matching the existing PAR-S_2 consumer contract. Actual SIMIND launch always requires explicit confirmation.
+The validated transform for newly generated data is `raw[:, ::-1, :]`: acquisition view order is retained and the detector row is flipped. The frozen historical PAR-S_2 set keeps its separate legacy contract `raw[::-1, ::-1, :]`; PAR-S_2 itself is not modified. Actual SIMIND launch always requires explicit confirmation.
 
 ## Command line
 
@@ -97,23 +97,33 @@ The packages cover:
 
 - Flag-15 `.ict` attenuation readback;
 - asymmetric-fiducial axis/orientation validation;
-- 128/160/208 detector matrix and FOV;
+- legacy 128×128 versus GE-native 160×208 detector aperture and axis controls;
 - point/line response and sensitivity;
 - repeated `/RR` and `/NN` Monte Carlo behavior.
 
 Each folder contains deterministic inputs, copied SMC variants, command JSON/BAT, a result template and an analyzer. Preparation never executes SIMIND. After an authorized run, analyze one package with:
 
 ```powershell
-python -m cli analyze-experiment --experiment experiments/validation-v1/attenuation_ict
+python -m cli analyze-experiment --experiment experiments/validation-v10/attenuation_ict
 ```
 
+SIMIND V8 is invoked with a validated safe basename in its working directory. After a zero exit code, the shared executor collision-checks and relocates the generated artifacts to the run-isolated output directory before QC. This avoids silent parsing of hyphens in absolute paths as SIMIND switches.
+
 ## Existing evidence
+
+This README, `DECISION_GATES.md`, `VALIDATION_RESULTS_2026-08-17.md`, `METHODS_SYNTHETIC_DATA.md` and the implementation report are the current knowledge set. Earlier Chinese tutorials, configuration notes, comparison documents and audits are retained as explicitly bannered historical records; their commands and protocol claims are not production instructions.
 
 - [Implementation report](docs/IMPLEMENTATION_REPORT_2026-08-17.md)
 - [Methods draft](docs/METHODS_SYNTHETIC_DATA.md)
 - [Scientific decision gates](docs/DECISION_GATES.md)
+- [Validation results](docs/VALIDATION_RESULTS_2026-08-17.md)
+- [Local protocol evidence](docs/LOCAL_PROTOCOL_EVIDENCE_2026-08-17.md)
+- [Stage 3 protocol promotion and pilot](docs/STAGE3_PROTOCOL_PROMOTION_2026-08-18.md)
 - `manifests/legacy-v1-weighted-mc/` — read-only checksum freeze of the 500 historical cases.
 - `runs/qa-smoke-20260817/` — finalized two-case deterministic software smoke, explicitly not scientific data.
+- `runs/stage3-phantom-100-v3-20260818/` — accepted 100-case generated-population QC evidence.
+- `runs/stage3-simind-pilot-10-v3-20260818/` — finalized corrected ten-case SIMIND/observation pilot.
+- `docs/evidence/stage3_pilot_summary_2026-08-18.json` — compact machine-readable Stage-3 verdict and per-case metrics.
 - `docs/evidence/` — native Windows UI screenshots.
 
 ## Tests

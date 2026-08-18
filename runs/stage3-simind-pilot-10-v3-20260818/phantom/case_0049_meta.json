@@ -1,0 +1,82 @@
+{
+  "case_id": 49,
+  "seed": 91,
+  "perfusion_mode": "Left Only",
+  "total_counts_actual": 80000.0078125,
+  "liver_volume_ml": 1346.814800136,
+  "left_ratio": 0.35340129512085655,
+  "n_tumors": 1,
+  "tumor_diameters_mm": [
+    34.68403125989691
+  ],
+  "tumor_nominal_diameters_mm": [
+    34.867934868224665
+  ],
+  "tumor_modes": [
+    "ellipsoid"
+  ],
+  "tumors": [
+    {
+      "id": 0,
+      "center_vox": [
+        56,
+        70,
+        71
+      ],
+      "mode": "ellipsoid",
+      "elongation": 1.0190629368601254,
+      "nominal_diameter_mm": 34.867934868224665,
+      "sampled_size_bin_mm": [
+        20.0,
+        40.0
+      ],
+      "placement_stratum": "central",
+      "perfusion_region": "high_perfusion",
+      "target_contrast": 7.028600214597921,
+      "lobe": "left",
+      "voxel_count": 253,
+      "volume_ml": 21.846774664,
+      "effective_diameter_mm": 34.68403125989691,
+      "surface_margin_mm": 4.42,
+      "boundary_contact_fraction": 0.0,
+      "tnr_local": 5.751766016296561,
+      "tnr_global": 14.46485006747513,
+      "overlaps": []
+    }
+  ],
+  "cantlie": {
+    "offset": 0.1425,
+    "tilt_deg": -3.058618027534278,
+    "target_left_ratio": 0.35,
+    "converged": true,
+    "iterations": 3,
+    "abs_error": 0.0034012951208565734,
+    "search": {
+      "initial_offset_range": [
+        -0.05,
+        0.12
+      ],
+      "expanded_offset_range": [
+        -0.05,
+        0.16999999999999998
+      ],
+      "expansions": 1,
+      "expanded_beyond_initial_range": true,
+      "target_bracketed": true,
+      "hit_expansion_limit": false,
+      "solution_on_search_boundary": false
+    }
+  },
+  "attenuation_contract": {
+    "unit": "cm^-1",
+    "reference_energy_kev": 140.5,
+    "status": "verified_type7_mu_times_voxel_v10_current_h2o_protocol"
+  },
+  "voxel_size_mm": 4.42,
+  "volume_shape": [
+    128,
+    128,
+    128
+  ],
+  "generation_time_s": 1.0850722789764404
+}

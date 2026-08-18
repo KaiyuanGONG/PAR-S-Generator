@@ -1,5 +1,8 @@
 # PAR-S Generator：从 XCAT 数据到训练数据库的完整技术说明
 
+> [!WARNING]
+> **历史文档，非现役执行规范。** 本文保留用于追溯早期设计与审计，包含已被替代的 UI、命令、路径或物理假设。请勿直接执行其中的 SIMIND 命令或据此启动数据生产。当前唯一现役入口为仓库根目录 `README.md`；科学状态见 `docs/DECISION_GATES.md` 与 `docs/VALIDATION_RESULTS_2026-08-17.md`，方法合同见 `docs/METHODS_SYNTHETIC_DATA.md`。
+
 > **文档版本**：v1.0 | **对应代码版本**：PAR-S-Generator（GitHub: KaiyuanGONG/PAR-S-Generator）  
 > **适用范围**：本文档覆盖从 XCAT 原始数据出发，经参数校准、SYN 体模批量生成、格式转换、SIMIND 仿真，直至最终训练数据库的完整技术链路，所有步骤均与 PAR-S Generator 应用的实际代码逻辑严格对应。
 

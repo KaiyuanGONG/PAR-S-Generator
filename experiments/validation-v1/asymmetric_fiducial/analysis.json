@@ -1,0 +1,413 @@
+{
+  "analysis_blockers": [],
+  "analyzed_utc": "2026-08-17T20:38:47+00:00",
+  "experiment": "asymmetric_fiducial",
+  "missing_cases": [],
+  "observations": [
+    {
+      "best_score_px": 1.018613472044671,
+      "manual_gate": "Match peaks/centroids to recorded Z,Y,X fiducials before selecting one axis/flip mapping.",
+      "matrix": 128,
+      "nonzero_pixels_per_view_max": 251,
+      "nonzero_pixels_per_view_median": 164.5,
+      "nonzero_pixels_per_view_min": 55,
+      "nonzero_pixels_total": 9176,
+      "nonzero_view_count": 60,
+      "orientation_candidates": [
+        {
+          "column_flip": false,
+          "column_residual_px": 1.018563137175285,
+          "row_centroids": [
+            32.57041710208789,
+            89.55080309650316,
+            74.54746085322871
+          ],
+          "row_common_offset_px": 0.5562270172732534,
+          "row_flip": true,
+          "row_residual_px": 0.01012625392437151,
+          "score_px": 1.018613472044671,
+          "transform": "raw[:,::-1,:]",
+          "valid_source_views": 145,
+          "view_flip": false,
+          "xy_swap": false
+        },
+        {
+          "column_flip": true,
+          "column_residual_px": 27.42943490975554,
+          "row_centroids": [
+            32.57041710208789,
+            89.55080309650316,
+            74.54746085322871
+          ],
+          "row_common_offset_px": 0.5562270172732534,
+          "row_flip": true,
+          "row_residual_px": 0.01012625392437151,
+          "score_px": 27.42943677893395,
+          "transform": "raw[:,::-1,::-1]",
+          "valid_source_views": 145,
+          "view_flip": false,
+          "xy_swap": true
+        },
+        {
+          "column_flip": false,
+          "column_residual_px": 28.48863552077577,
+          "row_centroids": [
+            47.404777787282356,
+            94.42958289791211,
+            54.701272502659236
+          ],
+          "row_common_offset_px": 0.5118777292845683,
+          "row_flip": false,
+          "row_residual_px": 14.588150164982666,
+          "score_px": 32.00650682395207,
+          "transform": "raw[:,:,:]",
+          "valid_source_views": 169,
+          "view_flip": false,
+          "xy_swap": true
+        },
+        {
+          "column_flip": true,
+          "column_residual_px": 28.978768038058544,
+          "row_centroids": [
+            47.404777787282356,
+            94.42958289791211,
+            54.701272502659236
+          ],
+          "row_common_offset_px": 0.5118777292845683,
+          "row_flip": false,
+          "row_residual_px": 14.588150164982666,
+          "score_px": 32.44353744953973,
+          "transform": "raw[::-1,:,::-1]",
+          "valid_source_views": 169,
+          "view_flip": true,
+          "xy_swap": false
+        },
+        {
+          "column_flip": true,
+          "column_residual_px": 34.52018317825273,
+          "row_centroids": [
+            32.57041710208789,
+            89.55080309650316,
+            74.54746085322871
+          ],
+          "row_common_offset_px": 0.5562270172732534,
+          "row_flip": true,
+          "row_residual_px": 0.01012625392437151,
+          "score_px": 34.52018466348552,
+          "transform": "raw[::-1,::-1,::-1]",
+          "valid_source_views": 145,
+          "view_flip": true,
+          "xy_swap": false
+        },
+        {
+          "column_flip": true,
+          "column_residual_px": 37.982635208751724,
+          "row_centroids": [
+            32.57041710208789,
+            89.55080309650316,
+            74.54746085322871
+          ],
+          "row_common_offset_px": 0.5562270172732534,
+          "row_flip": true,
+          "row_residual_px": 0.01012625392437151,
+          "score_px": 37.98263655859246,
+          "transform": "raw[::-1,::-1,::-1]",
+          "valid_source_views": 145,
+          "view_flip": true,
+          "xy_swap": true
+        },
+        {
+          "column_flip": true,
+          "column_residual_px": 35.176505687709984,
+          "row_centroids": [
+            47.404777787282356,
+            94.42958289791211,
+            54.701272502659236
+          ],
+          "row_common_offset_px": 0.5118777292845683,
+          "row_flip": false,
+          "row_residual_px": 14.588150164982666,
+          "score_px": 38.081500464576976,
+          "transform": "raw[:,:,::-1]",
+          "valid_source_views": 169,
+          "view_flip": false,
+          "xy_swap": false
+        },
+        {
+          "column_flip": false,
+          "column_residual_px": 35.89831335385469,
+          "row_centroids": [
+            47.404777787282356,
+            94.42958289791211,
+            54.701272502659236
+          ],
+          "row_common_offset_px": 0.5118777292845683,
+          "row_flip": false,
+          "row_residual_px": 14.588150164982666,
+          "score_px": 38.74923259740282,
+          "transform": "raw[::-1,:,:]",
+          "valid_source_views": 169,
+          "view_flip": true,
+          "xy_swap": true
+        },
+        {
+          "column_flip": false,
+          "column_residual_px": 38.23921326514819,
+          "row_centroids": [
+            47.404777787282356,
+            94.42958289791211,
+            54.701272502659236
+          ],
+          "row_common_offset_px": 0.5118777292845683,
+          "row_flip": false,
+          "row_residual_px": 14.588150164982666,
+          "score_px": 40.92739371586675,
+          "transform": "raw[:,:,:]",
+          "valid_source_views": 169,
+          "view_flip": false,
+          "xy_swap": false
+        },
+        {
+          "column_flip": false,
+          "column_residual_px": 41.03090439525626,
+          "row_centroids": [
+            32.57041710208789,
+            89.55080309650316,
+            74.54746085322871
+          ],
+          "row_common_offset_px": 0.5562270172732534,
+          "row_flip": true,
+          "row_residual_px": 0.01012625392437151,
+          "score_px": 41.03090564481459,
+          "transform": "raw[::-1,::-1,:]",
+          "valid_source_views": 145,
+          "view_flip": true,
+          "xy_swap": true
+        },
+        {
+          "column_flip": false,
+          "column_residual_px": 41.72140757336835,
+          "row_centroids": [
+            32.57041710208789,
+            89.55080309650316,
+            74.54746085322871
+          ],
+          "row_common_offset_px": 0.5562270172732534,
+          "row_flip": true,
+          "row_residual_px": 0.01012625392437151,
+          "score_px": 41.72140880224608,
+          "transform": "raw[::-1,::-1,:]",
+          "valid_source_views": 145,
+          "view_flip": true,
+          "xy_swap": false
+        },
+        {
+          "column_flip": false,
+          "column_residual_px": 41.72185511809713,
+          "row_centroids": [
+            32.57041710208789,
+            89.55080309650316,
+            74.54746085322871
+          ],
+          "row_common_offset_px": 0.5562270172732534,
+          "row_flip": true,
+          "row_residual_px": 0.01012625392437151,
+          "score_px": 41.72185634696168,
+          "transform": "raw[:,::-1,:]",
+          "valid_source_views": 145,
+          "view_flip": false,
+          "xy_swap": true
+        },
+        {
+          "column_flip": true,
+          "column_residual_px": 40.251750328585615,
+          "row_centroids": [
+            47.404777787282356,
+            94.42958289791211,
+            54.701272502659236
+          ],
+          "row_common_offset_px": 0.5118777292845683,
+          "row_flip": false,
+          "row_residual_px": 14.588150164982666,
+          "score_px": 42.813753978726,
+          "transform": "raw[::-1,:,::-1]",
+          "valid_source_views": 169,
+          "view_flip": true,
+          "xy_swap": true
+        },
+        {
+          "column_flip": false,
+          "column_residual_px": 43.39427405198552,
+          "row_centroids": [
+            47.404777787282356,
+            94.42958289791211,
+            54.701272502659236
+          ],
+          "row_common_offset_px": 0.5118777292845683,
+          "row_flip": false,
+          "row_residual_px": 14.588150164982666,
+          "score_px": 45.78075082100454,
+          "transform": "raw[::-1,:,:]",
+          "valid_source_views": 169,
+          "view_flip": true,
+          "xy_swap": false
+        },
+        {
+          "column_flip": true,
+          "column_residual_px": 45.38144030830674,
+          "row_centroids": [
+            47.404777787282356,
+            94.42958289791211,
+            54.701272502659236
+          ],
+          "row_common_offset_px": 0.5118777292845683,
+          "row_flip": false,
+          "row_residual_px": 14.588150164982666,
+          "score_px": 47.66853521656074,
+          "transform": "raw[:,:,::-1]",
+          "valid_source_views": 169,
+          "view_flip": false,
+          "xy_swap": true
+        },
+        {
+          "column_flip": true,
+          "column_residual_px": 48.00861844892094,
+          "row_centroids": [
+            32.57041710208789,
+            89.55080309650316,
+            74.54746085322871
+          ],
+          "row_common_offset_px": 0.5562270172732534,
+          "row_flip": true,
+          "row_residual_px": 0.01012625392437151,
+          "score_px": 48.00861951686479,
+          "transform": "raw[:,::-1,::-1]",
+          "valid_source_views": 145,
+          "view_flip": false,
+          "xy_swap": false
+        }
+      ],
+      "orientation_unique_under_preregistered_thresholds": true,
+      "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\asymmetric_fiducial\\output\\asymmetric_xyz.a00",
+      "peak_samples": [
+        {
+          "top_rows_cols": [
+            [
+              89,
+              98
+            ],
+            [
+              89,
+              97
+            ],
+            [
+              90,
+              97
+            ]
+          ],
+          "view": 0
+        },
+        {
+          "top_rows_cols": [
+            [
+              89,
+              44
+            ],
+            [
+              90,
+              45
+            ],
+            [
+              89,
+              45
+            ]
+          ],
+          "view": 11
+        },
+        {
+          "top_rows_cols": [
+            [
+              74,
+              85
+            ],
+            [
+              75,
+              84
+            ],
+            [
+              74,
+              84
+            ]
+          ],
+          "view": 23
+        },
+        {
+          "top_rows_cols": [
+            [
+              75,
+              36
+            ],
+            [
+              74,
+              35
+            ],
+            [
+              74,
+              36
+            ]
+          ],
+          "view": 35
+        },
+        {
+          "top_rows_cols": [
+            [
+              34,
+              39
+            ],
+            [
+              33,
+              40
+            ],
+            [
+              75,
+              29
+            ]
+          ],
+          "view": 47
+        },
+        {
+          "top_rows_cols": [
+            [
+              76,
+              68
+            ],
+            [
+              75,
+              66
+            ],
+            [
+              74,
+              68
+            ]
+          ],
+          "view": 59
+        }
+      ],
+      "per_view_sum_max": 89413.11342763901,
+      "per_view_sum_min": 7886.101863384247,
+      "second_best_score_px": 27.42943677893395,
+      "second_to_best_ratio": 26.928209307770715,
+      "selected_transform": "raw[:,::-1,:]",
+      "selected_xy_swap": false,
+      "statistics_sufficient_for_manual_gate": true,
+      "views": 60,
+      "zero_view_indices": []
+    }
+  ],
+  "pass_fail": {
+    "axis_order_unique": "manual_review_required",
+    "loader_transform": "manual_review_required"
+  },
+  "scientific_limit": "Automatic artifact analysis does not itself verify the acquisition protocol or physics claim.",
+  "status": "complete_outputs_pending_scientific_gate"
+}

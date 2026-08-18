@@ -1,0 +1,46 @@
+[
+  {
+    "args": [
+      "attenuation_ict",
+      "water_column_mu_0p00",
+      "/FS:water_column_mu_0p00",
+      "/FD:water_column_mu_0p00",
+      "/NN:10000",
+      "/IN:x21,100x/IN:x22,3x/CA:2/84:1",
+      "/RR:9600"
+    ],
+    "case_id": "water_column_mu_0p00",
+    "executable": "D:\\PFE-U\\PAR-S-Generator\\simind\\simind.exe",
+    "executable_sha256": "f984b8753f54b9f671f9fc1bcb2b45461e7cae8d027376b446dd1ed55a9a8319",
+    "output_argument": "water_column_mu_0p00",
+    "output_stem": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v10\\attenuation_ict\\output\\water_column_mu_0p00",
+    "prepared_utc": "2026-08-18T08:13:02+00:00",
+    "primary_artifact_suffix": "_pri_w1.a00",
+    "smc": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v10\\attenuation_ict\\input\\attenuation_ict.smc",
+    "smc_sha256": "91758622ff7b2bba8fc57336b47040ffd90617c4fe0bdf6b2a4a7170bb8ef3ea",
+    "staging_output_stem": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v10\\attenuation_ict\\input\\water_column_mu_0p00",
+    "working_dir": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v10\\attenuation_ict\\input"
+  },
+  {
+    "args": [
+      "attenuation_ict",
+      "water_column_mu_0p15",
+      "/FS:water_column_mu_0p15",
+      "/FD:water_column_mu_0p15",
+      "/NN:10000",
+      "/IN:x21,100x/IN:x22,3x/CA:2/84:1",
+      "/RR:9600"
+    ],
+    "case_id": "water_column_mu_0p15",
+    "executable": "D:\\PFE-U\\PAR-S-Generator\\simind\\simind.exe",
+    "executable_sha256": "f984b8753f54b9f671f9fc1bcb2b45461e7cae8d027376b446dd1ed55a9a8319",
+    "output_argument": "water_column_mu_0p15",
+    "output_stem": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v10\\attenuation_ict\\output\\water_column_mu_0p15",
+    "prepared_utc": "2026-08-18T08:13:02+00:00",
+    "primary_artifact_suffix": "_pri_w1.a00",
+    "smc": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v10\\attenuation_ict\\input\\attenuation_ict.smc",
+    "smc_sha256": "91758622ff7b2bba8fc57336b47040ffd90617c4fe0bdf6b2a4a7170bb8ef3ea",
+    "staging_output_stem": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v10\\attenuation_ict\\input\\water_column_mu_0p15",
+    "working_dir": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v10\\attenuation_ict\\input"
+  }
+]

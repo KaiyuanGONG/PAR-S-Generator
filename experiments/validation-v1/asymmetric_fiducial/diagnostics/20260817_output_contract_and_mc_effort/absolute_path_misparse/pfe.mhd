@@ -1,0 +1,11 @@
+ ObjectType = Image
+ BinaryData = True
+ BinaryDataByteOrderMSB = False
+ CompressedData = False
+ Offset = 0 0 0
+ CenterOfRotation = 0 0 0
+ AnatomicalOrientation = RAI
+ NDims = 3
+ DimSize =   128  128   60
+ ElementType = MET_FLOAT
+ ElementDataFile = d:\pfe.a00

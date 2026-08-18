@@ -177,10 +177,9 @@ class SimindOutputViewer(QWidget):
             for n_col in (128, 160, 208, 64, 256):
                 if n_total % (n_col * n_col) == 0:
                     n_proj = n_total // (n_col * n_col)
-                    # Canonical PAR-S orientation contract.  Keeping this in
-                    # the viewer prevents QC from displaying a different view
-                    # and detector-row orientation than packaged consumers.
-                    self._proj_data = data.reshape(n_proj, n_col, n_col)[::-1, ::-1, :]
+                    # Validated current-data contract: acquisition view order
+                    # is retained and only the detector row is flipped.
+                    self._proj_data = data.reshape(n_proj, n_col, n_col)[:, ::-1, :]
                     self._n_proj = n_proj
                     self._n_row = n_col
                     self._n_col = n_col

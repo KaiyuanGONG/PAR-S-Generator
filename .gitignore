@@ -61,5 +61,17 @@ tests/_tmp_pytest/
 # Notebook binary data (large generated files)
 notebook/*.bin
 
+# Scientific runtime payloads (large; keep local, commit ledgers/QC instead)
+experiments/**/*.bin
+experiments/**/*.a00
+experiments/**/*.ict
+experiments/**/*.dmi
+experiments/**/*.smi
+experiments/**/*.b[0-9][0-9]
+experiments/**/*.s[0-9][0-9]
+runs/**/*.bin
+runs/**/*.a00
+runs/**/*.npz
+
 # Keep shared pytest config tracked
 !pytest.ini

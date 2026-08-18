@@ -1,0 +1,87 @@
+{
+  "case_id": 1,
+  "seed": 43,
+  "perfusion_mode": "Right Only",
+  "total_counts_actual": 80000.0,
+  "liver_volume_ml": 1607.508131008,
+  "left_ratio": 0.34948431456811346,
+  "n_tumors": 2,
+  "tumor_diameters_mm": [
+    38.23748280073634,
+    10.490320136880253
+  ],
+  "tumor_nominal_diameters_mm": [
+    42.263346269764035,
+    10.573699709664428
+  ],
+  "tumor_modes": [
+    "ellipsoid",
+    "ellipsoid"
+  ],
+  "tumors": [
+    {
+      "id": 0,
+      "center_vox": [
+        62,
+        65,
+        72
+      ],
+      "mode": "ellipsoid",
+      "elongation": 0.755662087875949,
+      "nominal_diameter_mm": 42.263346269764035,
+      "target_contrast": 6.242904759076803,
+      "placement_stratum": "central",
+      "lobe": "right",
+      "voxel_count": 339,
+      "volume_ml": 29.272951032,
+      "effective_diameter_mm": 38.23748280073634,
+      "surface_margin_mm": 12.11812564954082,
+      "boundary_contact_fraction": 0.0,
+      "tnr_local": 4.706798096373677,
+      "tnr_global": 6.934512555954181,
+      "overlaps": []
+    },
+    {
+      "id": 1,
+      "center_vox": [
+        46,
+        75,
+        80
+      ],
+      "mode": "ellipsoid",
+      "elongation": 0.9453936264850914,
+      "nominal_diameter_mm": 10.573699709664428,
+      "target_contrast": 6.28560774534677,
+      "placement_stratum": "central",
+      "lobe": "right",
+      "voxel_count": 7,
+      "volume_ml": 0.604456216,
+      "effective_diameter_mm": 10.490320136880253,
+      "surface_margin_mm": 13.26,
+      "boundary_contact_fraction": 0.0,
+      "tnr_local": 6.264246149849817,
+      "tnr_global": 9.229096445243503,
+      "overlaps": []
+    }
+  ],
+  "cantlie": {
+    "offset": 0.109375,
+    "tilt_deg": 0.68538136245005,
+    "target_left_ratio": 0.35,
+    "converged": true,
+    "iterations": 4,
+    "abs_error": 0.0005156854318865145
+  },
+  "attenuation_contract": {
+    "unit": "cm^-1",
+    "reference_energy_kev": 140.5,
+    "status": "pending_simind_ict_validation"
+  },
+  "voxel_size_mm": 4.42,
+  "volume_shape": [
+    128,
+    128,
+    128
+  ],
+  "generation_time_s": 2.0271410942077637
+}

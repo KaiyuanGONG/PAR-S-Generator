@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import numpy as np
 from PyQt6.QtCore import QThread, pyqtSignal
 from PyQt6.QtWidgets import (
     QCheckBox,
@@ -87,8 +88,9 @@ class ProjectProtocolPage(QWidget):
         layout.addWidget(detail)
         layout.addWidget(
             _banner(
-                "Protocol gate: attenuation semantics, 128/160/208 FOV, and the 60 MBq × 20 s versus "
-                "SMC Index-25 = 1704 discrepancy are unresolved. Runs remain research-only until controlled tests pass.",
+                "Local GE 870 evidence supports 60 MBq × 28.4 s (Index-25 = 1704); orientation, "
+                "scoped type−7 attenuation, native detector FOV, response and RR/NN controls passed. "
+                "Stage 3 promotion and a corrected pilot are next; formal production is not yet authorized.",
                 "warning",
             )
         )
@@ -118,8 +120,9 @@ class ProjectProtocolPage(QWidget):
         self.spin_activity.setRange(0.001, 100000.0)
         self.spin_activity.setDecimals(3)
         self.spin_activity.setValue(app_state.project_config.source_activity_mbq)
-        self.edit_exposure = QLineEdit("")
-        self.edit_exposure.setPlaceholderText("Unresolved; enter only with protocol evidence")
+        exposure = app_state.project_config.exposure_time_s_per_projection
+        self.edit_exposure = QLineEdit("" if exposure is None else f"{exposure:g}")
+        self.edit_exposure.setPlaceholderText("Seconds per projection")
         self.spin_index25 = QDoubleSpinBox()
         self.spin_index25.setRange(0.0, 1e9)
         self.spin_index25.setDecimals(3)
@@ -153,17 +156,37 @@ class ProjectProtocolPage(QWidget):
         except ValueError:
             QMessageBox.warning(self, "Project contract", "Seconds / projection must be numeric or blank.")
             return
+        activity = float(self.spin_activity.value())
+        index25 = float(self.spin_index25.value())
+        if exposure is not None and not np.isclose(activity * exposure, index25, rtol=1e-6, atol=1e-3):
+            QMessageBox.warning(
+                self,
+                "Project contract",
+                "SMC Index-25 must equal source activity × seconds per projection.",
+            )
+            return
+        nominal_default = bool(
+            exposure is not None
+            and np.isclose(activity, 60.0)
+            and np.isclose(exposure, 28.4)
+            and np.isclose(index25, 1704.0)
+        )
         contract = PipelineProjectConfig(
             run_id=run_id,
             runs_root=root,
             protocol_label=self.edit_protocol.text().strip(),
-            protocol_status="pending_physics_validation",
-            source_activity_mbq=float(self.spin_activity.value()),
+            protocol_status="stage3_protocol_promoted_pilot_pending",
+            source_activity_mbq=activity,
             exposure_time_s_per_projection=exposure,
-            smc_index25_activity_time=float(self.spin_index25.value()),
+            smc_index25_activity_time=index25,
             activity_time_contract_status=(
-                "operator_supplied_pending_validation" if exposure is not None
-                else "unresolved_60mbq_x_20s_vs_smc_index25_1704"
+                "resolved_nominal_60mbq_x_28p4s_index25_1704_local_dicom_supported"
+                if nominal_default
+                else (
+                    "operator_supplied_product_consistent_pending_protocol_validation"
+                    if exposure is not None
+                    else "missing_exposure_time"
+                )
             ),
         )
         self.app_state.set_project_config(contract)
@@ -187,8 +210,9 @@ class SimulationSetupPage(QWidget):
         layout.addWidget(detail)
         layout.addWidget(
             _banner(
-                "The attenuation map is float32 C-order and currently labelled cm⁻¹ at 140.5 keV, "
-                "but its SIMIND /FD interpretation remains pending the Flag-15 .ict experiment.",
+                "The analytical attenuation map is float32 C-order μ in cm⁻¹ at 140.5 keV. "
+                "The tested type−7 export stores μ×voxel width and passed readback/transmission QC. "
+                "Production export promotion and a corrected pilot are still required.",
                 "warning",
             )
         )
@@ -219,17 +243,40 @@ class SimulationSetupPage(QWidget):
         self.combo_mode.setCurrentIndex(max(0, self.combo_mode.findData(current_mode)))
         self.chk_poisson = QCheckBox("Create a separate offline Poisson observation")
         self.chk_poisson.setChecked(app_state.simulation_config.create_poisson_observation)
+        self.combo_obs_policy = QComboBox()
+        self.combo_obs_policy.addItem("Empirical total-count distribution", "empirical_total_counts")
+        self.combo_obs_policy.addItem("Fixed research scale", "fixed_scale")
+        self.combo_obs_policy.setCurrentIndex(
+            max(
+                0,
+                self.combo_obs_policy.findData(
+                    app_state.simulation_config.observation_policy
+                ),
+            )
+        )
         self.spin_scale = QDoubleSpinBox()
         self.spin_scale.setRange(1e-6, 1e9)
         self.spin_scale.setDecimals(6)
         self.spin_scale.setValue(app_state.simulation_config.observation_scale)
         self.combo_obs_status = QComboBox()
+        self.combo_obs_status.addItem(
+            "Empirical protocol matching (not absolute cps/MBq)",
+            "empirical_protocol_matching",
+        )
         self.combo_obs_status.addItem("Toy / pipeline test", "toy")
         self.combo_obs_status.addItem("Research assumption", "research")
         self.combo_obs_status.addItem("Verified protocol", "verified")
-        self.combo_obs_status.setCurrentIndex(0)
+        self.combo_obs_status.setCurrentIndex(
+            max(
+                0,
+                self.combo_obs_status.findData(
+                    app_state.simulation_config.observation_protocol_status
+                ),
+            )
+        )
         bform.addRow("Expectation backend", self.combo_mode)
         bform.addRow("Observation", self.chk_poisson)
+        bform.addRow("Count policy", self.combo_obs_policy)
         bform.addRow("Observation scale", self.spin_scale)
         bform.addRow("Scale status", self.combo_obs_status)
         layout.addWidget(behavior)
@@ -276,6 +323,12 @@ class SimulationSetupPage(QWidget):
         try:
             smc_path = _project_path(self.edit_smc.text(), "simind/ge870_czt.smc")
             smc = parse_smc(smc_path)
+            activity_time = float(smc.get_value(25))
+            activity_note = (
+                "locally supported nominal 60 MBq × 28.4 s"
+                if np.isclose(activity_time, 1704.0, rtol=1e-6, atol=1e-3)
+                else "operator SMC value; protocol reconciliation required"
+            )
             lines = [
                 "Requested SIMIND configuration",
                 f"Source: {smc_path}",
@@ -285,9 +338,11 @@ class SimulationSetupPage(QWidget):
                 f"Acquisition: {smc.get_value(29):g} views; rotation radius {smc.get_value(12):g} cm",
                 f"Source/density sampling: {smc.get_value(81):g} × {smc.get_value(82):g} × "
                 f"{smc.get_value(34):g}; {smc.get_value(31):g} cm voxels",
-                f"CZT projection sampling: {smc.get_value(100):g} × {smc.get_value(101):g}; "
+                f"CZT native detector request: {smc.get_value(100):g} × {smc.get_value(101):g}; "
                 f"{smc.get_value(95):g} cm pitch",
-                f"Activity–time value: {smc.get_value(25):g} [pending protocol interpretation]",
+                "Effective GE detector override: 160 × 208 [Stage-3 promoted]",
+                "Type−7 attenuation: stored μ×0.442 cm; runtime density threshold: 100",
+                f"Activity–time value: {activity_time:g} [{activity_note}]",
                 f"Runtime history multiplier: {self.spin_nn.value():g} [run configuration]",
             ]
             if self.chk_expert.isChecked():
@@ -317,7 +372,18 @@ class SimulationSetupPage(QWidget):
             create_poisson_observation=self.chk_poisson.isChecked(),
             observation_scale=float(self.spin_scale.value()),
             observation_protocol_status=str(self.combo_obs_status.currentData()),
+            observation_policy=str(self.combo_obs_policy.currentData()),
         )
+        if (
+            config.observation_policy == "empirical_total_counts"
+            and config.observation_protocol_status != "empirical_protocol_matching"
+        ):
+            QMessageBox.warning(
+                self,
+                "Observation contract",
+                "Empirical total-count matching requires the empirical protocol status.",
+            )
+            return
         if config.observation_protocol_status == "verified" and self.app_state.project_config.protocol_status != "verified":
             QMessageBox.warning(
                 self,
@@ -431,6 +497,7 @@ class RunPage(QWidget):
             create_poisson_observation=sim.create_poisson_observation,
             observation_scale=sim.observation_scale,
             observation_protocol_status=sim.observation_protocol_status,
+            observation_policy=sim.observation_policy,
             protocol_label=project.protocol_label,
             protocol_status=project.protocol_status,
             source_activity_mbq=project.source_activity_mbq,

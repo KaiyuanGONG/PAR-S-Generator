@@ -1,0 +1,338 @@
+{
+  "case_count": 100,
+  "case_distributions": {
+    "activity_sum": {
+      "count": 100,
+      "max": 80000.00934505463,
+      "mean": 79999.9999821508,
+      "median": 79999.99946154654,
+      "min": 79999.98959642649,
+      "q25": 79999.9968431294,
+      "q75": 80000.00290195644,
+      "std": 0.004105303390014353
+    },
+    "left_ratio": {
+      "count": 100,
+      "max": 0.35446717490264906,
+      "mean": 0.34949411314960566,
+      "median": 0.3492291197034404,
+      "min": 0.3451471420486701,
+      "q25": 0.3472893666718311,
+      "q75": 0.35180637573957463,
+      "std": 0.002648637820106614
+    },
+    "liver_volume_ml": {
+      "count": 100,
+      "max": 1899.6331851119999,
+      "mean": 1330.0869061126398,
+      "median": 1310.15884818,
+      "min": 904.1801482479999,
+      "q25": 1171.3066202759999,
+      "q75": 1479.169123718,
+      "std": 221.99266528168047
+    },
+    "tumor_count": {
+      "1": 18,
+      "2": 15,
+      "3": 23,
+      "4": 25,
+      "5": 19
+    }
+  },
+  "claim_boundary": "Generated-population QC for the current synthetic liver protocol; not a clinical prevalence distribution.",
+  "containment_outside_voxels": 0,
+  "failed_case_count": 0,
+  "failed_cases": [],
+  "lesion_count": 312,
+  "lesion_distributions": {
+    "central_surface_margin_mm": {
+      "count": 304,
+      "max": 29.318963146741734,
+      "mean": 11.941243611098098,
+      "median": 10.826744663101646,
+      "min": 4.42,
+      "q25": 8.84,
+      "q75": 13.977267257944238,
+      "std": 4.810902062190394
+    },
+    "diameter_bins": {
+      "10_to_lt20_mm": 138,
+      "20_to_lt40_mm": 127,
+      "40_to_60_mm": 47,
+      "outside_10_to_60_mm": 0
+    },
+    "effective_diameter_mm": {
+      "count": 312,
+      "max": 59.41805512499347,
+      "mean": 25.512928968017548,
+      "median": 23.727450071479502,
+      "min": 10.490320136880253,
+      "q25": 16.451695018652085,
+      "q75": 34.60386498795647,
+      "std": 11.729406933567775
+    },
+    "effective_to_nominal_ratio": {
+      "count": 312,
+      "max": 1.1475758469458086,
+      "mean": 0.9940218364126784,
+      "median": 0.992776885465498,
+      "min": 0.8481986845135425,
+      "q25": 0.9528966053497413,
+      "q75": 1.035461162496824,
+      "std": 0.061767289195218296
+    },
+    "morphology_modes": {
+      "ellipsoid": 231,
+      "spiculated": 81
+    },
+    "nominal_diameter_mm": {
+      "count": 312,
+      "max": 59.59575298561503,
+      "mean": 25.666365498630903,
+      "median": 23.006741928969518,
+      "min": 10.24541398670218,
+      "q25": 15.499556230418833,
+      "q75": 34.02946334227248,
+      "std": 11.715318383180449
+    },
+    "perfusion_regions": {
+      "high_perfusion": 197,
+      "low_perfusion": 115
+    },
+    "placement_strata": {
+      "capacity_fallback_margin_relaxed": 8,
+      "central": 304
+    },
+    "sampled_size_bins": {
+      "10_to_20_mm": 138,
+      "20_to_40_mm": 127,
+      "40_to_60_mm": 47
+    },
+    "surface_margin_mm": {
+      "count": 312,
+      "max": 29.318963146741734,
+      "mean": 11.729270199295065,
+      "median": 9.88342046054907,
+      "min": 0.0,
+      "q25": 8.84,
+      "q75": 13.977267257944238,
+      "std": 4.953662341331786
+    },
+    "target_contrast": {
+      "count": 312,
+      "max": 7.9989248083129,
+      "mean": 4.9335164562697065,
+      "median": 4.905649859694137,
+      "min": 2.0093690728574156,
+      "q25": 3.369294993614555,
+      "q75": 6.583459760829607,
+      "std": 1.8022686167411228
+    },
+    "tnr_from_saved_activity": {
+      "count": 312,
+      "max": 21.60981487931386,
+      "mean": 5.017682628962033,
+      "median": 4.265793155922832,
+      "min": 0.27564952238111456,
+      "q25": 1.0839176652850802,
+      "q75": 7.685808320262708,
+      "std": 4.373731485534289
+    },
+    "tnr_local_from_saved_activity": {
+      "count": 312,
+      "max": 22.283285581885067,
+      "mean": 5.081421225349175,
+      "median": 4.846776567767845,
+      "min": 1.9241747622334173,
+      "q25": 3.3254272225183783,
+      "q75": 6.614316881257112,
+      "std": 2.2768510984859347
+    }
+  },
+  "overlap_voxels": 0,
+  "passed_case_count": 100,
+  "stage3_population_acceptance": {
+    "checks": [
+      {
+        "expected": 100,
+        "name": "case_count_100",
+        "observed": 100,
+        "status": "passed"
+      },
+      {
+        "name": "all_case_qc_passed",
+        "passed_case_count": 100,
+        "status": "passed"
+      },
+      {
+        "name": "lesion_containment_and_nonoverlap",
+        "outside_voxels": 0,
+        "overlap_voxels": 0,
+        "status": "passed"
+      },
+      {
+        "envelope": [
+          900.0,
+          1900.0
+        ],
+        "name": "liver_volume_design_envelope_ml",
+        "observed_max": 1899.6331851119999,
+        "observed_min": 904.1801482479999,
+        "status": "passed"
+      },
+      {
+        "name": "cantlie_left_ratio",
+        "observed_max": 0.35446717490264906,
+        "observed_min": 0.3451471420486701,
+        "status": "passed",
+        "target": 0.35,
+        "tolerance": 0.006
+      },
+      {
+        "name": "sampled_size_strata",
+        "status": "passed",
+        "strata": [
+          {
+            "bin_mm": [
+              10.0,
+              20.0
+            ],
+            "count": 138,
+            "expected_fraction": 0.45,
+            "observed_fraction": 0.4423076923076923,
+            "status": "passed",
+            "tolerance": 0.1
+          },
+          {
+            "bin_mm": [
+              20.0,
+              40.0
+            ],
+            "count": 127,
+            "expected_fraction": 0.4,
+            "observed_fraction": 0.40705128205128205,
+            "status": "passed",
+            "tolerance": 0.1
+          },
+          {
+            "bin_mm": [
+              40.0,
+              60.0
+            ],
+            "count": 47,
+            "expected_fraction": 0.15,
+            "observed_fraction": 0.15064102564102563,
+            "status": "passed",
+            "tolerance": 0.08
+          }
+        ]
+      },
+      {
+        "name": "effective_diameters_match_declared_strata",
+        "observed": {
+          "10_to_lt20_mm": 138,
+          "20_to_lt40_mm": 127,
+          "40_to_60_mm": 47,
+          "outside_10_to_60_mm": 0
+        },
+        "status": "passed"
+      },
+      {
+        "modes": [
+          {
+            "count": 231,
+            "expected_fraction": 0.7,
+            "mode": "ellipsoid",
+            "observed_fraction": 0.7403846153846154,
+            "status": "passed",
+            "tolerance": 0.1
+          },
+          {
+            "count": 81,
+            "expected_fraction": 0.3,
+            "mode": "spiculated",
+            "observed_fraction": 0.25961538461538464,
+            "status": "passed",
+            "tolerance": 0.1
+          }
+        ],
+        "name": "morphology_mode_distribution",
+        "status": "passed"
+      },
+      {
+        "counts": [
+          {
+            "case_count": 18,
+            "expected_fraction": 0.2,
+            "observed_fraction": 0.18,
+            "status": "passed",
+            "tolerance": 0.1,
+            "tumor_count": 1
+          },
+          {
+            "case_count": 15,
+            "expected_fraction": 0.2,
+            "observed_fraction": 0.15,
+            "status": "passed",
+            "tolerance": 0.1,
+            "tumor_count": 2
+          },
+          {
+            "case_count": 23,
+            "expected_fraction": 0.2,
+            "observed_fraction": 0.23,
+            "status": "passed",
+            "tolerance": 0.1,
+            "tumor_count": 3
+          },
+          {
+            "case_count": 25,
+            "expected_fraction": 0.2,
+            "observed_fraction": 0.25,
+            "status": "passed",
+            "tolerance": 0.1,
+            "tumor_count": 4
+          },
+          {
+            "case_count": 19,
+            "expected_fraction": 0.2,
+            "observed_fraction": 0.19,
+            "status": "passed",
+            "tolerance": 0.1,
+            "tumor_count": 5
+          }
+        ],
+        "name": "uniform_tumor_count_distribution",
+        "status": "passed"
+      },
+      {
+        "configured_range": [
+          2.0,
+          8.0
+        ],
+        "name": "sampled_target_contrast_range",
+        "observed_max": 7.9989248083129,
+        "observed_min": 2.0093690728574156,
+        "status": "passed"
+      },
+      {
+        "configured_min_mm": 4.42,
+        "name": "central_lesion_surface_margin",
+        "observed_min_mm": 4.42,
+        "status": "passed"
+      },
+      {
+        "interpretation": "Fallback lesions remain fully contained and non-overlapping but do not carry the configured central surface-margin guarantee.",
+        "lesion_count": 8,
+        "lesion_fraction": 0.02564102564102564,
+        "maximum_fraction": 0.05,
+        "name": "capacity_fallback_is_bounded_and_explicit",
+        "status": "passed"
+      }
+    ],
+    "enforced": true,
+    "scope": "100-case generated-population contract for the current liver and GE 870 CZT protocol; not a clinical prevalence claim",
+    "status": "passed"
+  },
+  "status": "passed"
+}

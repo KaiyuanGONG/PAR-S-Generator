@@ -92,6 +92,25 @@ def test_saved_metadata_separates_nominal_and_measured_diameter(tmp_path):
     assert payload["tumor_diameters_mm"] == result.tumor_diameters_mm
     assert payload["tumor_nominal_diameters_mm"] == result.tumor_nominal_diameters_mm
     assert payload["tumors"][0]["effective_diameter_mm"] == result.tumor_diameters_mm[0]
+    sampled_low, sampled_high = payload["tumors"][0]["sampled_size_bin_mm"]
+    assert sampled_low <= result.tumor_diameters_mm[0] <= sampled_high
     assert payload["cantlie"]["converged"] is True
     assert "hit_expansion_limit" in payload["cantlie"]["search"]
-    assert payload["attenuation_contract"]["status"] == "pending_simind_ict_validation"
+    assert payload["attenuation_contract"]["status"] == (
+        "verified_type7_mu_times_voxel_v10_current_h2o_protocol"
+    )
+
+
+def test_multilesion_layout_keeps_presampled_size_strata():
+    """Regression for the former last-lesion trap and small-lesion bias."""
+    cfg = PhantomConfig()
+    result = PhantomGenerator(cfg).generate_one(case_id=4, seed=46)
+
+    assert result.n_tumors == 5
+    sampled = [row["sampled_size_bin_mm"] for row in result.tumor_metadata]
+    measured = [row["effective_diameter_mm"] for row in result.tumor_metadata]
+    assert sampled.count([40.0, 60.0]) == 1
+    assert sampled.count([20.0, 40.0]) == 3
+    assert sampled.count([10.0, 20.0]) == 1
+    for bounds, diameter in zip(sampled, measured):
+        assert bounds[0] <= diameter <= bounds[1]

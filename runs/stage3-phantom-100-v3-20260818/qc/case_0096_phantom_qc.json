@@ -1,0 +1,134 @@
+{
+  "attenuation_contract": {
+    "reference_energy_kev": 140.5,
+    "status": "verified_type7_mu_times_voxel_v10_current_h2o_protocol",
+    "unit": "cm^-1"
+  },
+  "cantlie": {
+    "abs_error": 0.0041689255123061875,
+    "converged": true,
+    "iterations": 3,
+    "offset": 0.1425,
+    "search": {
+      "expanded_beyond_initial_range": true,
+      "expanded_offset_range": [
+        -0.05,
+        0.16999999999999998
+      ],
+      "expansions": 1,
+      "hit_expansion_limit": false,
+      "initial_offset_range": [
+        -0.05,
+        0.12
+      ],
+      "solution_on_search_boundary": false,
+      "target_bracketed": true
+    },
+    "target_left_ratio": 0.35,
+    "tilt_deg": 0.6492520797964172
+  },
+  "failures": [],
+  "meta": "D:\\PFE-U\\PAR-S-Generator\\runs\\stage3-phantom-100-v3-20260818\\phantom\\case_0096_meta.json",
+  "metrics": {
+    "activity_dtype": "float32",
+    "activity_sum": 79999.99933871627,
+    "left_ratio": 0.35416892551230617,
+    "liver_volume_ml": 1592.8284800479998,
+    "mu_dtype": "float32",
+    "mu_max": 0.30058592557907104,
+    "mu_min": 0.0,
+    "n_tumors": 4,
+    "shape": [
+      128,
+      128,
+      128
+    ],
+    "tumors": [
+      {
+        "effective_diameter_mm": 54.228994667220405,
+        "index": 0,
+        "mode": "ellipsoid",
+        "nominal_diameter_mm": 49.75759578062514,
+        "outside_liver_vox": 0,
+        "overlap_previous_vox": 0,
+        "perfusion_region": "high_perfusion",
+        "placement_stratum": "central",
+        "sampled_size_bin_mm": [
+          40.0,
+          60.0
+        ],
+        "surface_margin_mm": 6.25082394568908,
+        "target_contrast": 2.9713108872719305,
+        "tnr_from_saved_activity": 3.1682660240459626,
+        "tnr_local_from_saved_activity": 2.1496445278482676,
+        "volume_vox": 967
+      },
+      {
+        "effective_diameter_mm": 43.08604606637303,
+        "index": 1,
+        "mode": "ellipsoid",
+        "nominal_diameter_mm": 43.72626825000853,
+        "outside_liver_vox": 0,
+        "overlap_previous_vox": 0,
+        "perfusion_region": "low_perfusion",
+        "placement_stratum": "central",
+        "sampled_size_bin_mm": [
+          40.0,
+          60.0
+        ],
+        "surface_margin_mm": 6.25082394568908,
+        "target_contrast": 3.096003996313454,
+        "tnr_from_saved_activity": 0.3827501714744657,
+        "tnr_local_from_saved_activity": 3.112239366406004,
+        "volume_vox": 485
+      },
+      {
+        "effective_diameter_mm": 44.351463237654414,
+        "index": 2,
+        "mode": "ellipsoid",
+        "nominal_diameter_mm": 46.09775857900761,
+        "outside_liver_vox": 0,
+        "overlap_previous_vox": 0,
+        "perfusion_region": "high_perfusion",
+        "placement_stratum": "central",
+        "sampled_size_bin_mm": [
+          40.0,
+          60.0
+        ],
+        "surface_margin_mm": 7.655664569454437,
+        "target_contrast": 6.644329232350746,
+        "tnr_from_saved_activity": 9.791258895863953,
+        "tnr_local_from_saved_activity": 6.643295085228068,
+        "volume_vox": 529
+      },
+      {
+        "effective_diameter_mm": 27.564955914238492,
+        "index": 3,
+        "mode": "ellipsoid",
+        "nominal_diameter_mm": 26.43809683621916,
+        "outside_liver_vox": 0,
+        "overlap_previous_vox": 0,
+        "perfusion_region": "high_perfusion",
+        "placement_stratum": "central",
+        "sampled_size_bin_mm": [
+          20.0,
+          40.0
+        ],
+        "surface_margin_mm": 8.84,
+        "target_contrast": 3.7811920968235824,
+        "tnr_from_saved_activity": 4.7200916062597,
+        "tnr_local_from_saved_activity": 3.2025464450681835,
+        "volume_vox": 127
+      }
+    ]
+  },
+  "npz": "D:\\PFE-U\\PAR-S-Generator\\runs\\stage3-phantom-100-v3-20260818\\phantom\\case_0096.npz",
+  "sha256": {
+    "meta": "61d3f2e2b1bb4287724df29c088903bd1e8b221b80f83fc010420cfe455b21fb",
+    "npz": "9fd06d36bfb0b4afd8c8d9049e965b2c806d5af82dea3a9deb47e9d0a58d399d"
+  },
+  "status": "passed",
+  "warnings": [
+    "cantlie_search_range_expanded"
+  ]
+}

@@ -1,0 +1,224 @@
+{
+  "purpose": "Empirical raw-count and angular-profile matching for the current liver SPECT protocol.",
+  "claim_boundary": "Not an activity, administered-dose, scanner-sensitivity or absolute cps/MBq calibration.",
+  "source_scope": "De-identified local raw TOMO series; IRAC/reconstructed and CT series excluded.",
+  "acceptance_contract": {
+    "shape": [
+      60,
+      128,
+      128
+    ],
+    "integer_nonnegative_pixels": true
+  },
+  "accepted_case_count": 8,
+  "excluded_case_count": 7,
+  "accepted_cases": [
+    {
+      "case_id": "clinical_01",
+      "shape": [
+        60,
+        128,
+        128
+      ],
+      "source_file_count": 60,
+      "source_series_sha256": "dd224ac57e36b26d282ea700deba622857f32a18d4117d99a7c2e02b44a61380",
+      "pixel_dtype": "uint16",
+      "total_counts": 3359875,
+      "view_sum_mean": 55997.916666666664,
+      "view_sum_std": 26459.237431876016,
+      "angular_cv": 0.47250396098442976,
+      "actual_frame_duration_ms_median": null,
+      "metadata": {
+        "rows": 128,
+        "columns": 128,
+        "modality": "NM"
+      }
+    },
+    {
+      "case_id": "clinical_04",
+      "shape": [
+        60,
+        128,
+        128
+      ],
+      "source_file_count": 60,
+      "source_series_sha256": "918ea90fe5a0cdfb4be4b18e8a2f715060f9ca0c627bbb47c9e18a4974186f1b",
+      "pixel_dtype": "uint16",
+      "total_counts": 3218979,
+      "view_sum_mean": 53649.65,
+      "view_sum_std": 26474.59677302313,
+      "angular_cv": 0.4934719382702987,
+      "actual_frame_duration_ms_median": null,
+      "metadata": {
+        "rows": 128,
+        "columns": 128,
+        "modality": "NM"
+      }
+    },
+    {
+      "case_id": "clinical_10",
+      "shape": [
+        60,
+        128,
+        128
+      ],
+      "source_file_count": 1,
+      "source_series_sha256": "b45afb8fde0dfe3f466e85d3c165e868d7a50639b56e8260526bc92fc13ce309",
+      "pixel_dtype": "uint16",
+      "total_counts": 2557727,
+      "view_sum_mean": 42628.78333333333,
+      "view_sum_std": 16898.929349805632,
+      "angular_cv": 0.3964206348012661,
+      "actual_frame_duration_ms_median": null,
+      "metadata": {
+        "rows": 128,
+        "columns": 128,
+        "modality": "NM"
+      }
+    },
+    {
+      "case_id": "clinical_11",
+      "shape": [
+        60,
+        128,
+        128
+      ],
+      "source_file_count": 1,
+      "source_series_sha256": "807111b4448507e48c2b81e0759625095e924f7020e51fecb79e09462a0e57d2",
+      "pixel_dtype": "uint16",
+      "total_counts": 2042094,
+      "view_sum_mean": 34034.9,
+      "view_sum_std": 15952.813466282365,
+      "angular_cv": 0.46871926952282406,
+      "actual_frame_duration_ms_median": null,
+      "metadata": {
+        "rows": 128,
+        "columns": 128,
+        "modality": "NM"
+      }
+    },
+    {
+      "case_id": "clinical_12",
+      "shape": [
+        60,
+        128,
+        128
+      ],
+      "source_file_count": 1,
+      "source_series_sha256": "04cdabfda0660ba4b13ea97038e3594cede30d55da7d04d0b664d0d8155f46f5",
+      "pixel_dtype": "uint16",
+      "total_counts": 4112706,
+      "view_sum_mean": 68545.1,
+      "view_sum_std": 42509.90936189663,
+      "angular_cv": 0.6201742992846553,
+      "actual_frame_duration_ms_median": null,
+      "metadata": {
+        "rows": 128,
+        "columns": 128,
+        "modality": "NM"
+      }
+    },
+    {
+      "case_id": "clinical_13",
+      "shape": [
+        60,
+        128,
+        128
+      ],
+      "source_file_count": 1,
+      "source_series_sha256": "15782e5ec93e4146e5a9d7c1573f333aea5536aa6a2c5c3cd0397a6c16e8739d",
+      "pixel_dtype": "uint16",
+      "total_counts": 2285728,
+      "view_sum_mean": 38095.46666666667,
+      "view_sum_std": 12708.73404194489,
+      "angular_cv": 0.33360226698745143,
+      "actual_frame_duration_ms_median": null,
+      "metadata": {
+        "rows": 128,
+        "columns": 128,
+        "modality": "NM"
+      }
+    },
+    {
+      "case_id": "clinical_14",
+      "shape": [
+        60,
+        128,
+        128
+      ],
+      "source_file_count": 1,
+      "source_series_sha256": "835f819dbdba02a829a9cc266e638638f711bae08aa0d94a581d8a21b99007ac",
+      "pixel_dtype": "uint16",
+      "total_counts": 2748718,
+      "view_sum_mean": 45811.96666666667,
+      "view_sum_std": 16964.297108895757,
+      "angular_cv": 0.37030274714748673,
+      "actual_frame_duration_ms_median": null,
+      "metadata": {
+        "rows": 128,
+        "columns": 128,
+        "modality": "NM"
+      }
+    },
+    {
+      "case_id": "clinical_15",
+      "shape": [
+        60,
+        128,
+        128
+      ],
+      "source_file_count": 1,
+      "source_series_sha256": "6757091be47b1df1a140ae135688c70d5b17752570d854073c5c49b2338d9b0b",
+      "pixel_dtype": "uint16",
+      "total_counts": 2376211,
+      "view_sum_mean": 39603.51666666667,
+      "view_sum_std": 18949.17393669327,
+      "angular_cv": 0.47847200278156954,
+      "actual_frame_duration_ms_median": null,
+      "metadata": {
+        "rows": 128,
+        "columns": 128,
+        "modality": "NM"
+      }
+    }
+  ],
+  "excluded_cases": [
+    {
+      "case_id": "clinical_02",
+      "reason": "dicom_read_failed:RuntimeError"
+    },
+    {
+      "case_id": "clinical_03",
+      "reason": "dicom_read_failed:RuntimeError"
+    },
+    {
+      "case_id": "clinical_05",
+      "reason": "dicom_read_failed:RuntimeError"
+    },
+    {
+      "case_id": "clinical_06",
+      "reason": "dicom_read_failed:RuntimeError"
+    },
+    {
+      "case_id": "clinical_07",
+      "reason": "dicom_read_failed:RuntimeError"
+    },
+    {
+      "case_id": "clinical_08",
+      "reason": "dicom_read_failed:RuntimeError"
+    },
+    {
+      "case_id": "clinical_09",
+      "reason": "dicom_read_failed:RuntimeError"
+    }
+  ],
+  "distribution": {
+    "total_counts_min": 2042094,
+    "total_counts_median": 2653222.5,
+    "total_counts_max": 4112706,
+    "angular_cv_min": 0.33360226698745143,
+    "angular_cv_median": 0.47061161525362694,
+    "angular_cv_max": 0.6201742992846553
+  },
+  "selected_policy": "Match synthetic observation totals and angular-profile variability to this empirical distribution; retain SIMIND transport as an expectation and record every scaling/noise seed."
+}

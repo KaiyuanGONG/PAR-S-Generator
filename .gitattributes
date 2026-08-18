@@ -1,0 +1,20 @@
+* text=auto
+
+*.py text eol=lf
+*.json text eol=lf
+*.jsonl text eol=lf
+*.md text eol=lf
+*.csv text eol=lf -whitespace
+*.svg text eol=lf -whitespace
+*.qss text eol=lf
+*.ps1 text eol=lf
+*.smc text eol=lf -whitespace
+*.mhd text eol=lf
+*.res text eol=lf -whitespace
+*.hct text eol=lf -whitespace
+
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.pdf binary
+*.spe binary

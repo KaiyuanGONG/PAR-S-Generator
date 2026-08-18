@@ -1,0 +1,125 @@
+{
+  "analyzed_utc": "2026-08-17T20:28:54+00:00",
+  "experiment": "asymmetric_fiducial",
+  "missing_cases": [],
+  "observations": [
+    {
+      "manual_gate": "Match peaks/centroids to recorded Z,Y,X fiducials before selecting one axis/flip mapping.",
+      "matrix": 128,
+      "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\asymmetric_fiducial\\output\\asymmetric_xyz.a00",
+      "peak_samples": [
+        {
+          "top_rows_cols": [
+            [
+              0,
+              31
+            ],
+            [
+              90,
+              98
+            ],
+            [
+              76,
+              68
+            ]
+          ],
+          "view": 0
+        },
+        {
+          "top_rows_cols": [
+            [
+              0,
+              18
+            ],
+            [
+              0,
+              17
+            ],
+            [
+              0,
+              16
+            ]
+          ],
+          "view": 11
+        },
+        {
+          "top_rows_cols": [
+            [
+              89,
+              57
+            ],
+            [
+              94,
+              59
+            ],
+            [
+              73,
+              32
+            ]
+          ],
+          "view": 23
+        },
+        {
+          "top_rows_cols": [
+            [
+              29,
+              94
+            ],
+            [
+              76,
+              81
+            ],
+            [
+              76,
+              80
+            ]
+          ],
+          "view": 35
+        },
+        {
+          "top_rows_cols": [
+            [
+              0,
+              18
+            ],
+            [
+              0,
+              17
+            ],
+            [
+              0,
+              16
+            ]
+          ],
+          "view": 47
+        },
+        {
+          "top_rows_cols": [
+            [
+              74,
+              66
+            ],
+            [
+              78,
+              75
+            ],
+            [
+              89,
+              96
+            ]
+          ],
+          "view": 59
+        }
+      ],
+      "per_view_sum_max": 192929.11328125,
+      "per_view_sum_min": 0.0,
+      "views": 60
+    }
+  ],
+  "pass_fail": {
+    "axis_order_unique": "manual_review_required",
+    "loader_transform": "manual_review_required"
+  },
+  "scientific_limit": "Automatic artifact analysis does not itself verify the acquisition protocol or physics claim.",
+  "status": "complete_outputs_pending_scientific_gate"
+}

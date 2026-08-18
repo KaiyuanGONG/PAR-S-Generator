@@ -1,0 +1,285 @@
+{
+  "contract_version": 1,
+  "created_utc": "2026-08-18T10:12:59+00:00",
+  "effective_config": {
+    "activity_time_contract_status": "resolved_nominal_60mbq_x_28p4s_index25_1704_local_dicom_supported",
+    "case_numbers": [
+      11,
+      19,
+      49,
+      100,
+      20,
+      58,
+      24,
+      88,
+      96,
+      21
+    ],
+    "create_poisson_observation": true,
+    "detector_matrix_i": 160,
+    "detector_matrix_j": 208,
+    "empirical_angular_cv_range": [
+      0.33360226698745143,
+      0.6201742992846553
+    ],
+    "empirical_count_evidence": "docs/evidence/clinical_empirical_count_summary_2026-08-18.json",
+    "empirical_reference_counts": [
+      2042094,
+      2285728,
+      2376211,
+      2557727,
+      2748718,
+      3218979,
+      3359875,
+      4112706
+    ],
+    "exposure_time_s_per_projection": 28.4,
+    "nn_multiplier": 10,
+    "observation_policy": "empirical_total_counts",
+    "observation_protocol_status": "empirical_protocol_matching",
+    "observation_scale": 1.0,
+    "observation_seed_offset": 1000000,
+    "phantom": {
+      "allow_capacity_subcapsular_fallback": true,
+      "cantlie_expand_limit": 1.0,
+      "cantlie_expand_step": 0.05,
+      "cantlie_iter_max": 12,
+      "cantlie_offset_range": [
+        -0.05,
+        0.12
+      ],
+      "cantlie_tilt_range": [
+        -6.0,
+        10.0
+      ],
+      "cantlie_tolerance": 0.005,
+      "detail_jitter": 0.05,
+      "dome_offset": [
+        -0.05,
+        0.0,
+        0.0
+      ],
+      "dome_radius": 0.34,
+      "fossa_offset": [
+        -0.12,
+        -0.03,
+        0.0
+      ],
+      "fossa_radius": 0.14,
+      "global_seed": 42,
+      "global_shift_range": 0.05,
+      "gradient_gain": 0.08,
+      "left_radii": [
+        0.18,
+        0.19,
+        0.18
+      ],
+      "left_rot_deg": 10.0,
+      "left_shift": [
+        0.14,
+        0.06,
+        -0.08
+      ],
+      "liver_base_center": [
+        -0.2,
+        0.1,
+        0.1
+      ],
+      "min_edge_dist_px": 4,
+      "mu_contract_status": "verified_type7_mu_times_voxel_v10_current_h2o_protocol",
+      "mu_diaphragm": 0.15,
+      "mu_fat": 0.09,
+      "mu_liver": 0.16,
+      "mu_lung": 0.05,
+      "mu_noise_amp": 0.015,
+      "mu_noise_sigma": 2.0,
+      "mu_reference_energy_kev": 140.5,
+      "mu_spine": 0.3,
+      "mu_unit": "cm^-1",
+      "mu_water": 0.15,
+      "n_cases": 10,
+      "output_dir": "managed_by_pipeline",
+      "perfusion_mode_policy": "random",
+      "perfusion_probs": {
+        "Left Only": 0.35,
+        "Right Only": 0.35,
+        "Tumor Only": 0.25,
+        "Whole Liver": 0.05
+      },
+      "psf_sigma_px": 2.5,
+      "residual_bg": 0.05,
+      "right_radii": [
+        0.28,
+        0.22,
+        0.26
+      ],
+      "right_rot_deg": -15.0,
+      "right_shift": [
+        0.0,
+        0.0,
+        0.14
+      ],
+      "rot_jitter_deg": 5.0,
+      "scale_jitter": 0.1,
+      "smooth_sigma": 1.2,
+      "smooth_thr": 0.5,
+      "spiculated_roughness": 0.35,
+      "spiculated_spiciness": 3.0,
+      "subcapsular_fraction": 0.0,
+      "subcapsular_max_depth_mm": 5.0,
+      "target_left_ratio": 0.35,
+      "total_counts": 80000.0,
+      "tumor_contrast_max": 8.0,
+      "tumor_contrast_min": 2.0,
+      "tumor_count_max": 5,
+      "tumor_count_min": 1,
+      "tumor_layout_attempts": 12,
+      "tumor_min_liver_margin_mm": 4.42,
+      "tumor_mode_policy": "random",
+      "tumor_mode_probs": [
+        0.7,
+        0.3
+      ],
+      "tumor_modes": [
+        "ellipsoid",
+        "spiculated"
+      ],
+      "tumor_overlap_gap_mm": 0.0,
+      "tumor_placement_attempts": 250,
+      "tumor_probs": [
+        0.45,
+        0.4,
+        0.15
+      ],
+      "tumor_size_bins_mm": [
+        [
+          10,
+          20
+        ],
+        [
+          20,
+          40
+        ],
+        [
+          40,
+          60
+        ]
+      ],
+      "tumor_spec_attempts": 20,
+      "use_global_seed": true,
+      "volume_shape": [
+        128,
+        128,
+        128
+      ],
+      "voxel_size_mm": 4.42
+    },
+    "phantom_cross_sections": [
+      "h2o",
+      "h2o"
+    ],
+    "pilot_selection_evidence": "experiments/stage3-protocol-pilot/pilot-selection-v3.json",
+    "projection_shape": [
+      60,
+      128,
+      128
+    ],
+    "protocol_label": "GE 870 CZT current liver SPECT research protocol",
+    "protocol_status": "stage3_protocol_promoted_10_case_pilot",
+    "run_id": "stage3-simind-pilot-10-v1-20260818",
+    "runs_root": "runs",
+    "simind_exe": "simind/simind.exe",
+    "simind_overrides": [],
+    "simulation_mode": "execute",
+    "smc_file": "simind/ge870_czt.smc",
+    "smc_index25_activity_time": 1704.0,
+    "source_activity_mbq": 60.0,
+    "split_fractions": [
+      0.8,
+      0.1,
+      0.1
+    ],
+    "split_seed": 42,
+    "type7_density_threshold_times_1000": 100
+  },
+  "finalized": false,
+  "provenance": {
+    "empirical_count_evidence": {
+      "absolute_cps_per_mbq_claim": false,
+      "path": "D:\\PFE-U\\PAR-S-Generator\\docs\\evidence\\clinical_empirical_count_summary_2026-08-18.json",
+      "sha256": "bdf4783a0445cf90489804b0b15fa344db2e308e699c685895d1af60af108672"
+    },
+    "generator": "PhantomGenerator.generate_one",
+    "pilot_selection_evidence": {
+      "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\stage3-protocol-pilot\\pilot-selection-v3.json",
+      "sha256": "1dd9472e1f9c98dee08485cd15ac60d6f4bf436d6483b386cb11dd43809e5564"
+    },
+    "projection_orientation": "raw[:,::-1,:]",
+    "protocol_scope": "liver_only_current_protocol",
+    "simind_executable": {
+      "path": "D:\\PFE-U\\PAR-S-Generator\\simind\\simind.exe",
+      "sha256": "f984b8753f54b9f671f9fc1bcb2b45461e7cae8d027376b446dd1ed55a9a8319"
+    },
+    "smc": {
+      "path": "D:\\PFE-U\\PAR-S-Generator\\simind\\ge870_czt.smc",
+      "sha256": "4d10eab246a7a6690663230d2f33aeb3c32f67c598af36b56d1575f0e3551d10"
+    },
+    "software_sha256": {
+      "core/interfile_writer.py": "02b8f2a1a41939c9aa9e76b0883c1b63bc6967c5c96af5eec42a0561dd398d75",
+      "core/phantom_generator.py": "25e98a12b93b09408e95cd721cb2258a0f81140d75c132af85dbc77c7e0b4b8d",
+      "pipeline/observation.py": "9183f557276972abc64b21039351304c2d62f90090bfd0eaee8d88070593bff4",
+      "pipeline/pilot.py": "3aa33b2b3b3ccb0b57185c0e5031f5e21f7a65ec88ef80ee0b92ad1c3c1dba1c",
+      "pipeline/qc.py": "f3eadfd3eddfda85fb6e348348aa4acbe4ef00269b4c6a10f3c06fa2714b94e4",
+      "pipeline/runner.py": "0aeb7a3967d0978a108b66d90af580610c971f82ca73e162b54d6f976cc3eb65",
+      "pipeline/simind.py": "4a40bdc807d1d6bab854cb8ab9aae7851965e5a2f49786c65571a41fb417cf13"
+    },
+    "type7_attenuation": {
+      "density_threshold_times_1000": 100,
+      "phantom_cross_sections": [
+        "h2o",
+        "h2o"
+      ],
+      "stored_formula": "mu_cm_inverse * density_voxel_size_cm",
+      "validation_evidence": "experiments/validation-v10/attenuation_ict/analysis.json"
+    }
+  },
+  "run_id": "stage3-simind-pilot-10-v1-20260818",
+  "runtime": {
+    "platform": "Windows-10-10.0.26100-SP0",
+    "python": "3.11.14"
+  },
+  "scope": "synthetic_liver_spect_data_preparation_only",
+  "stages": {
+    "expectation": {
+      "backend": "execute",
+      "error": "aborted_during_first_case_missing_explicit_rr_seed",
+      "status": "failed",
+      "updated_utc": "2026-08-18T10:13:16+00:00"
+    },
+    "export": {
+      "case_count": 10,
+      "readback_verified": true,
+      "status": "passed",
+      "updated_utc": "2026-08-18T10:13:16+00:00"
+    },
+    "generate": {
+      "case_count": 10,
+      "status": "passed",
+      "updated_utc": "2026-08-18T10:13:13+00:00"
+    },
+    "phantom_qc": {
+      "case_count": 10,
+      "failed_cases": [],
+      "status": "passed",
+      "updated_utc": "2026-08-18T10:13:16+00:00"
+    },
+    "simind_plan": {
+      "job_count": 10,
+      "mode": "execute",
+      "plan": "D:\\PFE-U\\PAR-S-Generator\\runs\\stage3-simind-pilot-10-v1-20260818\\logs\\simind_jobs.json",
+      "status": "passed",
+      "updated_utc": "2026-08-18T10:13:16+00:00"
+    }
+  },
+  "updated_utc": "2026-08-18T10:13:16+00:00"
+}

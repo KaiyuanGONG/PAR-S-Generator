@@ -1,0 +1,15 @@
+{
+  "completed_utc": null,
+  "experiment": "fov_matrix",
+  "notes": "",
+  "observations": [],
+  "operator": null,
+  "pass_fail": {
+    "exit_and_artifacts": "not_evaluated",
+    "fov_quantified": "not_evaluated",
+    "selection_justified": "not_evaluated"
+  },
+  "simind_version": null,
+  "started_utc": null,
+  "status": "not_run"
+}

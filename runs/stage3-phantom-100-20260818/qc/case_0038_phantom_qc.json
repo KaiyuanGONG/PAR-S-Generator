@@ -1,0 +1,80 @@
+{
+  "attenuation_contract": {
+    "reference_energy_kev": 140.5,
+    "status": "verified_type7_mu_times_voxel_v10_current_h2o_protocol",
+    "unit": "cm^-1"
+  },
+  "cantlie": {
+    "abs_error": 0.0033162273540160436,
+    "converged": true,
+    "iterations": 5,
+    "offset": 0.0934375,
+    "search": {
+      "expanded_beyond_initial_range": false,
+      "expanded_offset_range": [
+        -0.05,
+        0.12
+      ],
+      "expansions": 0,
+      "hit_expansion_limit": false,
+      "initial_offset_range": [
+        -0.05,
+        0.12
+      ],
+      "solution_on_search_boundary": false,
+      "target_bracketed": true
+    },
+    "target_left_ratio": 0.35,
+    "tilt_deg": 4.292015069870107
+  },
+  "failures": [],
+  "meta": "D:\\PFE-U\\PAR-S-Generator\\runs\\stage3-phantom-100-20260818\\phantom\\case_0038_meta.json",
+  "metrics": {
+    "activity_dtype": "float32",
+    "activity_sum": 80000.0024279356,
+    "left_ratio": 0.353316227354016,
+    "liver_volume_ml": 1110.558770568,
+    "mu_dtype": "float32",
+    "mu_max": 0.30053016543388367,
+    "mu_min": 0.0,
+    "n_tumors": 2,
+    "shape": [
+      128,
+      128,
+      128
+    ],
+    "tumors": [
+      {
+        "effective_diameter_mm": 27.27246746893202,
+        "index": 0,
+        "mode": "ellipsoid",
+        "nominal_diameter_mm": 24.80898360763387,
+        "outside_liver_vox": 0,
+        "overlap_previous_vox": 0,
+        "placement_stratum": "central",
+        "surface_margin_mm": 4.42,
+        "tnr_from_saved_activity": 7.045374850182065,
+        "volume_vox": 123
+      },
+      {
+        "effective_diameter_mm": 14.633243370680612,
+        "index": 1,
+        "mode": "spiculated",
+        "nominal_diameter_mm": 14.154095571201319,
+        "outside_liver_vox": 0,
+        "overlap_previous_vox": 0,
+        "placement_stratum": "central",
+        "surface_margin_mm": 9.88342046054907,
+        "tnr_from_saved_activity": 15.656739266647623,
+        "volume_vox": 19
+      }
+    ]
+  },
+  "npz": "D:\\PFE-U\\PAR-S-Generator\\runs\\stage3-phantom-100-20260818\\phantom\\case_0038.npz",
+  "sha256": {
+    "meta": "01c264f0e0be143139cc26283649a99ebd0576edff9dc944a539898c93517ed9",
+    "npz": "fabcef79145b9b7265b1c8f0cef9a901838471d95f2c7899d7773238fbd8140d"
+  },
+  "status": "passed",
+  "warnings": []
+}

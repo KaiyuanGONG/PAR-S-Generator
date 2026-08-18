@@ -1,0 +1,3 @@
+case_id,split,backend,sum,max,nonzero_fraction,noninteger_positive_fraction,support_row_count,support_col_count
+case_0001,test,deterministic_mock_not_simind,4799999.882442355,296.0841369628906,0.055419921875,1.0,30,99
+case_0002,train,deterministic_mock_not_simind,4799999.975211024,578.6470336914062,0.0518798828125,1.0,29,97

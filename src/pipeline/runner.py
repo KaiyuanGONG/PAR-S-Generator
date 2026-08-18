@@ -8,6 +8,7 @@ evaluation component.
 from __future__ import annotations
 
 import json
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Callable
@@ -16,7 +17,20 @@ import numpy as np
 
 from core.interfile_writer import convert_npz_to_interfile
 from core.phantom_generator import PhantomConfig, PhantomGenerator
+from core.smc_parser import parse_smc
 from pipeline.contracts import (
+    ACTIVITY_TIME_CONTRACT_STATUS,
+    CANONICAL_PROJECTION_TRANSFORM,
+    CURRENT_DETECTOR_MATRIX_I,
+    CURRENT_DETECTOR_MATRIX_J,
+    CURRENT_TYPE7_ATTENUATION_CONTRACT_STATUS,
+    CURRENT_TYPE7_DENSITY_THRESHOLD_TIMES_1000,
+    DEFAULT_EXPOSURE_S_PER_PROJECTION,
+    DEFAULT_SIMIND_ACTIVITY_TIME,
+    DEFAULT_SOURCE_ACTIVITY_MBQ,
+    EMPIRICAL_CLINICAL_ANGULAR_CV_RANGE,
+    EMPIRICAL_CLINICAL_TOTAL_COUNTS,
+    EMPIRICAL_OBSERVATION_PROTOCOL_STATUS,
     RunLayout,
     RunLedger,
     assign_fixed_splits,
@@ -25,8 +39,13 @@ from pipeline.contracts import (
     utc_now,
 )
 from pipeline.figures import export_run_figures
-from pipeline.observation import sample_poisson_observation
-from pipeline.qc import phantom_qc, validate_projection_artifacts
+from pipeline.observation import assign_empirical_count_targets, sample_poisson_observation
+from pipeline.qc import (
+    assess_stage3_phantom_population,
+    phantom_qc,
+    summarize_phantom_population,
+    validate_projection_artifacts,
+)
 from pipeline.simind import SimindJob, expected_res_tokens, prepare_jobs, run_job
 
 
@@ -42,29 +61,109 @@ class PipelineConfig:
     simind_exe: str = "simind/simind.exe"
     smc_file: str = "simind/ge870_czt.smc"
     nn_multiplier: int = 10
+    max_simind_workers: int = 1
+    simind_seed_base: int = 930_000
     simind_overrides: list[tuple[int, str]] = field(default_factory=list)
+    case_numbers: list[int] | None = None
     projection_shape: tuple[int, int, int] = (60, 128, 128)
     simulation_mode: str = "prepare"  # prepare, mock, execute
     create_poisson_observation: bool = False
     observation_scale: float = 1.0
     observation_seed_offset: int = 1_000_000
     observation_protocol_status: str = "toy"
+    observation_policy: str = "fixed_scale"
+    empirical_reference_counts: tuple[int, ...] = EMPIRICAL_CLINICAL_TOTAL_COUNTS
+    empirical_angular_cv_range: tuple[float, float] = EMPIRICAL_CLINICAL_ANGULAR_CV_RANGE
+    empirical_count_evidence: str = (
+        "docs/evidence/clinical_empirical_count_summary_2026-08-18.json"
+    )
+    pilot_selection_evidence: str | None = None
+    type7_density_threshold_times_1000: int = CURRENT_TYPE7_DENSITY_THRESHOLD_TIMES_1000
+    detector_matrix_i: int = CURRENT_DETECTOR_MATRIX_I
+    detector_matrix_j: int = CURRENT_DETECTOR_MATRIX_J
+    phantom_cross_sections: tuple[str, str] = ("h2o", "h2o")
     split_seed: int = 42
     split_fractions: tuple[float, float, float] = (0.8, 0.1, 0.1)
     protocol_label: str = "GE 870 CZT current liver SPECT research protocol"
-    protocol_status: str = "pending_physics_validation"
-    source_activity_mbq: float = 60.0
-    exposure_time_s_per_projection: float | None = None
-    smc_index25_activity_time: float = 1704.0
-    activity_time_contract_status: str = "unresolved_60mbq_x_20s_vs_smc_index25_1704"
+    protocol_status: str = "stage3_protocol_promoted_pilot_pending"
+    source_activity_mbq: float = DEFAULT_SOURCE_ACTIVITY_MBQ
+    exposure_time_s_per_projection: float | None = DEFAULT_EXPOSURE_S_PER_PROJECTION
+    smc_index25_activity_time: float = DEFAULT_SIMIND_ACTIVITY_TIME
+    activity_time_contract_status: str = ACTIVITY_TIME_CONTRACT_STATUS
 
     def __post_init__(self):
         if self.simulation_mode not in {"prepare", "mock", "execute"}:
             raise ValueError("simulation_mode must be prepare, mock, or execute")
+        if not 1 <= int(self.max_simind_workers) <= 32:
+            raise ValueError("max_simind_workers must be between 1 and 32")
+        if int(self.simind_seed_base) < 1:
+            raise ValueError("simind_seed_base must be positive")
         if self.phantom.n_cases < 1:
             raise ValueError("phantom.n_cases must be positive")
         if tuple(self.phantom.volume_shape) != (128, 128, 128):
             raise ValueError("Current validated scope requires a 128x128x128 phantom")
+        if self.phantom.mu_contract_status != CURRENT_TYPE7_ATTENUATION_CONTRACT_STATUS:
+            raise ValueError(
+                "Current protocol requires the validated type-7 mu-times-voxel attenuation status"
+            )
+        if self.case_numbers is not None:
+            normalized = [int(value) for value in self.case_numbers]
+            if len(normalized) != self.phantom.n_cases:
+                raise ValueError("case_numbers length must equal phantom.n_cases")
+            if len(set(normalized)) != len(normalized) or any(value < 1 for value in normalized):
+                raise ValueError("case_numbers must contain unique positive integers")
+            self.case_numbers = normalized
+        if self.pilot_selection_evidence is not None:
+            selection_path = Path(self.pilot_selection_evidence)
+            if not selection_path.is_file():
+                raise ValueError(f"Pilot selection evidence does not exist: {selection_path}")
+            selection = json.loads(selection_path.read_text(encoding="utf-8"))
+            selected_numbers = [int(row["case_number"]) for row in selection.get("selected", [])]
+            if self.case_numbers is None or selected_numbers != self.case_numbers:
+                raise ValueError(
+                    "Pilot selection evidence case order must exactly match case_numbers"
+                )
+        if self.observation_policy not in {"fixed_scale", "empirical_total_counts"}:
+            raise ValueError("observation_policy must be fixed_scale or empirical_total_counts")
+        if self.observation_policy == "empirical_total_counts":
+            if not self.create_poisson_observation:
+                raise ValueError("empirical_total_counts requires create_poisson_observation=true")
+            if self.observation_protocol_status != EMPIRICAL_OBSERVATION_PROTOCOL_STATUS:
+                raise ValueError(
+                    "empirical_total_counts requires empirical_protocol_matching status"
+                )
+            if len(self.empirical_reference_counts) < 2 or any(
+                int(value) <= 0 for value in self.empirical_reference_counts
+            ):
+                raise ValueError("empirical_reference_counts must contain positive values")
+            low, high = (float(value) for value in self.empirical_angular_cv_range)
+            if low < 0 or high <= low:
+                raise ValueError("empirical_angular_cv_range must be increasing and non-negative")
+        if self.type7_density_threshold_times_1000 != CURRENT_TYPE7_DENSITY_THRESHOLD_TIMES_1000:
+            raise ValueError("Current validated protocol requires type-7 density threshold 100")
+        if (self.detector_matrix_i, self.detector_matrix_j) != (
+            CURRENT_DETECTOR_MATRIX_I,
+            CURRENT_DETECTOR_MATRIX_J,
+        ):
+            raise ValueError("Current validated GE detector matrix requires Index-100/101=160/208")
+        if tuple(value.lower() for value in self.phantom_cross_sections) != ("h2o", "h2o"):
+            raise ValueError("Current scoped type-7 contract requires the two h2o cross-section tables")
+        if self.exposure_time_s_per_projection is not None:
+            product = self.source_activity_mbq * self.exposure_time_s_per_projection
+            if not np.isclose(product, self.smc_index25_activity_time, rtol=1e-6, atol=1e-3):
+                raise ValueError(
+                    "SMC Index-25 must equal source_activity_mbq * "
+                    "exposure_time_s_per_projection"
+                )
+        for index, value in self.simind_overrides:
+            if int(index) == 25 and not np.isclose(
+                float(value), self.smc_index25_activity_time, rtol=1e-6, atol=1e-3
+            ):
+                raise ValueError("Custom /25 override conflicts with smc_index25_activity_time")
+            if int(index) == 100 and int(float(value)) != self.detector_matrix_i:
+                raise ValueError("Custom /100 override conflicts with detector_matrix_i")
+            if int(index) == 101 and int(float(value)) != self.detector_matrix_j:
+                raise ValueError("Custom /101 override conflicts with detector_matrix_j")
 
     def to_dict(self) -> dict:
         payload = asdict(self)
@@ -82,6 +181,15 @@ class PipelineConfig:
             data["simind_overrides"] = [
                 (int(pair[0]), str(pair[1])) for pair in data["simind_overrides"]
             ]
+        for key in (
+            "projection_shape",
+            "split_fractions",
+            "empirical_reference_counts",
+            "empirical_angular_cv_range",
+            "phantom_cross_sections",
+        ):
+            if key in data:
+                data[key] = tuple(data[key])
         return cls(**data)
 
 
@@ -119,16 +227,42 @@ class PipelineRunner:
         src_root = Path(__file__).resolve().parents[1]
         source_files = (
             src_root / "core" / "phantom_generator.py",
+            src_root / "core" / "interfile_writer.py",
             src_root / "pipeline" / "runner.py",
             src_root / "pipeline" / "qc.py",
             src_root / "pipeline" / "simind.py",
             src_root / "pipeline" / "observation.py",
+            src_root / "pipeline" / "pilot.py",
         )
         exe = Path(config.simind_exe).resolve()
         smc = Path(config.smc_file).resolve()
+        evidence = Path(config.empirical_count_evidence).resolve()
+        pilot_selection = (
+            Path(config.pilot_selection_evidence).resolve()
+            if config.pilot_selection_evidence is not None
+            else None
+        )
+        if smc.is_file():
+            parsed = parse_smc(smc)
+            actual_cross_sections = tuple(value.lower() for value in parsed.data_files[:2])
+            if actual_cross_sections != tuple(
+                value.lower() for value in config.phantom_cross_sections
+            ):
+                raise ValueError(
+                    "SMC cross-section tables do not match the effective type-7 contract: "
+                    f"{actual_cross_sections}"
+                )
+            if int(round(parsed.get_value(14))) != -7 or int(round(parsed.get_value(15))) != -7:
+                raise ValueError("Current protocol requires SIMIND phantom/source type -7")
+            if not parsed.get_flag(11):
+                raise ValueError("Current protocol requires Flag-11 phantom interactions")
+            if not np.isclose(
+                parsed.get_value(31), config.phantom.voxel_size_mm / 10.0, atol=1e-6
+            ):
+                raise ValueError("SMC density voxel size conflicts with the phantom voxel size")
         return {
             "generator": "PhantomGenerator.generate_one",
-            "projection_orientation": "raw[::-1,::-1,:]",
+            "projection_orientation": CANONICAL_PROJECTION_TRANSFORM,
             "protocol_scope": "liver_only_current_protocol",
             "software_sha256": {
                 path.relative_to(src_root).as_posix(): sha256_file(path) for path in source_files
@@ -141,6 +275,25 @@ class PipelineRunner:
                 "path": str(smc),
                 "sha256": sha256_file(smc) if smc.is_file() else None,
             },
+            "type7_attenuation": {
+                "stored_formula": "mu_cm_inverse * density_voxel_size_cm",
+                "density_threshold_times_1000": config.type7_density_threshold_times_1000,
+                "phantom_cross_sections": list(config.phantom_cross_sections),
+                "validation_evidence": "experiments/validation-v10/attenuation_ict/analysis.json",
+            },
+            "empirical_count_evidence": {
+                "path": str(evidence),
+                "sha256": sha256_file(evidence) if evidence.is_file() else None,
+                "absolute_cps_per_mbq_claim": False,
+            },
+            "pilot_selection_evidence": (
+                {
+                    "path": str(pilot_selection),
+                    "sha256": sha256_file(pilot_selection),
+                }
+                if pilot_selection is not None
+                else None
+            ),
         }
 
     def request_pause(self) -> None:
@@ -162,7 +315,10 @@ class PipelineRunner:
         return self.ledger.load().get("stages", {}).get(stage, {}).get("status") == "passed"
 
     def _case_ids(self) -> list[str]:
-        return [f"case_{index:04d}" for index in range(1, self.config.phantom.n_cases + 1)]
+        numbers = self.config.case_numbers or list(
+            range(1, self.config.phantom.n_cases + 1)
+        )
+        return [f"case_{index:04d}" for index in numbers]
 
     def _assert_hash(self, path: Path, expected: str, context: str) -> None:
         if not path.is_file() or not expected or sha256_file(path) != expected:
@@ -265,7 +421,42 @@ class PipelineRunner:
             if result["status"] != "passed":
                 failed.append(record["case_id"])
         self.ledger.write_cases(cases)
-        summary = {"status": "passed" if not failed else "failed", "failed_cases": failed, "case_count": len(cases)}
+        qc_records = [
+            json.loads(
+                Path(record["qc"]["phantom"]["path"]).read_text(encoding="utf-8")
+            )
+            for record in cases
+        ]
+        summary = summarize_phantom_population(qc_records)
+        summary["failed_cases"] = failed
+        if len(cases) == 100:
+            summary["stage3_population_acceptance"] = assess_stage3_phantom_population(
+                summary,
+                size_bins_mm=self.config.phantom.tumor_size_bins_mm,
+                size_probabilities=self.config.phantom.tumor_probs,
+                tumor_count_min=self.config.phantom.tumor_count_min,
+                tumor_count_max=self.config.phantom.tumor_count_max,
+                mode_probabilities=dict(zip(
+                    self.config.phantom.tumor_modes,
+                    self.config.phantom.tumor_mode_probs,
+                )),
+                target_left_ratio=self.config.phantom.target_left_ratio,
+                target_contrast_range=(
+                    self.config.phantom.tumor_contrast_min,
+                    self.config.phantom.tumor_contrast_max,
+                ),
+                central_margin_mm=self.config.phantom.tumor_min_liver_margin_mm,
+            )
+            if summary["stage3_population_acceptance"]["status"] != "passed":
+                summary["status"] = "failed"
+                failed.append("population_distribution_gate")
+                summary["failed_cases"] = failed
+        else:
+            summary["stage3_population_acceptance"] = {
+                "status": "not_enforced",
+                "enforced": False,
+                "reason": "Stage-3 population gates require exactly 100 generated cases",
+            }
         atomic_write_json(self.layout.subdir("qc") / "phantom_qc_summary.json", summary)
         self.ledger.update_stage(
             "phantom_qc",
@@ -316,11 +507,28 @@ class PipelineRunner:
                     "shape": result["shape"],
                     "order": result["order"],
                     "readback_verified": result["readback_verified"],
+                    "density_voxel_size_cm": result["voxel_size_cm"],
+                    "type7_stored_semantic": result["type7_stored_semantic"],
+                    "type7_stored_unit": result["type7_stored_unit"],
+                    "type7_conversion_formula": result["type7_conversion_formula"],
+                    "type7_conversion_scale": result["type7_conversion_scale"],
+                    "type7_roundtrip_max_abs_error_cm_inverse": result[
+                        "type7_roundtrip_max_abs_error_cm_inverse"
+                    ],
+                    "analytical_mu_range_cm_inverse": result[
+                        "analytical_mu_range_cm_inverse"
+                    ],
+                    "type7_stored_value_range": result["type7_stored_value_range"],
                     "mu_contract": {
-                        "semantic": "linear_attenuation_coefficient",
-                        "unit": self.config.phantom.mu_unit,
+                        "analytical_semantic": "linear_attenuation_coefficient",
+                        "analytical_unit": self.config.phantom.mu_unit,
+                        "simind_stored_semantic": result["type7_stored_semantic"],
+                        "simind_stored_unit": result["type7_stored_unit"],
                         "reference_energy_kev": self.config.phantom.mu_reference_energy_kev,
                         "status": self.config.phantom.mu_contract_status,
+                        "validation_evidence": (
+                            "experiments/validation-v10/attenuation_ict/analysis.json"
+                        ),
                     },
                 }
             self.ledger.write_cases(cases)
@@ -335,6 +543,13 @@ class PipelineRunner:
     def _jobs(self, cases: list[dict]) -> list[SimindJob]:
         exe = Path(self.config.simind_exe).resolve()
         smc = Path(self.config.smc_file).resolve()
+        overrides = list(self.config.simind_overrides)
+        if not any(int(index) == 25 for index, _ in overrides):
+            overrides.append((25, f"{self.config.smc_index25_activity_time:g}"))
+        if not any(int(index) == 100 for index, _ in overrides):
+            overrides.append((100, str(self.config.detector_matrix_i)))
+        if not any(int(index) == 101 for index, _ in overrides):
+            overrides.append((101, str(self.config.detector_matrix_j)))
         return [
             SimindJob(
                 case_id=record["case_id"],
@@ -345,7 +560,11 @@ class PipelineRunner:
                 source_stem=record["case_id"],
                 density_stem=record["case_id"],
                 nn_multiplier=self.config.nn_multiplier,
-                overrides=tuple(self.config.simind_overrides),
+                rr_seed=self.config.simind_seed_base + int(record["case_id"].rsplit("_", 1)[1]),
+                overrides=tuple(overrides),
+                runtime_switches=(
+                    f"/IN:x21,{self.config.type7_density_threshold_times_1000}x",
+                ),
             )
             for record in cases
         ]
@@ -385,13 +604,18 @@ class PipelineRunner:
     def simulate_or_mock(self) -> list[dict]:
         cases = self.export()
         jobs = self.prepare_simind()
+        jobs_by_case = {job.case_id: job for job in jobs}
+        case_ids = {record["case_id"] for record in cases}
+        if len(jobs_by_case) != len(jobs) or set(jobs_by_case) != case_ids:
+            raise RuntimeError("SIMIND jobs must map one-to-one to case_id values")
         if self.config.simulation_mode == "prepare":
             self.ledger.update_stage(
                 "expectation", "skipped", reason="SIMIND commands prepared but not executed"
             )
             return cases
         if self._stage_is_passed("expectation"):
-            for record, job in zip(cases, jobs, strict=True):
+            for record in cases:
+                job = jobs_by_case[record["case_id"]]
                 expectation = record.get("expectation", {})
                 a00 = Path(expectation.get("a00", ""))
                 res = Path(expectation.get("res", ""))
@@ -412,7 +636,32 @@ class PipelineRunner:
             return cases
         self.ledger.update_stage("expectation", "running", backend=self.config.simulation_mode)
         failed: list[str] = []
-        for record, job in zip(cases, jobs, strict=True):
+        pending_execute: list[tuple[dict, SimindJob]] = []
+
+        def persist_qc(record: dict, job: SimindJob, qc: dict) -> None:
+            qc_path = self.layout.subdir("qc") / f"{record['case_id']}_projection_qc.json"
+            atomic_write_json(qc_path, qc)
+            record.setdefault("qc", {})["projection"] = {
+                "status": qc["status"],
+                "path": str(qc_path.resolve()),
+                "relpath": self._relative(qc_path),
+                "sha256": sha256_file(qc_path),
+            }
+            record["expectation"] = {
+                "a00": str(job.output_stem.with_suffix(".a00").resolve()),
+                "res": str(job.output_stem.with_suffix(".res").resolve()),
+                "a00_relpath": self._relative(job.output_stem.with_suffix(".a00")),
+                "res_relpath": self._relative(job.output_stem.with_suffix(".res")),
+                "backend": qc["backend"],
+                "rr_seed": job.rr_seed,
+                "a00_sha256": qc.get("sha256", {}).get("a00"),
+                "res_sha256": qc.get("sha256", {}).get("res"),
+            }
+            if qc["status"] != "passed":
+                failed.append(record["case_id"])
+
+        for record in cases:
+            job = jobs_by_case[record["case_id"]]
             self._pause_if_requested("expectation")
             prior = record.get("expectation", {})
             prior_a00 = Path(prior.get("a00", ""))
@@ -443,32 +692,44 @@ class PipelineRunner:
                     job.output_stem.with_suffix(".a00"), shape=self.config.projection_shape
                 )
                 qc["backend"] = "deterministic_mock_not_simind"
+                persist_qc(record, job, qc)
             else:
-                qc = run_job(
-                    job,
-                    self.layout.subdir("logs") / "simind_runtime.log",
-                    shape=self.config.projection_shape,
-                )
-                qc["backend"] = "simind"
-            qc_path = self.layout.subdir("qc") / f"{record['case_id']}_projection_qc.json"
-            atomic_write_json(qc_path, qc)
-            record.setdefault("qc", {})["projection"] = {
-                "status": qc["status"],
-                "path": str(qc_path.resolve()),
-                "relpath": self._relative(qc_path),
-                "sha256": sha256_file(qc_path),
-            }
-            record["expectation"] = {
-                "a00": str(job.output_stem.with_suffix(".a00").resolve()),
-                "res": str(job.output_stem.with_suffix(".res").resolve()),
-                "a00_relpath": self._relative(job.output_stem.with_suffix(".a00")),
-                "res_relpath": self._relative(job.output_stem.with_suffix(".res")),
-                "backend": qc["backend"],
-                "a00_sha256": qc.get("sha256", {}).get("a00"),
-                "res_sha256": qc.get("sha256", {}).get("res"),
-            }
-            if qc["status"] != "passed":
-                failed.append(record["case_id"])
+                pending_execute.append((record, job))
+
+        if pending_execute:
+            workers = min(self.config.max_simind_workers, len(pending_execute))
+            self.ledger.update_stage(
+                "expectation",
+                "running",
+                backend="execute",
+                max_simind_workers=workers,
+                deterministic_rr_seeds=True,
+            )
+            with ThreadPoolExecutor(max_workers=workers, thread_name_prefix="simind") as executor:
+                futures = {
+                    executor.submit(
+                        run_job,
+                        job,
+                        self.layout.subdir("logs") / f"{job.case_id}_simind_runtime.log",
+                        shape=self.config.projection_shape,
+                    ): (record, job)
+                    for record, job in pending_execute
+                }
+                for future in as_completed(futures):
+                    record, job = futures[future]
+                    try:
+                        qc = future.result()
+                    except Exception as exc:
+                        qc = {
+                            "status": "failed",
+                            "failures": [f"execution_exception:{exc}"],
+                            "sha256": {},
+                        }
+                    qc["backend"] = "simind"
+                    persist_qc(record, job, qc)
+                    # Checkpoint completed cases from the coordinator thread;
+                    # worker processes never write the shared case ledger.
+                    self.ledger.write_cases(cases)
         self.ledger.write_cases(cases)
         status = "passed" if not failed else "failed"
         self.ledger.update_stage("expectation", status, backend=self.config.simulation_mode, failed_cases=failed)
@@ -493,13 +754,38 @@ class PipelineRunner:
                     observation.get("sha256"),
                     f"{record['case_id']} observation",
                 )
+                qc_record = record.get("qc", {}).get("observation", {})
+                if qc_record:
+                    self._assert_hash(
+                        Path(qc_record.get("path", "")),
+                        qc_record.get("sha256"),
+                        f"{record['case_id']} observation QC",
+                    )
             return cases
         self.ledger.update_stage("observation", "running")
+        empirical_targets = (
+            assign_empirical_count_targets(
+                [record["case_id"] for record in cases],
+                self.config.empirical_reference_counts,
+                seed=self.config.split_seed + self.config.observation_seed_offset,
+            )
+            if self.config.observation_policy == "empirical_total_counts"
+            else {}
+        )
+        failed: list[str] = []
         for record in cases:
             self._pause_if_requested("observation")
             prior = record.get("observation", {})
             prior_path = Path(prior.get("observation", ""))
-            if prior_path.is_file() and sha256_file(prior_path) == prior.get("sha256"):
+            prior_qc = record.get("qc", {}).get("observation", {})
+            prior_qc_path = Path(prior_qc.get("path", ""))
+            if (
+                prior_path.is_file()
+                and sha256_file(prior_path) == prior.get("sha256")
+                and prior_qc.get("status") == "passed"
+                and prior_qc_path.is_file()
+                and sha256_file(prior_qc_path) == prior_qc.get("sha256")
+            ):
                 continue
             seed = int(record["seed"]) + self.config.observation_seed_offset
             out = self.layout.subdir("observation") / f"{record['case_id']}.a00"
@@ -508,6 +794,7 @@ class PipelineRunner:
                 out,
                 seed=seed,
                 scale=self.config.observation_scale,
+                target_total_counts=empirical_targets.get(record["case_id"]),
                 shape=self.config.projection_shape,
                 protocol_status=self.config.observation_protocol_status,
             )
@@ -521,13 +808,62 @@ class PipelineRunner:
                 }
             )
             record["observation"] = result
+            low_cv, high_cv = self.config.empirical_angular_cv_range
+            empirical_policy = self.config.observation_policy == "empirical_total_counts"
+            count_passed = bool(
+                not empirical_policy
+                or (
+                    result.get("target_relative_error") is not None
+                    and result["target_relative_error"] <= 0.01
+                )
+            )
+            angular_cv_passed = bool(
+                not empirical_policy
+                or (
+                    result.get("angular_cv") is not None
+                    and float(low_cv) <= result["angular_cv"] <= float(high_cv)
+                )
+            )
+            observation_qc = {
+                "status": "passed" if count_passed and angular_cv_passed else "failed",
+                "policy": self.config.observation_policy,
+                "total_count_relative_error_maximum": 0.01,
+                "total_count_passed": count_passed,
+                "angular_cv_empirical_range": [float(low_cv), float(high_cv)],
+                "angular_cv_passed": angular_cv_passed,
+                "target_total_counts": result.get("target_total_counts"),
+                "observed_total_counts": result["sum"],
+                "target_relative_error": result.get("target_relative_error"),
+                "angular_cv": result.get("angular_cv"),
+                "claim_boundary": result.get("claim_boundary"),
+            }
+            qc_path = self.layout.subdir("qc") / f"{record['case_id']}_observation_qc.json"
+            atomic_write_json(qc_path, observation_qc)
+            record.setdefault("qc", {})["observation"] = {
+                "status": observation_qc["status"],
+                "path": str(qc_path.resolve()),
+                "relpath": self._relative(qc_path),
+                "sha256": sha256_file(qc_path),
+            }
+            if observation_qc["status"] != "passed":
+                failed.append(record["case_id"])
         self.ledger.write_cases(cases)
         self.ledger.update_stage(
             "observation",
-            "passed",
+            "passed" if not failed else "failed",
             transform="offline_poisson",
             protocol_status=self.config.observation_protocol_status,
+            policy=self.config.observation_policy,
+            empirical_reference_counts=list(self.config.empirical_reference_counts),
+            empirical_angular_cv_range=list(self.config.empirical_angular_cv_range),
+            failed_cases=failed,
+            absolute_cps_per_mbq_claim=False,
         )
+        if failed:
+            raise RuntimeError(
+                "Observation QC failed without angular-profile warping: "
+                + ", ".join(failed)
+            )
         return cases
 
     def package(self) -> Path:
@@ -580,8 +916,31 @@ class PipelineRunner:
             "case_count": len(cases),
             "cases_manifest": "cases.jsonl",
             "split_manifest": "splits.json",
-            "projection_orientation": "raw[::-1,::-1,:]",
+            "projection_orientation": CANONICAL_PROJECTION_TRANSFORM,
             "attenuation_contract_status": self.config.phantom.mu_contract_status,
+            "type7_attenuation_contract": {
+                "stored_formula": "mu_cm_inverse * density_voxel_size_cm",
+                "density_threshold_times_1000": (
+                    self.config.type7_density_threshold_times_1000
+                ),
+                "phantom_cross_sections": list(self.config.phantom_cross_sections),
+                "validation_evidence": (
+                    "experiments/validation-v10/attenuation_ict/analysis.json"
+                ),
+            },
+            "detector_contract": {
+                "index_100_101": [
+                    self.config.detector_matrix_i,
+                    self.config.detector_matrix_j,
+                ],
+                "native_fov_cm": [39.36, 51.168],
+            },
+            "observation_contract": {
+                "enabled": self.config.create_poisson_observation,
+                "policy": self.config.observation_policy,
+                "protocol_status": self.config.observation_protocol_status,
+                "absolute_cps_per_mbq_claim": False,
+            },
             "files": inventory,
             "figure_evidence": figure_evidence,
         }

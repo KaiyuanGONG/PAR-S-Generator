@@ -1,0 +1,238 @@
+{
+  "claim_boundary": "Representative protocol-pilot coverage, not clinical sampling.",
+  "feature_names": [
+    "liver_volume_ml",
+    "left_ratio",
+    "n_tumors",
+    "mean_lesion_diameter_mm",
+    "mean_lesion_tnr",
+    "minimum_surface_margin_mm"
+  ],
+  "method": "deterministic_standardized_feature_maximin",
+  "population_case_count": 100,
+  "selected": [
+    {
+      "case_id": "case_0011",
+      "case_number": 11,
+      "features": {
+        "left_ratio": 0.3500235547479642,
+        "liver_volume_ml": 1283.087844792,
+        "mean_lesion_diameter_mm": 25.246009506923542,
+        "mean_lesion_tnr": 3.060358939029303,
+        "minimum_surface_margin_mm": 8.84,
+        "n_tumors": 3.0
+      },
+      "selection_rank": 1,
+      "split_in_population_run": "train",
+      "standardized_features": {
+        "left_ratio": 0.2999409879648375,
+        "liver_volume_ml": -0.1219454856927383,
+        "mean_lesion_diameter_mm": 0.039677885751197385,
+        "mean_lesion_tnr": -0.641785069893218,
+        "minimum_surface_margin_mm": 0.3184113767703411,
+        "n_tumors": 0.0
+      }
+    },
+    {
+      "case_id": "case_0019",
+      "case_number": 19,
+      "features": {
+        "left_ratio": 0.3522567703109328,
+        "liver_volume_ml": 1291.3775300399998,
+        "mean_lesion_diameter_mm": 14.633243370680612,
+        "mean_lesion_tnr": 11.25247778217839,
+        "minimum_surface_margin_mm": 22.1,
+        "n_tumors": 1.0
+      },
+      "selection_rank": 2,
+      "split_in_population_run": "train",
+      "standardized_features": {
+        "left_ratio": 1.143097249653602,
+        "liver_volume_ml": -0.08460332739448423,
+        "mean_lesion_diameter_mm": -1.3269158404269854,
+        "mean_lesion_tnr": 2.410259318520054,
+        "minimum_surface_margin_mm": 3.8833936842149495,
+        "n_tumors": -1.4642685316435569
+      }
+    },
+    {
+      "case_id": "case_0049",
+      "case_number": 49,
+      "features": {
+        "left_ratio": 0.35340129512085655,
+        "liver_volume_ml": 1346.814800136,
+        "mean_lesion_diameter_mm": 34.68403125989692,
+        "mean_lesion_tnr": 14.46485006747513,
+        "minimum_surface_margin_mm": 4.42,
+        "n_tumors": 1.0
+      },
+      "selection_rank": 3,
+      "split_in_population_run": "train",
+      "standardized_features": {
+        "left_ratio": 1.5752155261636402,
+        "liver_volume_ml": 0.16512235622509572,
+        "mean_lesion_diameter_mm": 1.2550011247227748,
+        "mean_lesion_tnr": 3.6070562637979395,
+        "minimum_surface_margin_mm": -0.8699160590445282,
+        "n_tumors": -1.4642685316435569
+      }
+    },
+    {
+      "case_id": "case_0100",
+      "case_number": 100,
+      "features": {
+        "left_ratio": 0.3462884676576208,
+        "liver_volume_ml": 1899.6331851119999,
+        "mean_lesion_diameter_mm": 10.490320136880253,
+        "mean_lesion_tnr": 2.9859827486240635,
+        "minimum_surface_margin_mm": 13.26,
+        "n_tumors": 1.0
+      },
+      "selection_rank": 4,
+      "split_in_population_run": "train",
+      "standardized_features": {
+        "left_ratio": -1.110250719632647,
+        "liver_volume_ml": 2.6553775377399607,
+        "mean_lesion_diameter_mm": -1.8603953147380736,
+        "mean_lesion_tnr": -0.6694945598193442,
+        "minimum_surface_margin_mm": 1.5067388125852104,
+        "n_tumors": -1.4642685316435569
+      }
+    },
+    {
+      "case_id": "case_0020",
+      "case_number": 20,
+      "features": {
+        "left_ratio": 0.3479670278781143,
+        "liver_volume_ml": 932.330537736,
+        "mean_lesion_diameter_mm": 14.633243370680612,
+        "mean_lesion_tnr": 10.36652637794145,
+        "minimum_surface_margin_mm": 8.84,
+        "n_tumors": 1.0
+      },
+      "selection_rank": 5,
+      "split_in_population_run": "val",
+      "standardized_features": {
+        "left_ratio": -0.47650600461308207,
+        "liver_volume_ml": -1.7019855586876433,
+        "mean_lesion_diameter_mm": -1.3269158404269854,
+        "mean_lesion_tnr": 2.0801904970735134,
+        "minimum_surface_margin_mm": 0.3184113767703411,
+        "n_tumors": -1.4642685316435569
+      }
+    },
+    {
+      "case_id": "case_0058",
+      "case_number": 58,
+      "features": {
+        "left_ratio": 0.3491968710813877,
+        "liver_volume_ml": 1446.118321336,
+        "mean_lesion_diameter_mm": 49.34072604298812,
+        "mean_lesion_tnr": 6.129341947352903,
+        "minimum_surface_margin_mm": 12.50164789137816,
+        "n_tumors": 2.0
+      },
+      "selection_rank": 6,
+      "split_in_population_run": "train",
+      "standardized_features": {
+        "left_ratio": -0.012175549940384655,
+        "liver_volume_ml": 0.6124502941729393,
+        "mean_lesion_diameter_mm": 3.1423269057629057,
+        "mean_lesion_tnr": 0.5015909660297586,
+        "minimum_surface_margin_mm": 1.3028540576794663,
+        "n_tumors": -0.7321342658217784
+      }
+    },
+    {
+      "case_id": "case_0024",
+      "case_number": 24,
+      "features": {
+        "left_ratio": 0.3458764792899408,
+        "liver_volume_ml": 933.971204608,
+        "mean_lesion_diameter_mm": 23.10069536881038,
+        "mean_lesion_tnr": 4.384872266687072,
+        "minimum_surface_margin_mm": 0.0,
+        "n_tumors": 5.0
+      },
+      "selection_rank": 7,
+      "split_in_population_run": "train",
+      "standardized_features": {
+        "left_ratio": -1.26579798417461,
+        "liver_volume_ml": -1.6945949231911137,
+        "mean_lesion_diameter_mm": -0.23657175587754864,
+        "mean_lesion_tnr": -0.14832622896867176,
+        "minimum_surface_margin_mm": -2.0582434948593975,
+        "n_tumors": 1.4642685316435569
+      }
+    },
+    {
+      "case_id": "case_0088",
+      "case_number": 88,
+      "features": {
+        "left_ratio": 0.35056523787093735,
+        "liver_volume_ml": 1466.583481792,
+        "mean_lesion_diameter_mm": 16.84827313895228,
+        "mean_lesion_tnr": 2.194035817474457,
+        "minimum_surface_margin_mm": 22.1,
+        "n_tumors": 1.0
+      },
+      "selection_rank": 8,
+      "split_in_population_run": "train",
+      "standardized_features": {
+        "left_ratio": 0.5044548399007517,
+        "liver_volume_ml": 0.7046387474717555,
+        "mean_lesion_diameter_mm": -1.0416889970425336,
+        "mean_lesion_tnr": -0.9645412056767353,
+        "minimum_surface_margin_mm": 3.8833936842149495,
+        "n_tumors": -1.4642685316435569
+      }
+    },
+    {
+      "case_id": "case_0096",
+      "case_number": 96,
+      "features": {
+        "left_ratio": 0.35416892551230617,
+        "liver_volume_ml": 1592.8284800479998,
+        "mean_lesion_diameter_mm": 42.30786497137158,
+        "mean_lesion_tnr": 4.51559167441102,
+        "minimum_surface_margin_mm": 6.25082394568908,
+        "n_tumors": 4.0
+      },
+      "selection_rank": 9,
+      "split_in_population_run": "train",
+      "standardized_features": {
+        "left_ratio": 1.8650363486340809,
+        "liver_volume_ml": 1.2733286998889268,
+        "mean_lesion_diameter_mm": 2.2367134498391144,
+        "mean_lesion_tnr": -0.09962558845803932,
+        "minimum_surface_margin_mm": -0.3776947185899656,
+        "n_tumors": 0.7321342658217784
+      }
+    },
+    {
+      "case_id": "case_0021",
+      "case_number": 21,
+      "features": {
+        "left_ratio": 0.34536630767185217,
+        "liver_volume_ml": 1298.890057296,
+        "mean_lesion_diameter_mm": 21.896583040062932,
+        "mean_lesion_tnr": 10.62481664592841,
+        "minimum_surface_margin_mm": 7.655664569454437,
+        "n_tumors": 4.0
+      },
+      "selection_rank": 10,
+      "split_in_population_run": "train",
+      "standardized_features": {
+        "left_ratio": -1.4584145866469345,
+        "liver_volume_ml": -0.05076199643669033,
+        "mean_lesion_diameter_mm": -0.3916239197484287,
+        "mean_lesion_tnr": 2.176418759637187,
+        "minimum_surface_margin_mm": 0.0,
+        "n_tumors": 0.7321342658217784
+      }
+    }
+  ],
+  "selected_case_count": 10,
+  "source_population_run": "D:\\PFE-U\\PAR-S-Generator\\runs\\stage3-phantom-100-v3-20260818",
+  "source_population_run_id": "stage3-phantom-100-v3-20260818"
+}

@@ -11,6 +11,13 @@ from PyQt6.QtCore import QObject, pyqtSignal
 
 from core.batch_stats import BatchStats
 from core.phantom_generator import PhantomConfig, PhantomResult
+from pipeline.contracts import (
+    ACTIVITY_TIME_CONTRACT_STATUS,
+    DEFAULT_EXPOSURE_S_PER_PROJECTION,
+    DEFAULT_SIMIND_ACTIVITY_TIME,
+    DEFAULT_SOURCE_ACTIVITY_MBQ,
+    EMPIRICAL_OBSERVATION_PROTOCOL_STATUS,
+)
 from ui.settings_store import SettingsStore
 
 
@@ -38,9 +45,10 @@ class SimulationConfig:
     skip_completed: bool = True
     custom_overrides: list = field(default_factory=list)
     simulation_mode: str = "prepare"
-    create_poisson_observation: bool = False
+    create_poisson_observation: bool = True
     observation_scale: float = 1.0
-    observation_protocol_status: str = "toy"
+    observation_protocol_status: str = EMPIRICAL_OBSERVATION_PROTOCOL_STATUS
+    observation_policy: str = "empirical_total_counts"
 
 
 @dataclass
@@ -48,11 +56,11 @@ class PipelineProjectConfig:
     run_id: str = "liver-spect-run"
     runs_root: str = "runs"
     protocol_label: str = "GE 870 CZT current liver SPECT research protocol"
-    protocol_status: str = "pending_physics_validation"
-    source_activity_mbq: float = 60.0
-    exposure_time_s_per_projection: float | None = None
-    smc_index25_activity_time: float = 1704.0
-    activity_time_contract_status: str = "unresolved_60mbq_x_20s_vs_smc_index25_1704"
+    protocol_status: str = "stage3_protocol_promoted_pilot_pending"
+    source_activity_mbq: float = DEFAULT_SOURCE_ACTIVITY_MBQ
+    exposure_time_s_per_projection: float | None = DEFAULT_EXPOSURE_S_PER_PROJECTION
+    smc_index25_activity_time: float = DEFAULT_SIMIND_ACTIVITY_TIME
+    activity_time_contract_status: str = ACTIVITY_TIME_CONTRACT_STATUS
 
 
 class AppState(QObject):

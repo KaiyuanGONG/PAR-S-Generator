@@ -1,0 +1,15 @@
+{
+  "completed_utc": null,
+  "experiment": "rr_nn_ladder",
+  "notes": "",
+  "observations": [],
+  "operator": null,
+  "pass_fail": {
+    "nn_scaling": "not_evaluated",
+    "noise_contract": "not_evaluated",
+    "repeat_variance": "not_evaluated"
+  },
+  "simind_version": null,
+  "started_utc": null,
+  "status": "not_run"
+}

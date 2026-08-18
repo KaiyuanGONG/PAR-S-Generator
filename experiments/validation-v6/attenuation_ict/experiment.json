@@ -1,0 +1,50 @@
+{
+  "analytic_pair": {
+    "attenuated_case": "water_column_mu_0p15",
+    "density_input_g_cm3": 0.9749999999999999,
+    "expected_primary_ratio": 0.26553728898702783,
+    "maximum_mu_absolute_error_cm_inverse": 0.02,
+    "maximum_ratio_relative_error": 0.1,
+    "mu_cm_inverse": 0.15,
+    "path_length_cm": 8.84,
+    "path_length_vox": 20,
+    "reference_case": "water_column_mu_0p00",
+    "water_mass_attenuation_cm2_g": 0.15384615384615385
+  },
+  "base_smc": "D:\\PFE-U\\PAR-S-Generator\\simind\\ge870_czt.smc",
+  "base_smc_sha256": "4d10eab246a7a6690663230d2f33aeb3c32f67c598af36b56d1575f0e3551d10",
+  "blocking_decision": "The production attenuation contract cannot be marked verified until the .ict readback is reconciled.",
+  "controls": [
+    "three uniform maps for .ict mapping",
+    "type -1 uint16 density*1000 input bypasses the ambiguous type -7 XCAT conversion",
+    "paired type -1 uint16 source map avoids unsupported mixed -1/-7 input behavior",
+    "/PX:0.442 explicitly defines the type -1 source-map pixel size",
+    "paired mu=0 and mu=0.15 cm^-1 water columns",
+    "central point source and per-view primary weights from Index-85=4",
+    "Flag-15 enabled in copied SMC",
+    "/NN:10000 (10,000 histories/view for the one-voxel source)",
+    "paired water-column controls use the same explicit /RR:9200 stream"
+  ],
+  "criteria": [
+    {
+      "id": "ict_exists",
+      "rule": "An .ict/readback artifact exists for every uniform map."
+    },
+    {
+      "id": "mapping_identified",
+      "rule": "Readback values determine a single documented /FD mapping."
+    },
+    {
+      "id": "analytic_attenuation",
+      "rule": "Primary-weight attenuation-on/off ratio from Index-85=4 agrees with exp(-mu*length) within predeclared tolerance."
+    }
+  ],
+  "execution_status": "prepared_not_run",
+  "name": "attenuation_ict",
+  "prepared_utc": "2026-08-17T22:43:00+00:00",
+  "purpose": "Resolve whether /FD values are interpreted as linear attenuation, density, or another quantity.",
+  "scope": "GE 870 CZT current liver SPECT research protocol",
+  "simind_executable": "D:\\PFE-U\\PAR-S-Generator\\simind\\simind.exe",
+  "simind_executable_sha256": "f984b8753f54b9f671f9fc1bcb2b45461e7cae8d027376b446dd1ed55a9a8319",
+  "voxel_size_mm": 4.42
+}

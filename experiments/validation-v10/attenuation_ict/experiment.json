@@ -1,0 +1,73 @@
+{
+  "analytic_pair": {
+    "air_artifact_suffix": "_air_w1.a00",
+    "attenuated_case": "water_column_mu_0p15",
+    "expected_primary_ratio": 0.26553728898702783,
+    "maximum_mu_absolute_error_cm_inverse": 0.02,
+    "maximum_ratio_relative_error": 0.1,
+    "mu_cm_inverse": 0.15,
+    "path_length_cm": 8.84,
+    "path_length_vox": 20,
+    "primary_artifact_suffix": "_pri_w1.a00",
+    "primary_observable": "attenuated-run primary sum divided by its same-run air sum",
+    "reference_case": "water_column_mu_0p00",
+    "stored_attenuation_value": 0.0663
+  },
+  "base_smc": "D:\\PFE-U\\PAR-S-Generator\\simind\\ge870_czt.smc",
+  "base_smc_sha256": "4d10eab246a7a6690663230d2f33aeb3c32f67c598af36b56d1575f0e3551d10",
+  "blocking_decision": "Protocol promotion remains blocked until internal-mu readback and same-run Scattwin primary/air transmission both pass.",
+  "controls": [
+    "type -7 float32 C-order source and attenuation maps",
+    "stored attenuation equals physical mu[cm^-1] times voxel size[cm]",
+    "paired mu=0 and mu=0.15 cm^-1 water columns",
+    "Flag-11 enables phantom interactions and Flag-15 writes the aligned readback",
+    "runtime simind.ini entry 21 is 100 (density x1000) so non-air current-map tissues use the configured h2o cross-section",
+    "/IN:x22,3x writes aligned internal mu as float32 cm^-1",
+    "/84:1 /CA:2 writes same-run air, total, scatter and primary photopeak images",
+    "/NN:10000 (10,000 histories/view for the one-voxel source)",
+    "paired controls use the same explicit terminal /RR:9600 stream"
+  ],
+  "criteria": [
+    {
+      "id": "ict_exists",
+      "rule": "Both paired runs produce typed .ict/.hct readbacks."
+    },
+    {
+      "id": "mapping_identified",
+      "rule": "Mode-3 readback recovers 0.15 cm^-1 within 0.002 cm^-1 and zero remains zero."
+    },
+    {
+      "id": "analytic_attenuation",
+      "rule": "The same-run Scattwin primary/air ratio agrees with exp(-mu*length) within the preregistered tolerances."
+    }
+  ],
+  "execution_status": "prepared_not_run",
+  "ict_readback": {
+    "maximum_absolute_error_cm_inverse": 0.002,
+    "mode": 3,
+    "semantic": "internal_linear_attenuation_coefficient",
+    "target_mu_cm_inverse": 0.15,
+    "unit": "cm^-1"
+  },
+  "name": "attenuation_ict",
+  "prepared_utc": "2026-08-18T08:13:02+00:00",
+  "purpose": "Verify the type -7 mu-times-voxel input contract and Beer-Lambert transport at the target liver-SPECT attenuation.",
+  "scope": "GE 870 CZT current liver SPECT research protocol",
+  "simind_executable": "D:\\PFE-U\\PAR-S-Generator\\simind\\simind.exe",
+  "simind_executable_sha256": "f984b8753f54b9f671f9fc1bcb2b45461e7cae8d027376b446dd1ed55a9a8319",
+  "unit_contract_evidence": {
+    "formula": "stored_value = mu_cm_inverse * voxel_size_cm",
+    "phantom_cross_sections": [
+      "h2o",
+      "h2o"
+    ],
+    "runtime_density_threshold_times_1000": 100,
+    "simind_assumed_reference_energy_kev": 140.5,
+    "simind_input_mode": "generic_xcat_type_minus_7",
+    "target_mu_cm_inverse": 0.15,
+    "target_stored_value": 0.0663,
+    "xcat_reference_energy_kev": 140.0
+  },
+  "voxel_size_cm": 0.442,
+  "voxel_size_mm": 4.42
+}

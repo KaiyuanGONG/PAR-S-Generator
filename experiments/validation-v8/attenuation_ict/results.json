@@ -1,0 +1,36 @@
+{
+  "experiment": "attenuation_ict",
+  "status": "failed",
+  "reviewed_utc": "2026-08-17T23:32:33.7487929Z",
+  "scope": "GE NM/CT 870 CZT synthetic liver SPECT current research protocol; attenuation gate only",
+  "execution": {
+    "status": "completed",
+    "job_count": 5,
+    "all_job_qc_passed": true
+  },
+  "pass_fail": {
+    "ict_exists": "passed",
+    "mapping_identified": "passed",
+    "analytic_attenuation": "failed_threshold"
+  },
+  "direct_results": {
+    "type7_density_per_input_slope": 14.710869565217394,
+    "type7_implied_mass_attenuation_cm2_g": 0.06797694694842618,
+    "type7_water_primary_ratio": 0.05035152347985988,
+    "type1_density_readback_slope": 1.0,
+    "expected_primary_ratio": 0.26553728898702783,
+    "type1_water_primary_ratio": 1.000424320159358,
+    "penetrate_b02_ratio": 1.000742324382106
+  },
+  "decision": "Production attenuation contract is not verified; Stage 3 protocol promotion and Stage 4 pilot are blocked.",
+  "limitations": [
+    "Failure applies to the tested configurations and does not establish a general SIMIND defect.",
+    "No fitted x1.8, mu-times-voxel or /0.442 conversion is authorized by this result."
+  ],
+  "evidence_sha256": {
+    "experiment.json": "40d831b047b3f90157237de6ef71eeb054aa71c3aaf357f61b6749e886a15053",
+    "commands.json": "70d9cb8a7a2c36df9a34141a8cfdedc61a78854551f88b3e9fc5d66e1435ca18",
+    "execution.json": "71d11283622eb709e263250a257988c30b0b085160747e629a1626be3c0fd10e",
+    "analysis.json": "e9b66cbfbbcffba29776e88f3b6dad60e63418f140862fb050421590d1597ff2"
+  }
+}

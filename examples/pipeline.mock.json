@@ -14,6 +14,10 @@
   "create_poisson_observation": true,
   "observation_scale": 1.0,
   "observation_protocol_status": "toy",
-  "protocol_status": "pending_physics_validation",
-  "activity_time_contract_status": "unresolved_60mbq_x_20s_vs_smc_index25_1704"
+  "observation_policy": "fixed_scale",
+  "protocol_status": "stage3_protocol_promoted_pilot_pending",
+  "source_activity_mbq": 60.0,
+  "exposure_time_s_per_projection": 28.4,
+  "smc_index25_activity_time": 1704.0,
+  "activity_time_contract_status": "resolved_nominal_60mbq_x_28p4s_index25_1704_local_dicom_supported"
 }

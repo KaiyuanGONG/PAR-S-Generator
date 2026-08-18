@@ -132,6 +132,10 @@ def export_run_figures(run_root: Path, cases: list[dict]) -> dict:
                     "max": metrics.get("max"),
                     "nonzero_fraction": metrics.get("nonzero_fraction"),
                     "noninteger_positive_fraction": metrics.get("noninteger_positive_fraction"),
+                    "view_sum_min": metrics.get("view_sum_min"),
+                    "view_sum_median": metrics.get("view_sum_median"),
+                    "view_sum_max": metrics.get("view_sum_max"),
+                    "angular_cv": metrics.get("angular_cv"),
                     "support_row_count": len(metrics.get("support_rows", [])),
                     "support_col_count": len(metrics.get("support_cols", [])),
                 }
@@ -143,7 +147,8 @@ def export_run_figures(run_root: Path, cases: list[dict]) -> dict:
     ]
     projection_fields = [
         "case_id", "split", "backend", "sum", "max", "nonzero_fraction",
-        "noninteger_positive_fraction", "support_row_count", "support_col_count",
+        "noninteger_positive_fraction", "view_sum_min", "view_sum_median",
+        "view_sum_max", "angular_cv", "support_row_count", "support_col_count",
     ]
     atomic_write_text(figures / "phantom_distribution_data.csv", _csv_text(phantom_fields, phantom_rows))
     atomic_write_text(figures / "projection_qc_data.csv", _csv_text(projection_fields, projection_rows))

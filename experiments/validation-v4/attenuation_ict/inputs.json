@@ -1,0 +1,103 @@
+[
+  {
+    "activity_bin": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v4\\attenuation_ict\\input\\uniform_mu_0p05_act_av.bin",
+    "activity_dtype": "float32",
+    "activity_sha256": "50828448dddbb3c9b4fe19ae654822c34c9c9f8478eedc09f272fb8ca6a3ef5f",
+    "density_dmi": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v4\\attenuation_ict\\input\\uniform_mu_0p05.dmi",
+    "density_dtype": "uint16 little-endian",
+    "density_input_g_cm3": 0.325,
+    "density_input_semantic": "explicit_type_minus_1_density",
+    "density_sha256": "4ae34521b81514997cbaab3298c5b94bd4e4958a57cf72fe1e52c99524cbdc45",
+    "density_unit": "g/cm3 times 1000",
+    "intended_mu_cm_inverse": 0.05,
+    "order": "C (Z,Y,X)",
+    "shape": [
+      128,
+      128,
+      128
+    ],
+    "stem": "uniform_mu_0p05"
+  },
+  {
+    "activity_bin": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v4\\attenuation_ict\\input\\uniform_mu_0p15_act_av.bin",
+    "activity_dtype": "float32",
+    "activity_sha256": "50828448dddbb3c9b4fe19ae654822c34c9c9f8478eedc09f272fb8ca6a3ef5f",
+    "density_dmi": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v4\\attenuation_ict\\input\\uniform_mu_0p15.dmi",
+    "density_dtype": "uint16 little-endian",
+    "density_input_g_cm3": 0.9749999999999999,
+    "density_input_semantic": "explicit_type_minus_1_density",
+    "density_sha256": "e6b794823c9db3fddffa70742235dfeecdea469255803cfef65c238dfd97fcbf",
+    "density_unit": "g/cm3 times 1000",
+    "intended_mu_cm_inverse": 0.15,
+    "order": "C (Z,Y,X)",
+    "shape": [
+      128,
+      128,
+      128
+    ],
+    "stem": "uniform_mu_0p15"
+  },
+  {
+    "activity_bin": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v4\\attenuation_ict\\input\\uniform_mu_0p30_act_av.bin",
+    "activity_dtype": "float32",
+    "activity_sha256": "50828448dddbb3c9b4fe19ae654822c34c9c9f8478eedc09f272fb8ca6a3ef5f",
+    "density_dmi": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v4\\attenuation_ict\\input\\uniform_mu_0p30.dmi",
+    "density_dtype": "uint16 little-endian",
+    "density_input_g_cm3": 1.9499999999999997,
+    "density_input_semantic": "explicit_type_minus_1_density",
+    "density_sha256": "69092a55a576fa0df3a07ec3127138263f3e68b283a0d9d7a36c9b4650780a84",
+    "density_unit": "g/cm3 times 1000",
+    "intended_mu_cm_inverse": 0.3,
+    "order": "C (Z,Y,X)",
+    "shape": [
+      128,
+      128,
+      128
+    ],
+    "stem": "uniform_mu_0p30"
+  },
+  {
+    "activity_bin": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v4\\attenuation_ict\\input\\water_column_mu_0p00_act_av.bin",
+    "activity_dtype": "float32",
+    "activity_sha256": "50828448dddbb3c9b4fe19ae654822c34c9c9f8478eedc09f272fb8ca6a3ef5f",
+    "control": "analytic_water_column",
+    "density_dmi": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v4\\attenuation_ict\\input\\water_column_mu_0p00.dmi",
+    "density_dtype": "uint16 little-endian",
+    "density_input_g_cm3": 0.0,
+    "density_input_semantic": "explicit_type_minus_1_density",
+    "density_sha256": "bb9f8df61474d25e71fa00722318cd387396ca1736605e1248821cc0de3d3af8",
+    "density_unit": "g/cm3 times 1000",
+    "mu_cm_inverse": 0.0,
+    "order": "C (Z,Y,X)",
+    "shape": [
+      128,
+      128,
+      128
+    ],
+    "source_to_surface_path_cm": 8.84,
+    "source_to_surface_path_vox": 20,
+    "stem": "water_column_mu_0p00"
+  },
+  {
+    "activity_bin": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v4\\attenuation_ict\\input\\water_column_mu_0p15_act_av.bin",
+    "activity_dtype": "float32",
+    "activity_sha256": "50828448dddbb3c9b4fe19ae654822c34c9c9f8478eedc09f272fb8ca6a3ef5f",
+    "control": "analytic_water_column",
+    "density_dmi": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v4\\attenuation_ict\\input\\water_column_mu_0p15.dmi",
+    "density_dtype": "uint16 little-endian",
+    "density_input_g_cm3": 0.9749999999999999,
+    "density_input_semantic": "explicit_type_minus_1_density",
+    "density_sha256": "eb3710c7f155acb2c2ac33e0705b1e797407620871a47e79b26ffaeb985248e4",
+    "density_unit": "g/cm3 times 1000",
+    "mu_cm_inverse": 0.15,
+    "order": "C (Z,Y,X)",
+    "shape": [
+      128,
+      128,
+      128
+    ],
+    "source_to_surface_path_cm": 8.84,
+    "source_to_surface_path_vox": 20,
+    "stem": "water_column_mu_0p15"
+  }
+]

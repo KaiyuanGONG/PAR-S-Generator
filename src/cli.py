@@ -7,15 +7,17 @@ import json
 from pathlib import Path
 
 from core.phantom_generator import PhantomConfig
-from pipeline.contracts import atomic_write_json
+from pipeline.contracts import EMPIRICAL_OBSERVATION_PROTOCOL_STATUS, atomic_write_json
 from pipeline.experiments import (
     EXPERIMENT_NAMES,
     analyze_experiment,
+    execute_prepared_experiment,
     experiment_summary,
     prepare_all_experiments,
     prepare_experiment,
 )
 from pipeline.legacy import freeze_legacy_dataset
+from pipeline.pilot import select_from_run
 from pipeline.runner import PipelineConfig, PipelineRunner
 
 
@@ -30,6 +32,9 @@ def _cmd_init(args) -> int:
         runs_root=args.runs_root,
         phantom=phantom,
         simulation_mode=args.mode,
+        create_poisson_observation=True,
+        observation_policy="empirical_total_counts",
+        observation_protocol_status=EMPIRICAL_OBSERVATION_PROTOCOL_STATUS,
     )
     atomic_write_json(Path(args.output), config.to_dict())
     print(Path(args.output).resolve())
@@ -57,6 +62,13 @@ def _cmd_inspect(args) -> int:
     payload = runner.ledger.load()
     payload["case_count"] = len(runner.ledger.read_cases())
     print(json.dumps(payload, indent=2, ensure_ascii=False))
+    return 0
+
+
+def _cmd_select_pilot(args) -> int:
+    output = Path(args.output) if args.output else None
+    result = select_from_run(Path(args.run), args.count, output)
+    print(json.dumps(result, indent=2, ensure_ascii=False))
     return 0
 
 
@@ -103,6 +115,16 @@ def _cmd_analyze_experiment(args) -> int:
     return 0
 
 
+def _cmd_execute_experiment(args) -> int:
+    if not args.allow_simind_execution:
+        raise SystemExit(
+            "Refusing to launch SIMIND. Re-run with --allow-simind-execution after reviewing commands.json."
+        )
+    result = execute_prepared_experiment(Path(args.experiment), resume=args.resume)
+    print(json.dumps(result, indent=2))
+    return 0 if result["status"] == "completed" else 1
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="par-s-data",
@@ -129,6 +151,15 @@ def build_parser() -> argparse.ArgumentParser:
     inspect.add_argument("--run", required=True)
     inspect.set_defaults(func=_cmd_inspect)
 
+    select_pilot = sub.add_parser(
+        "select-pilot",
+        help="Select a deterministic representative subset from a QC-complete phantom run",
+    )
+    select_pilot.add_argument("--run", required=True)
+    select_pilot.add_argument("--count", type=int, default=10)
+    select_pilot.add_argument("--output")
+    select_pilot.set_defaults(func=_cmd_select_pilot)
+
     experiment = sub.add_parser("prepare-experiment", help="Prepare a blocking physics experiment; never execute it")
     experiment.add_argument("--name", choices=(*EXPERIMENT_NAMES, "all"), required=True)
     experiment.add_argument("--destination", default="experiments")
@@ -139,6 +170,15 @@ def build_parser() -> argparse.ArgumentParser:
     analyze = sub.add_parser("analyze-experiment", help="Analyze available prepared-experiment outputs")
     analyze.add_argument("--experiment", required=True)
     analyze.set_defaults(func=_cmd_analyze_experiment)
+
+    execute_experiment = sub.add_parser(
+        "execute-experiment",
+        help="Execute one reviewed experiment sequentially with logs, QC and hashes",
+    )
+    execute_experiment.add_argument("--experiment", required=True)
+    execute_experiment.add_argument("--allow-simind-execution", action="store_true")
+    execute_experiment.add_argument("--resume", action="store_true")
+    execute_experiment.set_defaults(func=_cmd_execute_experiment)
 
     freeze = sub.add_parser("freeze-legacy", help="Checksum-freeze the existing 500 cases by read-only reference")
     freeze.add_argument("--phantom-dir", default="output/syn3d_noNoise")

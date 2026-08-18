@@ -1,0 +1,53 @@
+{
+  "attenuation_contract": {
+    "reference_energy_kev": 140.5,
+    "status": "pending_simind_ict_validation",
+    "unit": "cm^-1"
+  },
+  "failures": [],
+  "meta": "D:\\PFE-U\\PAR-S-Generator\\runs\\qa-smoke-20260817\\phantom\\case_0001_meta.json",
+  "metrics": {
+    "activity_dtype": "float32",
+    "activity_sum": 79999.99778297544,
+    "left_ratio": 0.34948431456811346,
+    "liver_volume_ml": 1607.508131008,
+    "mu_dtype": "float32",
+    "mu_max": 0.3005906939506531,
+    "mu_min": 0.0,
+    "n_tumors": 2,
+    "shape": [
+      128,
+      128,
+      128
+    ],
+    "tumors": [
+      {
+        "effective_diameter_mm": 38.23748280073634,
+        "index": 0,
+        "outside_liver_vox": 0,
+        "overlap_previous_vox": 0,
+        "surface_margin_mm": 13.26,
+        "tnr_from_saved_activity": 6.934512555954181,
+        "volume_vox": 339
+      },
+      {
+        "effective_diameter_mm": 10.490320136880253,
+        "index": 1,
+        "outside_liver_vox": 0,
+        "overlap_previous_vox": 0,
+        "surface_margin_mm": 13.26,
+        "tnr_from_saved_activity": 9.229096445243503,
+        "volume_vox": 7
+      }
+    ]
+  },
+  "npz": "D:\\PFE-U\\PAR-S-Generator\\runs\\qa-smoke-20260817\\phantom\\case_0001.npz",
+  "sha256": {
+    "meta": "3fe9711a7fa73cea1a9b9fcf4e8d2a28d3060dcf6fd083d3ea85cbfe87bb6954",
+    "npz": "05648f1b755e1893feea1759b8d62fc09f4d00b1ae174bceb634d56eb7d3115d"
+  },
+  "status": "passed",
+  "warnings": [
+    "attenuation_contract_not_verified_by_simind_ict"
+  ]
+}

@@ -9,7 +9,7 @@ from pathlib import Path
 import numpy as np
 
 from pipeline.contracts import (
-    CANONICAL_PROJECTION_TRANSFORM,
+    LEGACY_PAR_S2_PROJECTION_TRANSFORM,
     assign_fixed_splits,
     atomic_write_json,
     atomic_write_text,
@@ -198,13 +198,13 @@ def freeze_legacy_dataset(
                     "mu_dtype": pqc["metrics"]["mu_dtype"],
                     "mu_semantic": "claimed_linear_attenuation_coefficient",
                     "mu_unit": "cm^-1",
-                    "mu_contract_status": "pending_simind_ict_validation",
+                    "mu_contract_status": "unverified_after_failed_simind_analytic_attenuation_control",
                 },
                 "projection": artifacts,
                 "projection_contract": {
                     "shape": proj_qc.get("metrics", {}).get("shape"),
                     "dtype": proj_qc.get("metrics", {}).get("dtype"),
-                    "canonical_transform": CANONICAL_PROJECTION_TRANSFORM,
+                    "canonical_transform": LEGACY_PAR_S2_PROJECTION_TRANSFORM,
                     "interpretation": "weighted_mc_expectation_like_output",
                 },
                 "qc": {
@@ -277,8 +277,8 @@ def freeze_legacy_dataset(
         "interpretation_limits": [
             "Single-realization spatial variation is not a repeated-sampling Fano-factor estimate.",
             "The weighted non-integer projection can be used as a non-negative data fidelity target, but not claimed as raw Poisson counts.",
-            "The attenuation input contract remains pending the Flag-15 .ict and analytic-control experiment.",
-            "The 128 matrix/FOV workaround remains pending the 128/160/208 controlled experiment.",
+            "The attenuation input contract remains unverified after the Flag-15 readback passed but the analytic transmission control failed.",
+            "The legacy 128x128 native-detector aperture was quantified as 31.488 cm square; the current GE-specific candidate is 160x208, but legacy files remain frozen.",
         ],
     }
     atomic_write_json(destination / "qc_summary.json", qc_summary)
@@ -308,7 +308,7 @@ def freeze_legacy_dataset(
         "scope": "synthetic_liver_spect_current_protocol_only",
         "classification": "legacy_weighted_mc_expectation_like_output",
         "noise_contract": "no_separate_observation_realization",
-        "canonical_projection_transform": CANONICAL_PROJECTION_TRANSFORM,
+        "canonical_projection_transform": LEGACY_PAR_S2_PROJECTION_TRANSFORM,
         "production_command_evidence_first_case": first_command,
         "simind_binary": {
             "path": str(Path(simind_exe).resolve()),

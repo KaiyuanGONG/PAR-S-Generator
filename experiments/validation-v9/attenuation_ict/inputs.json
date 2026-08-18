@@ -1,0 +1,44 @@
+[
+  {
+    "activity_bin": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v9\\attenuation_ict\\input\\water_column_mu_0p00_act_av.bin",
+    "activity_sha256": "50828448dddbb3c9b4fe19ae654822c34c9c9f8478eedc09f272fb8ca6a3ef5f",
+    "attenuation_bin": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v9\\attenuation_ict\\input\\water_column_mu_0p00_atn_av.bin",
+    "attenuation_sha256": "2daeb1f36095b44b318410b3f4e8b5d989dcc7bb023d1426c492dab0a3053e74",
+    "control": "analytic_water_column",
+    "dtype": "float32",
+    "mu_cm_inverse": 0.0,
+    "order": "C (Z,Y,X)",
+    "shape": [
+      128,
+      128,
+      128
+    ],
+    "source_to_surface_path_cm": 8.84,
+    "source_to_surface_path_vox": 20,
+    "stem": "water_column_mu_0p00",
+    "stored_attenuation_semantic": "mu_cm_inverse_times_voxel_size_cm",
+    "stored_attenuation_unit": "dimensionless_per_voxel_optical_thickness",
+    "stored_attenuation_value": 0.0
+  },
+  {
+    "activity_bin": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v9\\attenuation_ict\\input\\water_column_mu_0p15_act_av.bin",
+    "activity_sha256": "50828448dddbb3c9b4fe19ae654822c34c9c9f8478eedc09f272fb8ca6a3ef5f",
+    "attenuation_bin": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v9\\attenuation_ict\\input\\water_column_mu_0p15_atn_av.bin",
+    "attenuation_sha256": "c985dc217f8b846bff1df4dbb802b8ccdec80d60d0c67691ec9a76839860332e",
+    "control": "analytic_water_column",
+    "dtype": "float32",
+    "mu_cm_inverse": 0.15,
+    "order": "C (Z,Y,X)",
+    "shape": [
+      128,
+      128,
+      128
+    ],
+    "source_to_surface_path_cm": 8.84,
+    "source_to_surface_path_vox": 20,
+    "stem": "water_column_mu_0p15",
+    "stored_attenuation_semantic": "mu_cm_inverse_times_voxel_size_cm",
+    "stored_attenuation_unit": "dimensionless_per_voxel_optical_thickness",
+    "stored_attenuation_value": 0.0663
+  }
+]

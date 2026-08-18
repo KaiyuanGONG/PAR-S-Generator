@@ -1,0 +1,109 @@
+{
+  "experiment": "asymmetric_fiducial",
+  "status": "passed",
+  "reviewed_utc": "2026-08-17T20:39:26Z",
+  "scope": "GE 870 CZT current synthetic liver SPECT research protocol; orientation contract only",
+  "simind_version": "8.0; compiled 2025-01-28 with Intel Windows build",
+  "command": "asymmetric_fiducial asymmetric_xyz /FS:asymmetric_xyz /FD:asymmetric_xyz /NN:1000",
+  "input": {
+    "shape": [
+      128,
+      128,
+      128
+    ],
+    "dtype": "float32",
+    "order": "C (Z,Y,X)",
+    "fiducials_zyx": [
+      [
+        32,
+        44,
+        89,
+        1.0
+      ],
+      [
+        89,
+        99,
+        30,
+        3.0
+      ],
+      [
+        74,
+        23,
+        55,
+        7.0
+      ]
+    ],
+    "activity_sha256": "c40c62eb2a73aaa68353930cd77d436f1d1eb9fca35a8267af41e5a2f57696a2",
+    "attenuation_sha256": "2daeb1f36095b44b318410b3f4e8b5d989dcc7bb023d1426c492dab0a3053e74"
+  },
+  "output_artifacts": [
+    {
+      "path": "output/asymmetric_xyz.a00",
+      "bytes": 3932160,
+      "sha256": "4b47e03a5972245f2cdcfa811eb58a5eb28b2c53ba3de8879b2d83bce6109f61"
+    },
+    {
+      "path": "output/asymmetric_xyz.mhd",
+      "bytes": 278,
+      "sha256": "4e0c5d17e9e73925a52e46fb93418673ed119d08c6d10adf8d3f9c403da056a1"
+    },
+    {
+      "path": "output/asymmetric_xyz.res",
+      "bytes": 6027,
+      "sha256": "c5e97c785973dfe593a0a1ae19c59304a90c6f6f2ee6bc8a2a17ae23273042ca"
+    },
+    {
+      "path": "output/asymmetric_xyz.spe",
+      "bytes": 16896,
+      "sha256": "994681780ffad3f6ac6dbfc71b2037cda0d5b133f86ddee9fd2a65bf9fb29e82"
+    }
+  ],
+  "statistics": {
+    "views": 60,
+    "nonzero_view_count": 60,
+    "nonzero_pixels_total": 9176,
+    "nonzero_pixels_per_view_min": 55,
+    "nonzero_pixels_per_view_median": 164.5,
+    "nonzero_pixels_per_view_max": 251,
+    "detector_hits": 10807,
+    "photons_per_view": 11000,
+    "nn_multiplier": 1000
+  },
+  "orientation": {
+    "selected_transform": "raw[:,::-1,:]",
+    "view_flip": false,
+    "detector_row_flip": true,
+    "detector_column_flip": false,
+    "xy_swap": false,
+    "view_zero_angle_deg": 180.0,
+    "angle_increment_deg": 6.0,
+    "best_score_px": 1.018613472044671,
+    "row_residual_px": 0.01012625392437151,
+    "column_residual_px": 1.018563137175285,
+    "row_common_offset_px": 0.5562270172732534,
+    "second_best_score_px": 27.42943677893395,
+    "second_to_best_ratio": 26.928209307770715,
+    "candidate_count": 16,
+    "unique_under_preregistered_thresholds": true
+  },
+  "pass_fail": {
+    "axis_order_unique": "passed",
+    "loader_transform": "passed"
+  },
+  "decision": {
+    "new_data_canonical_transform": "raw[:,::-1,:]",
+    "legacy_par_s2_transform": "raw[::-1,::-1,:]",
+    "par_s2_modified": false
+  },
+  "execution_contract_findings": [
+    "Absolute output paths containing PFE-U are misparsed by SIMIND V8 as a /U switch despite exit code 0.",
+    "Output arguments containing directory components are ignored/fallback to the SMC stem.",
+    "Validated execution contract is safe basename in the SIMIND working directory followed by collision-checked artifact relocation."
+  ],
+  "diagnostics_archive": "diagnostics/20260817_output_contract_and_mc_effort",
+  "limitations": [
+    "This establishes array axes, flips, and acquisition view order only.",
+    "It does not validate attenuation units, detector FOV, count calibration, or clinical noise.",
+    "The conclusion is restricted to the tested SIMIND 8.0 configuration and current GE 870 research protocol."
+  ]
+}

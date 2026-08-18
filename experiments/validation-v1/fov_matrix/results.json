@@ -1,0 +1,32 @@
+{
+  "experiment": "fov_matrix",
+  "status": "passed",
+  "reviewed_utc": "2026-08-17T23:32:33.7487929Z",
+  "scope": "GE NM/CT 870 CZT synthetic liver SPECT current research protocol; detector FOV gate only",
+  "execution": {
+    "status": "completed",
+    "job_count": 5,
+    "all_job_qc_passed": true
+  },
+  "pass_fail": {
+    "exit_and_artifacts": "passed",
+    "fov_quantified": "passed",
+    "selection_justified": "passed"
+  },
+  "direct_results": {
+    "recommended_index_100_101": [160, 208],
+    "index_100_expands_projection_columns": true,
+    "index_101_expands_projection_rows": true,
+    "native_detector_fov_cm": [39.36, 51.168],
+    "output_matrix": [128, 128],
+    "output_pixel_size_mm": 4.42,
+    "native_to_legacy_sensitivity_ratio": 1.9788627832945314
+  },
+  "decision": "Use 160/208 for the eventual corrected GE-specific SMC, without promoting it while attenuation remains blocking.",
+  "evidence_sha256": {
+    "experiment.json": "c2258ffa4484fd756a80fffc936baa86df054febb06a7c3cea54787b46b069f2",
+    "commands.json": "7286451dd2544d07790e804f50159518e34cf3c075991525b4cb67bf3e6dcc52",
+    "execution.json": "a081124b16247c789805686a2bd85b45fa762089359970c18f0ff45594c8de62",
+    "analysis.json": "3e71ebfb07ab29c1e1ec7039038ca1e2b9cd192ca0f8907b84025fafd9e9ff68"
+  }
+}

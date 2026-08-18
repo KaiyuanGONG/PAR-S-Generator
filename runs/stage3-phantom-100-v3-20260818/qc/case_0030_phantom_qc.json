@@ -1,0 +1,75 @@
+{
+  "attenuation_contract": {
+    "reference_energy_kev": 140.5,
+    "status": "verified_type7_mu_times_voxel_v10_current_h2o_protocol",
+    "unit": "cm^-1"
+  },
+  "cantlie": {
+    "abs_error": 0.0019288181232804957,
+    "converged": true,
+    "iterations": 4,
+    "offset": 0.109375,
+    "search": {
+      "expanded_beyond_initial_range": false,
+      "expanded_offset_range": [
+        -0.05,
+        0.12
+      ],
+      "expansions": 0,
+      "hit_expansion_limit": false,
+      "initial_offset_range": [
+        -0.05,
+        0.12
+      ],
+      "solution_on_search_boundary": false,
+      "target_bracketed": true
+    },
+    "target_left_ratio": 0.35,
+    "tilt_deg": 5.144442348395431
+  },
+  "failures": [],
+  "meta": "D:\\PFE-U\\PAR-S-Generator\\runs\\stage3-phantom-100-v3-20260818\\phantom\\case_0030_meta.json",
+  "metrics": {
+    "activity_dtype": "float32",
+    "activity_sum": 80000.0031542778,
+    "left_ratio": 0.3519288181232805,
+    "liver_volume_ml": 1475.1322197040001,
+    "mu_dtype": "float32",
+    "mu_max": 0.3005863130092621,
+    "mu_min": 0.0,
+    "n_tumors": 1,
+    "shape": [
+      128,
+      128,
+      128
+    ],
+    "tumors": [
+      {
+        "effective_diameter_mm": 16.451695018652085,
+        "index": 0,
+        "mode": "ellipsoid",
+        "nominal_diameter_mm": 16.666633062206348,
+        "outside_liver_vox": 0,
+        "overlap_previous_vox": 0,
+        "perfusion_region": "high_perfusion",
+        "placement_stratum": "central",
+        "sampled_size_bin_mm": [
+          10.0,
+          20.0
+        ],
+        "surface_margin_mm": 14.659481573370867,
+        "target_contrast": 3.131274944941806,
+        "tnr_from_saved_activity": 3.2834087751649474,
+        "tnr_local_from_saved_activity": 3.3442006170404497,
+        "volume_vox": 27
+      }
+    ]
+  },
+  "npz": "D:\\PFE-U\\PAR-S-Generator\\runs\\stage3-phantom-100-v3-20260818\\phantom\\case_0030.npz",
+  "sha256": {
+    "meta": "b6ebfb6b475b8d5f76376508286d9477b98d85883afa6ccdd4a19ec729a90af0",
+    "npz": "26cbd494448bf4f40508a420197c57500a3ec68166354af0b0fa95687ed65e88"
+  },
+  "status": "passed",
+  "warnings": []
+}

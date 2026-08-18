@@ -1,0 +1,16 @@
+[
+  {
+    "activity_bin": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\rr_nn_ladder\\input\\rrnn_source_act_av.bin",
+    "activity_sha256": "9163c3d89327a26320f326fde9ca7d8c7a06faa088dcb243436015db3499be6b",
+    "attenuation_bin": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\rr_nn_ladder\\input\\rrnn_source_atn_av.bin",
+    "attenuation_sha256": "5bd9a86e22bf42f1c3101a3462786d6cb6fdb028e5f1408cd2651ba80271c78c",
+    "dtype": "float32",
+    "order": "C (Z,Y,X)",
+    "shape": [
+      128,
+      128,
+      128
+    ],
+    "stem": "rrnn_source"
+  }
+]

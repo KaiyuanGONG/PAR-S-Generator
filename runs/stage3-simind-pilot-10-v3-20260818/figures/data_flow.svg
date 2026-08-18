@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="260" viewBox="0 0 1500 260">
+<rect width="100%" height="100%" fill="#f7f9fc"/>
+<text x="24" y="38" font-family="Bahnschrift,Segoe UI,sans-serif" font-size="22" font-weight="700" fill="#17243a">PAR-S synthetic liver SPECT data preparation</text>
+<text x="24" y="60" font-family="Cascadia Mono,Consolas,monospace" font-size="11" fill="#687386">GE 870 CZT · current research protocol · evidence-gated</text>
+<rect x="24" y="78" width="160" height="92" rx="8" fill="#ffffff" stroke="#0d6efd" stroke-width="2"/>
+<text x="36" y="107" font-family="Bahnschrift,Segoe UI,sans-serif" font-size="15" font-weight="700" fill="#17243a">Protocol</text>
+<text x="36" y="131" font-family="Segoe UI,sans-serif" font-size="10" fill="#687386">values · units · status</text>
+<text x="36" y="154" font-family="Cascadia Mono,Consolas,monospace" font-size="10" fill="#0d6efd">01</text>
+<path d="M187,124 L202,124" stroke="#8290a3" stroke-width="2"/>
+<path d="M196,119 L202,124 L196,129" fill="none" stroke="#8290a3" stroke-width="2"/>
+<rect x="206" y="78" width="160" height="92" rx="8" fill="#ffffff" stroke="#0d6efd" stroke-width="2"/>
+<text x="218" y="107" font-family="Bahnschrift,Segoe UI,sans-serif" font-size="15" font-weight="700" fill="#17243a">Generate</text>
+<text x="218" y="131" font-family="Segoe UI,sans-serif" font-size="10" fill="#687386">anatomy · lesions · activity · μ</text>
+<text x="218" y="154" font-family="Cascadia Mono,Consolas,monospace" font-size="10" fill="#0d6efd">02</text>
+<path d="M369,124 L384,124" stroke="#8290a3" stroke-width="2"/>
+<path d="M378,119 L384,124 L378,129" fill="none" stroke="#8290a3" stroke-width="2"/>
+<rect x="388" y="78" width="160" height="92" rx="8" fill="#ffffff" stroke="#0d6efd" stroke-width="2"/>
+<text x="400" y="107" font-family="Bahnschrift,Segoe UI,sans-serif" font-size="15" font-weight="700" fill="#17243a">Phantom QC</text>
+<text x="400" y="131" font-family="Segoe UI,sans-serif" font-size="10" fill="#687386">geometry · masks · distributions</text>
+<text x="400" y="154" font-family="Cascadia Mono,Consolas,monospace" font-size="10" fill="#0d6efd">03</text>
+<path d="M551,124 L566,124" stroke="#8290a3" stroke-width="2"/>
+<path d="M560,119 L566,124 L560,129" fill="none" stroke="#8290a3" stroke-width="2"/>
+<rect x="570" y="78" width="160" height="92" rx="8" fill="#ffffff" stroke="#0d6efd" stroke-width="2"/>
+<text x="582" y="107" font-family="Bahnschrift,Segoe UI,sans-serif" font-size="15" font-weight="700" fill="#17243a">Export</text>
+<text x="582" y="131" font-family="Segoe UI,sans-serif" font-size="10" fill="#687386">float32 C-order · read-back</text>
+<text x="582" y="154" font-family="Cascadia Mono,Consolas,monospace" font-size="10" fill="#0d6efd">04</text>
+<path d="M733,124 L748,124" stroke="#8290a3" stroke-width="2"/>
+<path d="M742,119 L748,124 L742,129" fill="none" stroke="#8290a3" stroke-width="2"/>
+<rect x="752" y="78" width="160" height="92" rx="8" fill="#ffffff" stroke="#8a5a20" stroke-width="2"/>
+<text x="764" y="107" font-family="Bahnschrift,Segoe UI,sans-serif" font-size="15" font-weight="700" fill="#17243a">SIMIND</text>
+<text x="764" y="131" font-family="Segoe UI,sans-serif" font-size="10" fill="#687386">weighted expectation</text>
+<text x="764" y="154" font-family="Cascadia Mono,Consolas,monospace" font-size="10" fill="#8a5a20">05</text>
+<path d="M915,124 L930,124" stroke="#8290a3" stroke-width="2"/>
+<path d="M924,119 L930,124 L924,129" fill="none" stroke="#8290a3" stroke-width="2"/>
+<rect x="934" y="78" width="160" height="92" rx="8" fill="#ffffff" stroke="#0d6efd" stroke-width="2"/>
+<text x="946" y="107" font-family="Bahnschrift,Segoe UI,sans-serif" font-size="15" font-weight="700" fill="#17243a">Projection QC</text>
+<text x="946" y="131" font-family="Segoe UI,sans-serif" font-size="10" fill="#687386">shape · finite · .res · orientation</text>
+<text x="946" y="154" font-family="Cascadia Mono,Consolas,monospace" font-size="10" fill="#0d6efd">06</text>
+<path d="M1097,124 L1112,124" stroke="#8290a3" stroke-width="2"/>
+<path d="M1106,119 L1112,124 L1106,129" fill="none" stroke="#8290a3" stroke-width="2"/>
+<rect x="1116" y="78" width="160" height="92" rx="8" fill="#ffffff" stroke="#8a5a20" stroke-width="2"/>
+<text x="1128" y="107" font-family="Bahnschrift,Segoe UI,sans-serif" font-size="15" font-weight="700" fill="#17243a">Observation</text>
+<text x="1128" y="131" font-family="Segoe UI,sans-serif" font-size="10" fill="#687386">optional seeded Poisson</text>
+<text x="1128" y="154" font-family="Cascadia Mono,Consolas,monospace" font-size="10" fill="#8a5a20">07</text>
+<path d="M1279,124 L1294,124" stroke="#8290a3" stroke-width="2"/>
+<path d="M1288,119 L1294,124 L1288,129" fill="none" stroke="#8290a3" stroke-width="2"/>
+<rect x="1298" y="78" width="160" height="92" rx="8" fill="#ffffff" stroke="#0d6efd" stroke-width="2"/>
+<text x="1310" y="107" font-family="Bahnschrift,Segoe UI,sans-serif" font-size="15" font-weight="700" fill="#17243a">Finalize</text>
+<text x="1310" y="131" font-family="Segoe UI,sans-serif" font-size="10" fill="#687386">split · manifest · checksums</text>
+<text x="1310" y="154" font-family="Cascadia Mono,Consolas,monospace" font-size="10" fill="#0d6efd">08</text>
+<text x="24" y="216" font-family="Segoe UI,sans-serif" font-size="11" fill="#8a5a20">Amber stages require explicit physics/protocol status; unknown values remain pending rather than inferred.</text>
+<text x="24" y="238" font-family="Segoe UI,sans-serif" font-size="11" fill="#687386">Software boundary: finalized synthetic data package.</text>
+</svg>

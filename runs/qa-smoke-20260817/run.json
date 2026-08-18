@@ -1,0 +1,232 @@
+{
+  "contract_version": 1,
+  "created_utc": "2026-08-17T19:09:41+00:00",
+  "effective_config": {
+    "activity_time_contract_status": "unresolved_60mbq_x_20s_vs_smc_index25_1704",
+    "create_poisson_observation": true,
+    "exposure_time_s_per_projection": null,
+    "nn_multiplier": 5,
+    "observation_protocol_status": "toy",
+    "observation_scale": 1.0,
+    "observation_seed_offset": 1000000,
+    "phantom": {
+      "cantlie_expand_limit": 1.0,
+      "cantlie_expand_step": 0.05,
+      "cantlie_iter_max": 12,
+      "cantlie_offset_range": [
+        -0.05,
+        0.12
+      ],
+      "cantlie_tilt_range": [
+        -6.0,
+        10.0
+      ],
+      "cantlie_tolerance": 0.005,
+      "detail_jitter": 0.05,
+      "dome_offset": [
+        -0.05,
+        0.0,
+        0.0
+      ],
+      "dome_radius": 0.34,
+      "fossa_offset": [
+        -0.12,
+        -0.03,
+        0.0
+      ],
+      "fossa_radius": 0.14,
+      "global_seed": 42,
+      "global_shift_range": 0.05,
+      "gradient_gain": 0.08,
+      "left_radii": [
+        0.18,
+        0.19,
+        0.18
+      ],
+      "left_rot_deg": 10.0,
+      "left_shift": [
+        0.14,
+        0.06,
+        -0.08
+      ],
+      "liver_base_center": [
+        -0.2,
+        0.1,
+        0.1
+      ],
+      "min_edge_dist_px": 4,
+      "mu_contract_status": "pending_simind_ict_validation",
+      "mu_diaphragm": 0.15,
+      "mu_fat": 0.09,
+      "mu_liver": 0.16,
+      "mu_lung": 0.05,
+      "mu_noise_amp": 0.015,
+      "mu_noise_sigma": 2.0,
+      "mu_reference_energy_kev": 140.5,
+      "mu_spine": 0.3,
+      "mu_unit": "cm^-1",
+      "mu_water": 0.15,
+      "n_cases": 2,
+      "output_dir": "managed_by_pipeline",
+      "perfusion_mode_policy": "random",
+      "perfusion_probs": {
+        "Left Only": 0.35,
+        "Right Only": 0.35,
+        "Tumor Only": 0.25,
+        "Whole Liver": 0.05
+      },
+      "psf_sigma_px": 2.5,
+      "residual_bg": 0.05,
+      "right_radii": [
+        0.28,
+        0.22,
+        0.26
+      ],
+      "right_rot_deg": -15.0,
+      "right_shift": [
+        0.0,
+        0.0,
+        0.14
+      ],
+      "rot_jitter_deg": 5.0,
+      "scale_jitter": 0.1,
+      "smooth_sigma": 1.2,
+      "smooth_thr": 0.5,
+      "spiculated_roughness": 0.35,
+      "spiculated_spiciness": 3.0,
+      "subcapsular_fraction": 0.0,
+      "subcapsular_max_depth_mm": 5.0,
+      "target_left_ratio": 0.35,
+      "total_counts": 80000.0,
+      "tumor_contrast_max": 8.0,
+      "tumor_contrast_min": 2.0,
+      "tumor_count_max": 5,
+      "tumor_count_min": 1,
+      "tumor_min_liver_margin_mm": 4.42,
+      "tumor_mode_policy": "random",
+      "tumor_mode_probs": [
+        0.7,
+        0.3
+      ],
+      "tumor_modes": [
+        "ellipsoid",
+        "spiculated"
+      ],
+      "tumor_overlap_gap_mm": 0.0,
+      "tumor_placement_attempts": 250,
+      "tumor_probs": [
+        0.45,
+        0.4,
+        0.15
+      ],
+      "tumor_size_bins_mm": [
+        [
+          10,
+          20
+        ],
+        [
+          20,
+          40
+        ],
+        [
+          40,
+          60
+        ]
+      ],
+      "tumor_spec_attempts": 20,
+      "use_global_seed": true,
+      "volume_shape": [
+        128,
+        128,
+        128
+      ],
+      "voxel_size_mm": 4.42
+    },
+    "projection_shape": [
+      60,
+      128,
+      128
+    ],
+    "protocol_label": "GE 870 CZT current liver SPECT research protocol",
+    "protocol_status": "pending_physics_validation",
+    "run_id": "qa-smoke-20260817",
+    "runs_root": "runs",
+    "simind_exe": "simind/simind.exe",
+    "simind_overrides": [],
+    "simulation_mode": "mock",
+    "smc_file": "simind/ge870_czt.smc",
+    "smc_index25_activity_time": 1704.0,
+    "source_activity_mbq": 60.0,
+    "split_fractions": [
+      0.8,
+      0.1,
+      0.1
+    ],
+    "split_seed": 42
+  },
+  "finalized": true,
+  "finalized_utc": "2026-08-17T19:09:49+00:00",
+  "package_sha256": "8d510a93c325d5c87e2a5d1445e5df460db60925de84c1e9835116d1ed03a103",
+  "provenance": {
+    "generator": "PhantomGenerator.generate_one",
+    "projection_orientation": "raw[::-1,::-1,:]",
+    "protocol_scope": "liver_only_current_protocol"
+  },
+  "run_id": "qa-smoke-20260817",
+  "runtime": {
+    "platform": "Windows-10-10.0.26100-SP0",
+    "python": "3.11.14"
+  },
+  "scope": "synthetic_liver_spect_data_preparation_only",
+  "stages": {
+    "expectation": {
+      "backend": "mock",
+      "failed_cases": [],
+      "status": "passed",
+      "updated_utc": "2026-08-17T19:09:46+00:00"
+    },
+    "export": {
+      "case_count": 2,
+      "readback_verified": true,
+      "status": "passed",
+      "updated_utc": "2026-08-17T19:09:46+00:00"
+    },
+    "generate": {
+      "case_count": 2,
+      "status": "passed",
+      "updated_utc": "2026-08-17T19:09:45+00:00"
+    },
+    "observation": {
+      "protocol_status": "toy",
+      "status": "passed",
+      "transform": "offline_poisson",
+      "updated_utc": "2026-08-17T19:09:47+00:00"
+    },
+    "package": {
+      "file_count": 32,
+      "manifest": "D:\\PFE-U\\PAR-S-Generator\\runs\\qa-smoke-20260817\\dataset_manifest.json",
+      "manifest_sha256": "8d510a93c325d5c87e2a5d1445e5df460db60925de84c1e9835116d1ed03a103",
+      "status": "passed",
+      "updated_utc": "2026-08-17T19:09:49+00:00"
+    },
+    "phantom_qc": {
+      "case_count": 2,
+      "failed_cases": [],
+      "status": "passed",
+      "updated_utc": "2026-08-17T19:09:46+00:00"
+    },
+    "projection_qc": {
+      "failed_cases": [],
+      "status": "passed",
+      "updated_utc": "2026-08-17T19:09:46+00:00"
+    },
+    "simind_plan": {
+      "job_count": 2,
+      "mode": "mock",
+      "plan": "D:\\PFE-U\\PAR-S-Generator\\runs\\qa-smoke-20260817\\logs\\simind_jobs.json",
+      "status": "passed",
+      "updated_utc": "2026-08-17T19:09:46+00:00"
+    }
+  },
+  "updated_utc": "2026-08-17T19:09:49+00:00"
+}

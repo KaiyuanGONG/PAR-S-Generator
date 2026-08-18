@@ -7,6 +7,10 @@ SIMIND XcatBinMap convention (Index-14 = -7, Index-15 = -7):
   - Source file:  <stem>_act_av.bin   (read via /FS:<stem>)
   - Density file: <stem>_atn_av.bin   (read via /FD:<stem>)
   - Format: float32, C-order (Z, Y, X), no header
+
+The saved NPZ ``mu_map`` remains a linear attenuation coefficient in cm^-1.
+Type -7 consumes the XCAT convention ``stored = mu_cm^-1 * voxel_width_cm``;
+that single conversion is applied only when writing ``_atn_av.bin``.
 """
 
 from __future__ import annotations
@@ -73,8 +77,9 @@ def convert_npz_to_interfile(
     """
     Convert a single .npz phantom file to SIMIND binary pairs.
 
-    `voxel_size_mm` is retained for compatibility with older call sites.
-    The exporter writes raw arrays only and does not embed voxel metadata.
+    The analytical NPZ attenuation map is in cm^-1.  The type-7 raw density
+    input stores the dimensionless per-voxel optical thickness ``mu * dx``.
+    Both semantics and the exact conversion are returned for provenance.
     """
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -91,9 +96,21 @@ def convert_npz_to_interfile(
         mu_map = np.asarray(data["mu_map"], dtype=np.float32)
         _validate_npz_arrays(npz_path, activity, mu_map)
 
+        voxel_size_cm = float(voxel_size_mm) / 10.0
+        if not np.isfinite(voxel_size_cm) or voxel_size_cm <= 0:
+            raise ValueError("voxel_size_mm must be finite and positive")
+        type7_attenuation = np.asarray(mu_map * voxel_size_cm, dtype=np.float32)
+        recovered_mu = np.asarray(type7_attenuation / voxel_size_cm, dtype=np.float32)
+        max_roundtrip_error = float(np.max(np.abs(recovered_mu - mu_map)))
+        if max_roundtrip_error > 1e-6:
+            raise IOError(
+                "Type-7 attenuation conversion failed round-trip tolerance: "
+                f"{max_roundtrip_error:g} cm^-1"
+            )
+
         result = {
             "act_bin": write_bin(activity, base, "_act_av"),
-            "atn_bin": write_bin(mu_map, base, "_atn_av"),
+            "atn_bin": write_bin(type7_attenuation, base, "_atn_av"),
         }
 
     expected_bytes = int(activity.size) * np.dtype(np.float32).itemsize
@@ -107,9 +124,22 @@ def convert_npz_to_interfile(
             "dtype": "float32",
             "order": "C (Z,Y,X)",
             "voxel_size_mm": float(voxel_size_mm),
+            "voxel_size_cm": voxel_size_cm,
             "act_sha256": sha256_file(result["act_bin"]),
             "atn_sha256": sha256_file(result["atn_bin"]),
             "readback_verified": True,
+            "analytical_mu_semantic": "linear_attenuation_coefficient",
+            "analytical_mu_unit": "cm^-1",
+            "type7_stored_semantic": "mu_cm_inverse_times_density_voxel_size_cm",
+            "type7_stored_unit": "dimensionless_per_voxel_optical_thickness",
+            "type7_conversion_formula": "stored_value = mu_cm_inverse * voxel_size_cm",
+            "type7_conversion_scale": voxel_size_cm,
+            "type7_roundtrip_max_abs_error_cm_inverse": max_roundtrip_error,
+            "analytical_mu_range_cm_inverse": [float(mu_map.min()), float(mu_map.max())],
+            "type7_stored_value_range": [
+                float(type7_attenuation.min()),
+                float(type7_attenuation.max()),
+            ],
         }
     )
 

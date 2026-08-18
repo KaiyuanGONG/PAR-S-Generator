@@ -1,0 +1,46 @@
+{
+  "base_smc": "D:\\PFE-U\\PAR-S-Generator\\simind\\ge870_czt.smc",
+  "base_smc_sha256": "4d10eab246a7a6690663230d2f33aeb3c32f67c598af36b56d1575f0e3551d10",
+  "blocking_decision": "Select detector I/J dimensions only from successful runs, measured support and the GE specification.",
+  "controls": [
+    "same sparse full-volume lattice source",
+    "zero attenuation",
+    "Index-100/101 are the only SMC variants",
+    "single-axis, native 160x208 and swapped-axis controls",
+    "/NN:10"
+  ],
+  "criteria": [
+    {
+      "id": "exit_and_artifacts",
+      "rule": "Record exit code, stdout/stderr, .res, .mhd and .a00 size for every matrix."
+    },
+    {
+      "id": "fov_quantified",
+      "rule": "Report output FOV, native detector aperture and illuminated row/column support for each successful run."
+    },
+    {
+      "id": "selection_justified",
+      "rule": "Chosen Index-100/101 axes reproduce the 393.6x511.7-mm GE detector without changing the 128x128, 4.4196-mm acquisition grid."
+    }
+  ],
+  "execution_status": "prepared_not_run",
+  "ge_reference": {
+    "expected_native_pixels": [
+      160,
+      208
+    ],
+    "native_pitch_mm": 2.46,
+    "physical_fov_mm": [
+      393.6,
+      511.7
+    ],
+    "source": "DOC2109131 NM/CT 870 CZT product data sheet, pages 2 and 10"
+  },
+  "name": "fov_matrix",
+  "prepared_utc": "2026-08-17T20:58:18+00:00",
+  "purpose": "Quantify the 128x128 CZT detector workaround against the GE-native 160x208 aperture and capture any real failure.",
+  "scope": "GE 870 CZT current liver SPECT research protocol",
+  "simind_executable": "D:\\PFE-U\\PAR-S-Generator\\simind\\simind.exe",
+  "simind_executable_sha256": "f984b8753f54b9f671f9fc1bcb2b45461e7cae8d027376b446dd1ed55a9a8319",
+  "voxel_size_mm": 4.42
+}

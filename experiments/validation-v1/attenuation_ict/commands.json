@@ -1,0 +1,107 @@
+[
+  {
+    "args": [
+      "attenuation_ict",
+      "uniform_mu_0p05",
+      "/FS:uniform_mu_0p05",
+      "/FD:uniform_mu_0p05",
+      "/NN:10000",
+      "/RR:9100",
+      "/SC:0"
+    ],
+    "case_id": "uniform_mu_0p05",
+    "executable": "D:\\PFE-U\\PAR-S-Generator\\simind\\simind.exe",
+    "executable_sha256": "f984b8753f54b9f671f9fc1bcb2b45461e7cae8d027376b446dd1ed55a9a8319",
+    "output_argument": "uniform_mu_0p05",
+    "output_stem": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\attenuation_ict\\output\\uniform_mu_0p05",
+    "prepared_utc": "2026-08-17T21:13:17+00:00",
+    "smc": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\attenuation_ict\\input\\attenuation_ict.smc",
+    "smc_sha256": "55176194fcd952b3c5d50528da9048a3f6fe3a85696623c134767943129e1fd9",
+    "staging_output_stem": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\attenuation_ict\\input\\uniform_mu_0p05",
+    "working_dir": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\attenuation_ict\\input"
+  },
+  {
+    "args": [
+      "attenuation_ict",
+      "uniform_mu_0p15",
+      "/FS:uniform_mu_0p15",
+      "/FD:uniform_mu_0p15",
+      "/NN:10000",
+      "/RR:9101",
+      "/SC:0"
+    ],
+    "case_id": "uniform_mu_0p15",
+    "executable": "D:\\PFE-U\\PAR-S-Generator\\simind\\simind.exe",
+    "executable_sha256": "f984b8753f54b9f671f9fc1bcb2b45461e7cae8d027376b446dd1ed55a9a8319",
+    "output_argument": "uniform_mu_0p15",
+    "output_stem": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\attenuation_ict\\output\\uniform_mu_0p15",
+    "prepared_utc": "2026-08-17T21:13:17+00:00",
+    "smc": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\attenuation_ict\\input\\attenuation_ict.smc",
+    "smc_sha256": "55176194fcd952b3c5d50528da9048a3f6fe3a85696623c134767943129e1fd9",
+    "staging_output_stem": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\attenuation_ict\\input\\uniform_mu_0p15",
+    "working_dir": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\attenuation_ict\\input"
+  },
+  {
+    "args": [
+      "attenuation_ict",
+      "uniform_mu_0p30",
+      "/FS:uniform_mu_0p30",
+      "/FD:uniform_mu_0p30",
+      "/NN:10000",
+      "/RR:9102",
+      "/SC:0"
+    ],
+    "case_id": "uniform_mu_0p30",
+    "executable": "D:\\PFE-U\\PAR-S-Generator\\simind\\simind.exe",
+    "executable_sha256": "f984b8753f54b9f671f9fc1bcb2b45461e7cae8d027376b446dd1ed55a9a8319",
+    "output_argument": "uniform_mu_0p30",
+    "output_stem": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\attenuation_ict\\output\\uniform_mu_0p30",
+    "prepared_utc": "2026-08-17T21:13:17+00:00",
+    "smc": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\attenuation_ict\\input\\attenuation_ict.smc",
+    "smc_sha256": "55176194fcd952b3c5d50528da9048a3f6fe3a85696623c134767943129e1fd9",
+    "staging_output_stem": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\attenuation_ict\\input\\uniform_mu_0p30",
+    "working_dir": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\attenuation_ict\\input"
+  },
+  {
+    "args": [
+      "attenuation_ict",
+      "water_column_mu_0p00",
+      "/FS:water_column_mu_0p00",
+      "/FD:water_column_mu_0p00",
+      "/NN:10000",
+      "/RR:9200",
+      "/SC:0"
+    ],
+    "case_id": "water_column_mu_0p00",
+    "executable": "D:\\PFE-U\\PAR-S-Generator\\simind\\simind.exe",
+    "executable_sha256": "f984b8753f54b9f671f9fc1bcb2b45461e7cae8d027376b446dd1ed55a9a8319",
+    "output_argument": "water_column_mu_0p00",
+    "output_stem": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\attenuation_ict\\output\\water_column_mu_0p00",
+    "prepared_utc": "2026-08-17T21:13:17+00:00",
+    "smc": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\attenuation_ict\\input\\attenuation_ict.smc",
+    "smc_sha256": "55176194fcd952b3c5d50528da9048a3f6fe3a85696623c134767943129e1fd9",
+    "staging_output_stem": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\attenuation_ict\\input\\water_column_mu_0p00",
+    "working_dir": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\attenuation_ict\\input"
+  },
+  {
+    "args": [
+      "attenuation_ict",
+      "water_column_mu_0p15",
+      "/FS:water_column_mu_0p15",
+      "/FD:water_column_mu_0p15",
+      "/NN:10000",
+      "/RR:9200",
+      "/SC:0"
+    ],
+    "case_id": "water_column_mu_0p15",
+    "executable": "D:\\PFE-U\\PAR-S-Generator\\simind\\simind.exe",
+    "executable_sha256": "f984b8753f54b9f671f9fc1bcb2b45461e7cae8d027376b446dd1ed55a9a8319",
+    "output_argument": "water_column_mu_0p15",
+    "output_stem": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\attenuation_ict\\output\\water_column_mu_0p15",
+    "prepared_utc": "2026-08-17T21:13:17+00:00",
+    "smc": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\attenuation_ict\\input\\attenuation_ict.smc",
+    "smc_sha256": "55176194fcd952b3c5d50528da9048a3f6fe3a85696623c134767943129e1fd9",
+    "staging_output_stem": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\attenuation_ict\\input\\water_column_mu_0p15",
+    "working_dir": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\attenuation_ict\\input"
+  }
+]

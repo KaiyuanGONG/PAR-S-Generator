@@ -1,0 +1,77 @@
+{
+  "attenuation_contract": {
+    "reference_energy_kev": 140.5,
+    "status": "verified_type7_mu_times_voxel_v10_current_h2o_protocol",
+    "unit": "cm^-1"
+  },
+  "cantlie": {
+    "abs_error": 0.0027698969687920405,
+    "converged": true,
+    "iterations": 5,
+    "offset": 0.14937499999999998,
+    "search": {
+      "expanded_beyond_initial_range": true,
+      "expanded_offset_range": [
+        -0.05,
+        0.16999999999999998
+      ],
+      "expansions": 1,
+      "hit_expansion_limit": false,
+      "initial_offset_range": [
+        -0.05,
+        0.12
+      ],
+      "solution_on_search_boundary": false,
+      "target_bracketed": true
+    },
+    "target_left_ratio": 0.35,
+    "tilt_deg": 4.968979382398375
+  },
+  "failures": [],
+  "meta": "D:\\PFE-U\\PAR-S-Generator\\runs\\stage3-phantom-100-v3-20260818\\phantom\\case_0073_meta.json",
+  "metrics": {
+    "activity_dtype": "float32",
+    "activity_sum": 80000.00716924667,
+    "left_ratio": 0.352769896968792,
+    "liver_volume_ml": 1156.583793872,
+    "mu_dtype": "float32",
+    "mu_max": 0.3005469739437103,
+    "mu_min": 0.0,
+    "n_tumors": 1,
+    "shape": [
+      128,
+      128,
+      128
+    ],
+    "tumors": [
+      {
+        "effective_diameter_mm": 24.111766938435466,
+        "index": 0,
+        "mode": "ellipsoid",
+        "nominal_diameter_mm": 25.633974964163386,
+        "outside_liver_vox": 0,
+        "overlap_previous_vox": 0,
+        "perfusion_region": "high_perfusion",
+        "placement_stratum": "central",
+        "sampled_size_bin_mm": [
+          20.0,
+          40.0
+        ],
+        "surface_margin_mm": 8.84,
+        "target_contrast": 2.176866069409476,
+        "tnr_from_saved_activity": 2.2382863693828,
+        "tnr_local_from_saved_activity": 2.1576507803936544,
+        "volume_vox": 85
+      }
+    ]
+  },
+  "npz": "D:\\PFE-U\\PAR-S-Generator\\runs\\stage3-phantom-100-v3-20260818\\phantom\\case_0073.npz",
+  "sha256": {
+    "meta": "09e83a54a6979fe664f0bf5d124813fab2e3848960114279e092e437357e0dee",
+    "npz": "627fe6329fede9767f6813b0407d36a4c653c937d327631f4f5c74470d029556"
+  },
+  "status": "passed",
+  "warnings": [
+    "cantlie_search_range_expanded"
+  ]
+}

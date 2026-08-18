@@ -41,7 +41,7 @@ class PhantomConfig:
     mu_noise_sigma: float = 2.0
     mu_unit: str = "cm^-1"
     mu_reference_energy_kev: float = 140.5
-    mu_contract_status: str = "pending_simind_ict_validation"
+    mu_contract_status: str = "verified_type7_mu_times_voxel_v10_current_h2o_protocol"
 
     # Liver base center (Z, Y, X) in normalized [-1,1] coords
     # X=0.10: liver CoM at 2.8cm right of midline (anatomically correct).
@@ -103,8 +103,10 @@ class PhantomConfig:
     tumor_overlap_gap_mm: float = 0.0
     subcapsular_fraction: float = 0.0
     subcapsular_max_depth_mm: float = 5.0
+    allow_capacity_subcapsular_fallback: bool = True
     tumor_placement_attempts: int = 250
     tumor_spec_attempts: int = 20
+    tumor_layout_attempts: int = 12
     tumor_modes: list = field(default_factory=lambda: ["ellipsoid", "spiculated"])
     tumor_mode_probs: list = field(default_factory=lambda: [0.7, 0.3])
     tumor_mode_policy: str = "random"
@@ -621,14 +623,18 @@ class PhantomGenerator:
             activity += (grad * liver).astype(np.float32)
 
         # ── 5. Tumors ──
-        # Placement region constrained to the active lobe: tumors in the cold lobe
-        # produce near-invisible signal and are not useful for training.
+        # Geometry and perfusion are independent sampled factors.  Restricting
+        # all lesions to a single active lobe makes the configured 1-5 lesion
+        # and 40-60 mm strata geometrically infeasible and biases accepted
+        # sizes.  Place within the full liver and record whether the accepted
+        # mask lies in the high- or low-perfusion region.
         if perfusion_mode == "Left Only":
-            placement_indices = np.argwhere(left_mask)
+            active_placement_mask = left_mask
         elif perfusion_mode == "Right Only":
-            placement_indices = np.argwhere(right_mask)
+            active_placement_mask = right_mask
         else:
-            placement_indices = np.argwhere(liver)
+            active_placement_mask = liver
+        placement_indices = np.argwhere(liver)
 
         n_tumors = self._resolve_tumor_count(rng, placement_indices, overrides)
 
@@ -637,112 +643,210 @@ class PhantomGenerator:
         tumor_modes_used = []
         tumor_records = []
         liver_distance = distance_transform_edt(liver)
-        occupied = np.zeros(shape, dtype=bool)
 
-        for tumor_id in range(n_tumors):
-            placed = False
-            chosen_mask = None
-            chosen_center = None
-            chosen_elong = 1.0
-            # If a sampled lesion cannot fit the selected lobe without
-            # clipping, resample its specification instead of silently
-            # clipping it or returning fewer lesions than requested.
-            for _spec_attempt in range(cfg.tumor_spec_attempts):
-                bin_idx = rng.choice(len(cfg.tumor_size_bins_mm), p=cfg.tumor_probs)
-                r_min_mm, r_max_mm = cfg.tumor_size_bins_mm[bin_idx]
-                radius_mm = rng.uniform(r_min_mm / 2, r_max_mm / 2)
-                radius_vox = radius_mm / cfg.voxel_size_mm
-                mode = self._resolve_tumor_mode(rng, overrides)
-                is_subcapsular = bool(rng.random() < cfg.subcapsular_fraction)
+        sampled_bin_indices = [
+            int(rng.choice(len(cfg.tumor_size_bins_mm), p=cfg.tumor_probs))
+            for _ in range(n_tumors)
+        ]
+        sampled_subcapsular = [
+            bool(rng.random() < cfg.subcapsular_fraction)
+            for _ in range(n_tumors)
+        ]
+        # Place larger strata first so smaller lesions cannot consume the only
+        # anatomically valid centre for a large lesion.  The sampled bins and
+        # their probabilities are unchanged.
+        placement_order = sorted(
+            range(n_tumors),
+            key=lambda index: (
+                cfg.tumor_size_bins_mm[sampled_bin_indices[index]][0],
+                index,
+            ),
+            reverse=True,
+        )
 
-                for _center_attempt in range(cfg.tumor_placement_attempts):
-                    idx = placement_indices[rng.integers(len(placement_indices))]
-                    cz, cy, cx = int(idx[0]), int(idx[1]), int(idx[2])
+        # A greedy layout can trap the final lesion even when the sampled set
+        # is feasible.  Restart the *whole layout* while retaining the sampled
+        # size strata.  This removes the former acceptance bias where a failed
+        # large stratum was silently replaced by a newly sampled small one.
+        placement_plans: list[tuple[str, list[bool]]] = [
+            ("configured", sampled_subcapsular)
+        ]
+        if cfg.allow_capacity_subcapsular_fallback and n_tumors > 1:
+            # If the eroded liver core cannot contain the entire multifocal
+            # burden, progressively relax the surface-margin constraint for
+            # the smallest remaining lesion(s).  The fallback is labelled in
+            # metadata; masks must still be fully inside and non-overlapping.
+            fallback_order = sorted(
+                range(n_tumors),
+                key=lambda index: (
+                    cfg.tumor_size_bins_mm[sampled_bin_indices[index]][1],
+                    index,
+                ),
+            )
+            for fallback_count in range(1, n_tumors + 1):
+                plan = list(sampled_subcapsular)
+                for tumor_id in fallback_order[:fallback_count]:
+                    plan[tumor_id] = True
+                if plan != placement_plans[-1][1]:
+                    placement_plans.append(("capacity_fallback", plan))
 
-                    # Retain the FOV guard as a cheap pre-filter, but liver-surface
-                    # distance below is the authoritative anatomical constraint.
-                    margin = max(cfg.min_edge_dist_px, int(np.ceil(radius_vox)))
-                    edge_ok = (cz >= margin and cz < shape[0] - margin and
-                               cy >= margin and cy < shape[1] - margin and
-                               cx >= margin and cx < shape[2] - margin)
-                    if not edge_ok:
-                        continue
+        failed_tumor_id = None
+        accepted_plan_name = None
+        for plan_name, plan_subcapsular in placement_plans:
+            plan_complete = False
+            for _layout_attempt in range(max(int(cfg.tumor_layout_attempts), 1)):
+                trial_masks = []
+                trial_records = []
+                occupied = np.zeros(shape, dtype=bool)
+                layout_complete = True
 
-                    center_depth_mm = max(float(liver_distance[cz, cy, cx]) - 1.0, 0.0) * cfg.voxel_size_mm
-                    if is_subcapsular:
-                        if center_depth_mm > radius_mm + cfg.subcapsular_max_depth_mm:
-                            continue
-                    elif center_depth_mm < radius_mm + cfg.tumor_min_liver_margin_mm:
-                        continue
+                for tumor_id in placement_order:
+                    placed = False
+                    chosen_mask = None
+                    chosen_center = None
+                    chosen_elong = 1.0
+                    bin_idx = sampled_bin_indices[tumor_id]
+                    r_min_mm, r_max_mm = cfg.tumor_size_bins_mm[bin_idx]
 
-                    if mode == "spiculated":
-                        candidate = Geometry3D.create_spiculated_tumor(
-                            shape, (cz, cy, cx), radius_vox,
-                            roughness=cfg.spiculated_roughness,
-                            spiciness=cfg.spiculated_spiciness, rng=rng
+                    for _spec_attempt in range(cfg.tumor_spec_attempts):
+                        radius_mm = rng.uniform(r_min_mm / 2, r_max_mm / 2)
+                        radius_vox = radius_mm / cfg.voxel_size_mm
+                        mode = self._resolve_tumor_mode(rng, overrides)
+                        is_subcapsular = bool(plan_subcapsular[tumor_id])
+                        is_capacity_fallback = (
+                            is_subcapsular and not sampled_subcapsular[tumor_id]
                         )
-                        elong = 1.0
-                    else:
-                        elong = rng.uniform(0.7, 1.3)
-                        candidate = Geometry3D.create_superellipsoid(
-                            shape, (cz, cy, cx), radius_vox, p=2.0, elong=elong
-                        )
 
-                    if not np.any(candidate) or np.any(candidate & ~liver):
-                        continue
-                    if np.any(candidate & occupied):
-                        continue
-                    if cfg.tumor_overlap_gap_mm > 0 and np.any(occupied):
-                        gap_vox = cfg.tumor_overlap_gap_mm / cfg.voxel_size_mm
-                        distance_to_occupied = distance_transform_edt(~occupied)
-                        if float(distance_to_occupied[candidate].min()) < gap_vox:
-                            continue
+                        for _center_attempt in range(cfg.tumor_placement_attempts):
+                            idx = placement_indices[rng.integers(len(placement_indices))]
+                            cz, cy, cx = int(idx[0]), int(idx[1]), int(idx[2])
 
-                    surface_margin_mm = max(float(liver_distance[candidate].min()) - 1.0, 0.0) * cfg.voxel_size_mm
-                    if not is_subcapsular and surface_margin_mm + 1e-6 < cfg.tumor_min_liver_margin_mm:
-                        continue
+                            # Retain the FOV guard as a cheap pre-filter, but
+                            # liver-surface distance is the anatomical constraint.
+                            margin = max(cfg.min_edge_dist_px, int(np.ceil(radius_vox)))
+                            edge_ok = (cz >= margin and cz < shape[0] - margin and
+                                       cy >= margin and cy < shape[1] - margin and
+                                       cx >= margin and cx < shape[2] - margin)
+                            if not edge_ok:
+                                continue
 
-                    placed = True
-                    chosen_mask = candidate
-                    chosen_center = (cz, cy, cx)
-                    chosen_elong = float(elong)
+                            center_depth_mm = max(
+                                float(liver_distance[cz, cy, cx]) - 1.0, 0.0
+                            ) * cfg.voxel_size_mm
+                            if is_subcapsular and not is_capacity_fallback:
+                                if center_depth_mm > radius_mm + cfg.subcapsular_max_depth_mm:
+                                    continue
+                            elif (not is_capacity_fallback and
+                                  center_depth_mm < radius_mm + cfg.tumor_min_liver_margin_mm):
+                                continue
+
+                            if mode == "spiculated":
+                                candidate = Geometry3D.create_spiculated_tumor(
+                                    shape, (cz, cy, cx), radius_vox,
+                                    roughness=cfg.spiculated_roughness,
+                                    spiciness=cfg.spiculated_spiciness, rng=rng
+                                )
+                                elong = 1.0
+                            else:
+                                elong = rng.uniform(0.7, 1.3)
+                                candidate = Geometry3D.create_superellipsoid(
+                                    shape, (cz, cy, cx), radius_vox, p=2.0, elong=elong
+                                )
+
+                            if not np.any(candidate) or np.any(candidate & ~liver):
+                                continue
+                            candidate_volume_mm3 = float(candidate.sum()) * cfg.voxel_size_mm**3
+                            candidate_diameter_mm = float(
+                                (6.0 * candidate_volume_mm3 / np.pi) ** (1.0 / 3.0)
+                            )
+                            upper_ok = (
+                                candidate_diameter_mm <= r_max_mm
+                                if bin_idx == len(cfg.tumor_size_bins_mm) - 1
+                                else candidate_diameter_mm < r_max_mm
+                            )
+                            if candidate_diameter_mm < r_min_mm or not upper_ok:
+                                continue
+                            if np.any(candidate & occupied):
+                                continue
+                            if cfg.tumor_overlap_gap_mm > 0 and np.any(occupied):
+                                gap_vox = cfg.tumor_overlap_gap_mm / cfg.voxel_size_mm
+                                distance_to_occupied = distance_transform_edt(~occupied)
+                                if float(distance_to_occupied[candidate].min()) < gap_vox:
+                                    continue
+
+                            surface_margin_mm = max(
+                                float(liver_distance[candidate].min()) - 1.0, 0.0
+                            ) * cfg.voxel_size_mm
+                            if (not is_subcapsular and not is_capacity_fallback and
+                                    surface_margin_mm + 1e-6 < cfg.tumor_min_liver_margin_mm):
+                                continue
+
+                            placed = True
+                            chosen_mask = candidate
+                            chosen_center = (cz, cy, cx)
+                            chosen_elong = float(elong)
+                            break
+                        if placed:
+                            break
+
+                    if not placed or chosen_mask is None or chosen_center is None:
+                        failed_tumor_id = int(tumor_id)
+                        layout_complete = False
+                        break
+
+                    tmask = chosen_mask
+                    cz, cy, cx = chosen_center
+                    trial_masks.append(tmask)
+                    occupied |= tmask
+                    trial_records.append(
+                        {
+                            "id": int(tumor_id),
+                            "center_vox": [int(cz), int(cy), int(cx)],
+                            "mode": mode,
+                            "elongation": chosen_elong,
+                            "nominal_diameter_mm": float(radius_mm * 2),
+                            "sampled_size_bin_mm": [float(r_min_mm), float(r_max_mm)],
+                            "placement_stratum": (
+                                "capacity_fallback_margin_relaxed"
+                                if is_capacity_fallback
+                                else ("subcapsular" if is_subcapsular else "central")
+                            ),
+                            "perfusion_region": (
+                                "high_perfusion"
+                                if float(np.mean(active_placement_mask[tmask])) >= 0.5
+                                else "low_perfusion"
+                            ),
+                        }
+                    )
+
+                if layout_complete:
+                    tumor_masks = trial_masks
+                    tumor_records = trial_records
+                    accepted_plan_name = plan_name
+                    plan_complete = True
                     break
-                if placed:
-                    break
+            if plan_complete:
+                break
+        if accepted_plan_name is None:
+            raise RuntimeError(
+                f"Unable to place tumor set without clipping or overlap after "
+                f"{cfg.tumor_layout_attempts} attempts per placement plan; failed tumor "
+                f"{(failed_tumor_id or 0) + 1}/{n_tumors}, sampled size bins="
+                f"{sampled_bin_indices}."
+            )
 
-            if not placed or chosen_mask is None or chosen_center is None:
-                raise RuntimeError(
-                    f"Unable to place tumor {tumor_id + 1}/{n_tumors} without clipping or overlap "
-                    f"after {cfg.tumor_spec_attempts} specification attempts."
-                )
-
-            tmask = chosen_mask
-            cz, cy, cx = chosen_center
-
-            # Per-tumor contrast: TNR range 2–8 based on Tc-99m MAA hepatic arterial
-            # scintigraphy (Ho et al. 1997, J Nucl Med: median 3.4, range 1.5–12)
+        # Apply contrast only after an entire layout has succeeded so discarded
+        # layout attempts cannot contaminate the saved activity map.
+        for record, tmask in zip(tumor_records, tumor_masks):
             if overrides and overrides.exact_tumor_contrast is not None:
                 contrast = overrides.exact_tumor_contrast
             else:
                 contrast = rng.uniform(cfg.tumor_contrast_min, cfg.tumor_contrast_max)
             base_val = activity[tmask].mean() if activity[tmask].sum() > 0 else 1.0
             activity[tmask] = base_val * contrast
-
-            tumor_masks.append(tmask)
-            occupied |= tmask
-            tumor_nominal_diameters_mm.append(float(radius_mm * 2))
-            tumor_modes_used.append(mode)
-            tumor_records.append(
-                {
-                    "id": int(tumor_id),
-                    "center_vox": [int(cz), int(cy), int(cx)],
-                    "mode": mode,
-                    "elongation": chosen_elong,
-                    "nominal_diameter_mm": float(radius_mm * 2),
-                    "target_contrast": float(contrast),
-                    "placement_stratum": "subcapsular" if is_subcapsular else "central",
-                }
-            )
+            record["target_contrast"] = float(contrast)
+            tumor_nominal_diameters_mm.append(float(record["nominal_diameter_mm"]))
+            tumor_modes_used.append(str(record["mode"]))
 
         # PSF is handled by SIMIND internally (collimator/detector model).
         # Do NOT blur here — SIMIND source input must be the clean activity map.
@@ -830,5 +934,3 @@ class PhantomGenerator:
             generation_time_s=time.time() - t0,
         )
         return result
-
-

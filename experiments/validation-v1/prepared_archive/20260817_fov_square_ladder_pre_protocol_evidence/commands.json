@@ -1,0 +1,59 @@
+[
+  {
+    "args": [
+      "fov_128",
+      "fov_128",
+      "/FS:fov_source",
+      "/FD:fov_source",
+      "/NN:1"
+    ],
+    "case_id": "fov_128",
+    "executable": "D:\\PFE-U\\PAR-S-Generator\\simind\\simind.exe",
+    "executable_sha256": "f984b8753f54b9f671f9fc1bcb2b45461e7cae8d027376b446dd1ed55a9a8319",
+    "output_stem": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\fov_matrix\\output\\fov_128",
+    "prepared_utc": "2026-08-17T21:38:03+02:00",
+    "smc": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\fov_matrix\\input\\fov_128.smc",
+    "smc_sha256": "c38e5e50b8baf313bcd0ee2e5580e75644ba49cce04e3576c821fee127e0c1e7",
+    "working_dir": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\fov_matrix\\input",
+    "output_argument": "fov_128",
+    "staging_output_stem": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\fov_matrix\\input\\fov_128"
+  },
+  {
+    "args": [
+      "fov_160",
+      "fov_160",
+      "/FS:fov_source",
+      "/FD:fov_source",
+      "/NN:1"
+    ],
+    "case_id": "fov_160",
+    "executable": "D:\\PFE-U\\PAR-S-Generator\\simind\\simind.exe",
+    "executable_sha256": "f984b8753f54b9f671f9fc1bcb2b45461e7cae8d027376b446dd1ed55a9a8319",
+    "output_stem": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\fov_matrix\\output\\fov_160",
+    "prepared_utc": "2026-08-17T21:38:03+02:00",
+    "smc": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\fov_matrix\\input\\fov_160.smc",
+    "smc_sha256": "07d36e250f983097b3449875f9e5034bce0f18065d3a7f747cd91c8ae477faae",
+    "working_dir": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\fov_matrix\\input",
+    "output_argument": "fov_160",
+    "staging_output_stem": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\fov_matrix\\input\\fov_160"
+  },
+  {
+    "args": [
+      "fov_208",
+      "fov_208",
+      "/FS:fov_source",
+      "/FD:fov_source",
+      "/NN:1"
+    ],
+    "case_id": "fov_208",
+    "executable": "D:\\PFE-U\\PAR-S-Generator\\simind\\simind.exe",
+    "executable_sha256": "f984b8753f54b9f671f9fc1bcb2b45461e7cae8d027376b446dd1ed55a9a8319",
+    "output_stem": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\fov_matrix\\output\\fov_208",
+    "prepared_utc": "2026-08-17T21:38:03+02:00",
+    "smc": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\fov_matrix\\input\\fov_208.smc",
+    "smc_sha256": "b8045237eaf3d59c7b541fe7d697da500af86609baae590a6f94c5ec625371e1",
+    "working_dir": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\fov_matrix\\input",
+    "output_argument": "fov_208",
+    "staging_output_stem": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\fov_matrix\\input\\fov_208"
+  }
+]

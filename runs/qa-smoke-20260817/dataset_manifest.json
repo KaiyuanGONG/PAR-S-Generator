@@ -1,0 +1,188 @@
+{
+  "attenuation_contract_status": "pending_simind_ict_validation",
+  "case_count": 2,
+  "cases_manifest": "cases.jsonl",
+  "created_utc": "2026-08-17T19:09:49+00:00",
+  "dataset_id": "qa-smoke-20260817",
+  "figure_evidence": {
+    "artifacts": [
+      "D:\\PFE-U\\PAR-S-Generator\\runs\\qa-smoke-20260817\\figures\\data_flow.svg",
+      "D:\\PFE-U\\PAR-S-Generator\\runs\\qa-smoke-20260817\\figures\\phantom_distributions.png",
+      "D:\\PFE-U\\PAR-S-Generator\\runs\\qa-smoke-20260817\\figures\\phantom_distributions.svg",
+      "D:\\PFE-U\\PAR-S-Generator\\runs\\qa-smoke-20260817\\figures\\projection_qc.png",
+      "D:\\PFE-U\\PAR-S-Generator\\runs\\qa-smoke-20260817\\figures\\projection_qc.svg"
+    ],
+    "note": "Figures are automated QC evidence, not a claim of clinical or physics validation.",
+    "phantom_rows": 5,
+    "projection_rows": 2,
+    "scope": "synthetic_liver_spect_data_preparation_only"
+  },
+  "files": [
+    {
+      "bytes": 4759,
+      "path": "cases.jsonl",
+      "sha256": "d6d445a1f1475d862389de474420038fc2b4a3c3071b80b0881f43a77fc52e95"
+    },
+    {
+      "bytes": 3932160,
+      "path": "expectation/case_0001.a00",
+      "sha256": "8a432a9717f7da2c14451ac4d27ed4339f6a7769fd1fdfe5981acd52991da370"
+    },
+    {
+      "bytes": 92,
+      "path": "expectation/case_0001.res",
+      "sha256": "76b3c33b2770869fdda46ec761583b73c2d4ca84e01f6ec4b1f516ab4b502170"
+    },
+    {
+      "bytes": 3932160,
+      "path": "expectation/case_0002.a00",
+      "sha256": "32a87f305f694e5df5b2a4ad4cbd47f86ee45779d0284acc4ac8c6d353fc1c30"
+    },
+    {
+      "bytes": 92,
+      "path": "expectation/case_0002.res",
+      "sha256": "76b3c33b2770869fdda46ec761583b73c2d4ca84e01f6ec4b1f516ab4b502170"
+    },
+    {
+      "bytes": 5673,
+      "path": "figures/data_flow.svg",
+      "sha256": "78af846f9bcbd8495a1411fbedadaab7698e2b7bf2f46e819d221f3349f2c9da"
+    },
+    {
+      "bytes": 682,
+      "path": "figures/figure_manifest.json",
+      "sha256": "d4eb27e04532cd769c0fb77b0b3c68944180fd1eb57f041984b00237f8908ba6"
+    },
+    {
+      "bytes": 675,
+      "path": "figures/phantom_distribution_data.csv",
+      "sha256": "80b4db6b221624288a3998ef9d3506bf011a07dc09a1d2f8d51523eeb291820b"
+    },
+    {
+      "bytes": 93638,
+      "path": "figures/phantom_distributions.png",
+      "sha256": "4851dca06b931b2c517d1548a897e1117d61455cd7176b2aa5b2b8b2c5f42b7d"
+    },
+    {
+      "bytes": 72909,
+      "path": "figures/phantom_distributions.svg",
+      "sha256": "118a7654675e9d9b8520689ed60465c7cc167b972abf3bd543248beb4d32cf7f"
+    },
+    {
+      "bytes": 46687,
+      "path": "figures/projection_qc.png",
+      "sha256": "9988f710e4d7b8afccc2424c739f750d6324077959a4200c85be023d94e8ca0d"
+    },
+    {
+      "bytes": 39010,
+      "path": "figures/projection_qc.svg",
+      "sha256": "3f23697d0cf7cb46875d240409ed27ef880db152ac8530b30b63d8bf619724aa"
+    },
+    {
+      "bytes": 332,
+      "path": "figures/projection_qc_data.csv",
+      "sha256": "db82f8cbaa32ff4cd509b94188da617de22ef5020d4db8af546577d7bf0a66fe"
+    },
+    {
+      "bytes": 747,
+      "path": "logs/run_simind.bat",
+      "sha256": "f2f76e8158786a47ca2ae8f69b2aa3386b4d1e625f2113cb51c1fc4447011f02"
+    },
+    {
+      "bytes": 1573,
+      "path": "logs/simind_jobs.json",
+      "sha256": "7a0c5dd89f87e3e7d1af0d4cc19afcf76187492d2060c6a438b3c348e5789200"
+    },
+    {
+      "bytes": 3932160,
+      "path": "observation/case_0001.a00",
+      "sha256": "3cde2e53de513bee382507e1944d4088e7ee1a32fbeaf25cd7c8b6e7c347cf98"
+    },
+    {
+      "bytes": 3932160,
+      "path": "observation/case_0002.a00",
+      "sha256": "814aaeb89e38fb19f275946deb39018802eea4e796d872a1bf8430a1374ddc67"
+    },
+    {
+      "bytes": 622030,
+      "path": "phantom/case_0001.npz",
+      "sha256": "05648f1b755e1893feea1759b8d62fc09f4d00b1ae174bceb634d56eb7d3115d"
+    },
+    {
+      "bytes": 2161,
+      "path": "phantom/case_0001_meta.json",
+      "sha256": "3fe9711a7fa73cea1a9b9fcf4e8d2a28d3060dcf6fd083d3ea85cbfe87bb6954"
+    },
+    {
+      "bytes": 624737,
+      "path": "phantom/case_0002.npz",
+      "sha256": "ecfe19cd541e5590a4cb8c8cc3256c4b1bd0672719a2404b85182d9c9dfb4982"
+    },
+    {
+      "bytes": 2847,
+      "path": "phantom/case_0002_meta.json",
+      "sha256": "81d25acdc799ac33328082071bad10a51bad654268292bc01c914ffcc1858851"
+    },
+    {
+      "bytes": 1553,
+      "path": "qc/case_0001_phantom_qc.json",
+      "sha256": "9f3817254bac2d74b6fdd52ec3d4759fbf76f8e79a5d2e4a43e71d0d4fdc887d"
+    },
+    {
+      "bytes": 2436,
+      "path": "qc/case_0001_projection_qc.json",
+      "sha256": "f336d9bd13a4aad41d7afecbe6c2cdca3f58b754dfbfbe0c2446c49907d0f868"
+    },
+    {
+      "bytes": 1866,
+      "path": "qc/case_0002_phantom_qc.json",
+      "sha256": "282e1ee519199c73739162b19a2cc5b21b6a86524d0721ee37d6661a8a210f46"
+    },
+    {
+      "bytes": 2404,
+      "path": "qc/case_0002_projection_qc.json",
+      "sha256": "1c653f8c64f01c0569b1719688e01adad8dece9846f8489850e42b5d9e4b4094"
+    },
+    {
+      "bytes": 71,
+      "path": "qc/phantom_qc_summary.json",
+      "sha256": "eaf0889bd527c133bc03683e542a30b6e92910bd9eed126a34171ba0a2d6f740"
+    },
+    {
+      "bytes": 8388608,
+      "path": "simind_input/case_0001_act_av.bin",
+      "sha256": "3a7b46854fb2de2e5e51b6d1b589c43080a9c01bbef252fc2fc8172fcefc3c0c"
+    },
+    {
+      "bytes": 8388608,
+      "path": "simind_input/case_0001_atn_av.bin",
+      "sha256": "c8a737bc0452bad7d22d6c2d9d1b5a4ffd4407be9dd93e431b944285343d787a"
+    },
+    {
+      "bytes": 8388608,
+      "path": "simind_input/case_0002_act_av.bin",
+      "sha256": "2271110a3bc7fdfedbeb4710f3e6c35c64b86f1e1faa765bfded233daf0701e5"
+    },
+    {
+      "bytes": 8388608,
+      "path": "simind_input/case_0002_atn_av.bin",
+      "sha256": "9d3de4aa34a10a5cdb19ec13eec3950f81ba68ded3daa9d9814d006f709c246d"
+    },
+    {
+      "bytes": 2501,
+      "path": "simind_input/ge870_czt.smc",
+      "sha256": "4d10eab246a7a6690663230d2f33aeb3c32f67c598af36b56d1575f0e3551d10"
+    },
+    {
+      "bytes": 230,
+      "path": "splits.json",
+      "sha256": "d5dc56ed1411ce7c4c2761bb1702639e67dbd40a0294bdd633a06c02bd8cf109"
+    }
+  ],
+  "projection_orientation": "raw[::-1,::-1,:]",
+  "protocol_label": "GE 870 CZT current liver SPECT research protocol",
+  "protocol_status": "pending_physics_validation",
+  "scope": "synthetic_liver_spect_data_preparation_only",
+  "simulation_mode": "mock",
+  "split_manifest": "splits.json"
+}

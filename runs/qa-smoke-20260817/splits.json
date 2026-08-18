@@ -1,0 +1,18 @@
+{
+  "assignment_unit": "phantom_id",
+  "fractions": [
+    0.8,
+    0.1,
+    0.1
+  ],
+  "seed": 42,
+  "splits": {
+    "test": [
+      "case_0001"
+    ],
+    "train": [
+      "case_0002"
+    ],
+    "val": []
+  }
+}
