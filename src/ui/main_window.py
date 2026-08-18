@@ -142,7 +142,7 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.app_state = AppState(self)
         self.setWindowTitle("PAR-S Generator")
-        self.setMinimumSize(1260, 800)
+        self.setMinimumSize(1100, 700)
         self.resize(1420, 900)
         self._settings_dialog: SettingsDialog | None = None
         self._about_dialog: AboutDialog | None = None
