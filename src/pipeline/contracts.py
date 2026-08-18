@@ -220,7 +220,32 @@ class RunLedger:
 
     def finalize(self, *, package_sha256: str | None = None) -> dict:
         payload = self.load()
-        required = {"generate", "phantom_qc", "export", "package"}
+        execution_scope = (
+            payload.get("effective_config", {}).get("execution_scope", "full")
+        )
+        if execution_scope == "anatomy_only_gate_a":
+            required = {"generate", "phantom_qc", "package"}
+            prohibited = {
+                "export",
+                "simind_plan",
+                "simulation",
+                "observation",
+                "projection_qc",
+                "figures",
+            }
+            executed = [
+                stage
+                for stage in sorted(prohibited)
+                if payload["stages"].get(stage, {}).get("status")
+                not in {None, "skipped"}
+            ]
+            if executed:
+                raise RuntimeError(
+                    "Cannot finalize anatomy-only scope; prohibited stages were entered: "
+                    + ", ".join(executed)
+                )
+        else:
+            required = {"generate", "phantom_qc", "export", "package"}
         missing = [stage for stage in sorted(required) if payload["stages"].get(stage, {}).get("status") != "passed"]
         if missing:
             raise RuntimeError(f"Cannot finalize; required stages not passed: {', '.join(missing)}")

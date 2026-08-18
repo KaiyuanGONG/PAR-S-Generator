@@ -9,6 +9,7 @@ The historical PAR-S_2 transform remains a separate legacy contract.
 from __future__ import annotations
 
 import json
+import hashlib
 import re
 from pathlib import Path
 from typing import Any
@@ -20,6 +21,15 @@ from pipeline.contracts import CANONICAL_PROJECTION_TRANSFORM, sha256_file
 
 
 DEFAULT_PROJECTION_SHAPE = (60, 128, 128)
+
+
+def _sha256_array(array: np.ndarray) -> str:
+    values = np.ascontiguousarray(array)
+    digest = hashlib.sha256()
+    digest.update(str(values.dtype).encode("ascii"))
+    digest.update(json.dumps(list(values.shape), separators=(",", ":")).encode("ascii"))
+    digest.update(values.tobytes(order="C"))
+    return digest.hexdigest()
 
 
 def load_projection(
@@ -202,6 +212,117 @@ def validate_projection_artifacts(
     }
 
 
+def _validate_v2_case_metadata(
+    v2: dict[str, Any],
+    *,
+    liver: np.ndarray,
+    left: np.ndarray,
+    mu_map: np.ndarray,
+    voxel_mm: float,
+) -> tuple[dict[str, Any], list[str]]:
+    failures: list[str] = []
+    profile = v2.get("profile", {})
+    patient = v2.get("patient", {})
+    liver_record = v2.get("liver", {})
+    target = liver_record.get("target", {})
+    actual = liver_record.get("actual", {})
+    shape_quality = actual.get("shape_quality", {})
+    torso_qc = v2.get("torso", {}).get("qc", {})
+    attenuation = v2.get("attenuation", {})
+    contracts = v2.get("contracts", {})
+    seeds = v2.get("seeds", {})
+    child_seeds = seeds.get("child_seeds", {})
+
+    if v2.get("schema_version") != "pars_hybrid_v2_master_gate_a_v1":
+        failures.append("v2_schema_version")
+    if profile.get("role") != "population" or profile.get("population_claim") is not True:
+        failures.append("v2_population_profile_contract")
+    for key in ("sha256", "evidence_registry_sha256"):
+        value = profile.get(key)
+        if not isinstance(value, str) or re.fullmatch(r"[0-9a-f]{64}", value) is None:
+            failures.append(f"v2_profile_{key}")
+    morphology = patient.get("liver_morphology")
+    if morphology not in {"normal", "cirrhotic"}:
+        failures.append("v2_liver_morphology")
+    if shape_quality.get("status") != "pass" or not shape_quality.get("gates"):
+        failures.append("v2_liver_shape_quality")
+    elif not all(bool(value) for value in shape_quality["gates"].values()):
+        failures.append("v2_liver_shape_gate")
+    if torso_qc.get("passed") is not True or torso_qc.get("failed_gates"):
+        failures.append("v2_torso_qc")
+    if attenuation.get("physical_map_key") != "mu_true_140kev":
+        failures.append("v2_physical_mu_key")
+    if attenuation.get("master_npz_key") != "mu_map":
+        failures.append("v2_master_mu_key")
+    if attenuation.get("ct_like_map_saved_to_npz") is not False:
+        failures.append("v2_ct_like_map_leaked_to_npz")
+    if attenuation.get("mu_true_sha256") != _sha256_array(mu_map):
+        failures.append("v2_mu_true_hash_mismatch")
+    if contracts.get("tumor_generator_v2_imported") is not False:
+        failures.append("v2_tumor_generator_exclusion")
+    if contracts.get("lesion_generator") != "master_f423_physical_measured_strata_v1":
+        failures.append("v2_master_lesion_contract")
+    if set(child_seeds) != {"patient", "liver", "tumor", "activity", "mu", "simind"}:
+        failures.append("v2_seed_tree")
+    elif len({int(value) for value in child_seeds.values()}) != len(child_seeds):
+        failures.append("v2_seed_tree_collision")
+
+    liver_voxels = int(liver.sum())
+    measured_volume_ml = float(liver_voxels * voxel_mm**3 / 1000.0)
+    measured_left_fraction = float(left.sum() / max(liver_voxels, 1))
+    target_volume_ml = float(target.get("volume_ml", np.nan))
+    actual_volume_ml = float(actual.get("volume_ml", np.nan))
+    target_left_fraction = float(target.get("left_fraction", np.nan))
+    actual_left_fraction = float(actual.get("left_fraction", np.nan))
+    volume_error_ml = actual_volume_ml - target_volume_ml
+    left_error = actual_left_fraction - target_left_fraction
+    if not np.isclose(actual_volume_ml, measured_volume_ml, rtol=0.0, atol=1e-9):
+        failures.append("v2_actual_volume_not_from_saved_mask")
+    if not np.isclose(actual_left_fraction, measured_left_fraction, rtol=0.0, atol=1e-12):
+        failures.append("v2_actual_left_fraction_not_from_saved_masks")
+    if not np.isfinite(volume_error_ml) or not np.isfinite(left_error):
+        failures.append("v2_target_actual_metrics_missing")
+    elif abs(left_error) > (1.0 / max(liver_voxels, 1)) + 1e-12:
+        failures.append("v2_left_fraction_quantization")
+    region_counts = actual.get("region_voxel_counts", {})
+    if not isinstance(region_counts, dict) or sum(int(value) for value in region_counts.values()) != liver_voxels:
+        failures.append("v2_region_proxy_coverage")
+
+    compact = {
+        "schema_version": v2.get("schema_version"),
+        "profile_id": profile.get("profile_id"),
+        "profile_sha256": profile.get("sha256"),
+        "evidence_registry_id": profile.get("evidence_registry_id"),
+        "evidence_registry_sha256": profile.get("evidence_registry_sha256"),
+        "cirrhosis_prevalence": profile.get("cirrhosis_prevalence"),
+        "liver_volume_range_ml": profile.get("liver_volume_range_ml"),
+        "left_fraction_reference": profile.get("left_fraction_reference"),
+        "morphology": morphology,
+        "caudate_enabled": bool(target.get("caudate_enabled")),
+        "target_volume_ml": target_volume_ml,
+        "actual_volume_ml": actual_volume_ml,
+        "volume_error_ml": volume_error_ml,
+        "volume_relative_error": volume_error_ml / target_volume_ml if target_volume_ml else None,
+        "target_left_fraction": target_left_fraction,
+        "actual_left_fraction": actual_left_fraction,
+        "left_fraction_error": left_error,
+        "target_s1_3_to_s4_8_ratio": target.get("s1_3_to_s4_8_ratio"),
+        "actual_s1_3_to_s4_8_ratio": actual.get("s1_3_to_s4_8_ratio"),
+        "target_caudate_fraction": target.get("caudate_fraction"),
+        "actual_caudate_fraction": actual.get("caudate_fraction"),
+        "shape_quality_status": shape_quality.get("status"),
+        "shape_gates": shape_quality.get("gates", {}),
+        "torso_qc_passed": torso_qc.get("passed"),
+        "accepted_shape_attempt": liver_record.get("sampling_provenance", {}).get("accepted_attempt_index"),
+        "rejected_shape_attempt_count": len(liver_record.get("sampling_provenance", {}).get("rejected_attempts", [])),
+        "case_seed": seeds.get("case_seed"),
+        "child_seeds": child_seeds,
+        "mu_true_sha256": attenuation.get("mu_true_sha256"),
+        "mu_input_sha256": attenuation.get("mu_input_sha256"),
+    }
+    return compact, failures
+
+
 def phantom_qc(npz_path: Path, meta_path: Path | None = None) -> dict[str, Any]:
     """Validate one saved phantom and derive geometry/activity evidence."""
     npz_path = Path(npz_path)
@@ -301,6 +422,19 @@ def phantom_qc(npz_path: Path, meta_path: Path | None = None) -> dict[str, Any]:
         warnings.append("cantlie_search_range_expanded")
 
     left_ratio = float(left.sum() / max(int(liver.sum()), 1))
+    v2_qc = None
+    if "v2" in meta:
+        if not isinstance(meta["v2"], dict):
+            failures.append("v2_metadata_not_object")
+        else:
+            v2_qc, v2_failures = _validate_v2_case_metadata(
+                meta["v2"],
+                liver=liver,
+                left=left,
+                mu_map=mu_map,
+                voxel_mm=voxel_mm,
+            )
+            failures.extend(v2_failures)
     result = {
         "status": "passed" if not failures else "failed",
         "failures": sorted(set(failures)),
@@ -325,6 +459,7 @@ def phantom_qc(npz_path: Path, meta_path: Path | None = None) -> dict[str, Any]:
         },
         "attenuation_contract": attenuation or {"status": "unrecorded"},
         "cantlie": cantlie or {"status": "unrecorded"},
+        "v2": v2_qc,
     }
     return result
 
@@ -400,6 +535,96 @@ def summarize_phantom_population(qc_records: list[dict[str, Any]]) -> dict[str, 
     overlap_voxels = sum(
         int(row.get("overlap_previous_vox", 0)) for row in tumors
     )
+    v2_rows = [
+        record["v2"]
+        for record in qc_records
+        if isinstance(record.get("v2"), dict)
+    ]
+    morphology_counts: dict[str, int] = {}
+    for row in v2_rows:
+        morphology = str(row.get("morphology") or "unrecorded")
+        morphology_counts[morphology] = morphology_counts.get(morphology, 0) + 1
+
+    def v2_values(name: str, *, morphology: str | None = None) -> list[float]:
+        return [
+            float(row.get(name, np.nan))
+            for row in v2_rows
+            if morphology is None or row.get("morphology") == morphology
+        ]
+
+    v2_population = {
+        "case_count": len(v2_rows),
+        "profile_identities": sorted(
+            {
+                f"{row.get('profile_id')}@{row.get('profile_sha256')}"
+                for row in v2_rows
+            }
+        ),
+        "evidence_registry_identities": sorted(
+            {
+                f"{row.get('evidence_registry_id')}@{row.get('evidence_registry_sha256')}"
+                for row in v2_rows
+            }
+        ),
+        "profile_contracts": sorted(
+            {
+                json.dumps(
+                    {
+                        "cirrhosis_prevalence": row.get("cirrhosis_prevalence"),
+                        "liver_volume_range_ml": row.get("liver_volume_range_ml"),
+                        "left_fraction_reference": row.get("left_fraction_reference"),
+                    },
+                    sort_keys=True,
+                    separators=(",", ":"),
+                )
+                for row in v2_rows
+            }
+        ),
+        "morphology_counts": morphology_counts,
+        "caudate_enabled_count": sum(bool(row.get("caudate_enabled")) for row in v2_rows),
+        "large_volume_above_legacy_1900_ml_count": sum(
+            float(row.get("actual_volume_ml", 0.0)) > 1900.0 for row in v2_rows
+        ),
+        "target_volume_ml": _distribution(v2_values("target_volume_ml")),
+        "actual_volume_ml": _distribution(v2_values("actual_volume_ml")),
+        "volume_error_ml": _distribution(v2_values("volume_error_ml")),
+        "volume_relative_error": _distribution(v2_values("volume_relative_error")),
+        "target_left_fraction": _distribution(v2_values("target_left_fraction")),
+        "actual_left_fraction": _distribution(v2_values("actual_left_fraction")),
+        "left_fraction_error": _distribution(v2_values("left_fraction_error")),
+        "target_s1_3_to_s4_8_ratio_by_morphology": {
+            morphology: _distribution(
+                v2_values("target_s1_3_to_s4_8_ratio", morphology=morphology)
+            )
+            for morphology in ("normal", "cirrhotic")
+        },
+        "actual_s1_3_to_s4_8_ratio_by_morphology": {
+            morphology: _distribution(
+                v2_values("actual_s1_3_to_s4_8_ratio", morphology=morphology)
+            )
+            for morphology in ("normal", "cirrhotic")
+        },
+        "target_caudate_fraction": _distribution(v2_values("target_caudate_fraction")),
+        "actual_caudate_fraction": _distribution(v2_values("actual_caudate_fraction")),
+        "accepted_shape_attempt": _distribution(v2_values("accepted_shape_attempt")),
+        "rejected_shape_attempt_count": _distribution(v2_values("rejected_shape_attempt_count")),
+        "all_shape_quality_passed": all(
+            row.get("shape_quality_status") == "pass"
+            and bool(row.get("shape_gates"))
+            and all(bool(value) for value in row["shape_gates"].values())
+            for row in v2_rows
+        ),
+        "all_torso_qc_passed": all(row.get("torso_qc_passed") is True for row in v2_rows),
+        "child_seed_unique_counts": {
+            namespace: len(
+                {
+                    int(row.get("child_seeds", {}).get(namespace, -1))
+                    for row in v2_rows
+                }
+            )
+            for namespace in ("patient", "liver", "tumor", "activity", "mu", "simind")
+        },
+    }
     return {
         "status": (
             "passed"
@@ -465,6 +690,7 @@ def summarize_phantom_population(qc_records: list[dict[str, Any]]) -> dict[str, 
             "perfusion_regions": perfusion_region_counts,
             "morphology_modes": mode_counts,
         },
+        "v2_population": v2_population,
         "claim_boundary": (
             "Generated-population QC for the current synthetic liver protocol; "
             "not a clinical prevalence distribution."
@@ -647,5 +873,161 @@ def assess_stage3_phantom_population(
             "100-case generated-population contract for the current liver and GE 870 CZT protocol; "
             "not a clinical prevalence claim"
         ),
+        "checks": checks,
+    }
+
+
+def assess_gate_a_v2_population(
+    summary: dict[str, Any],
+    *,
+    size_bins_mm: list[list[float]],
+    size_probabilities: list[float],
+    tumor_count_min: int,
+    tumor_count_max: int,
+    mode_probabilities: dict[str, float],
+    target_contrast_range: tuple[float, float],
+    central_margin_mm: float,
+) -> dict[str, Any]:
+    """Apply Gate A without substituting legacy liver thresholds for V2 semantics."""
+    master = assess_stage3_phantom_population(
+        summary,
+        size_bins_mm=size_bins_mm,
+        size_probabilities=size_probabilities,
+        tumor_count_min=tumor_count_min,
+        tumor_count_max=tumor_count_max,
+        mode_probabilities=mode_probabilities,
+        target_left_ratio=0.0,
+        target_contrast_range=target_contrast_range,
+        central_margin_mm=central_margin_mm,
+    )
+    excluded_legacy_anatomy_checks = {
+        "liver_volume_design_envelope_ml",
+        "cantlie_left_ratio",
+    }
+    checks = [
+        row
+        for row in master["checks"]
+        if row["name"] not in excluded_legacy_anatomy_checks
+    ]
+
+    def add(name: str, passed: bool, **evidence: Any) -> None:
+        checks.append({"name": name, "status": "passed" if passed else "failed", **evidence})
+
+    case_count = int(summary.get("case_count", 0))
+    v2 = summary.get("v2_population", {})
+    v2_count = int(v2.get("case_count", 0))
+    add(
+        "v2_metadata_complete",
+        case_count == 100 and v2_count == case_count,
+        case_count=case_count,
+        v2_case_count=v2_count,
+    )
+    profile_identities = v2.get("profile_identities", [])
+    evidence_identities = v2.get("evidence_registry_identities", [])
+    profile_contracts = v2.get("profile_contracts", [])
+    add(
+        "single_traceable_v2_profile",
+        len(profile_identities) == 1
+        and "None@" not in str(profile_identities[0])
+        and len(evidence_identities) == 1
+        and "None@" not in str(evidence_identities[0])
+        and len(profile_contracts) == 1,
+        profiles=profile_identities,
+        evidence_registries=evidence_identities,
+        profile_contracts=profile_contracts,
+    )
+    contract = json.loads(profile_contracts[0]) if len(profile_contracts) == 1 else {}
+    volume_range = contract.get("liver_volume_range_ml", [])
+    target_volume = v2.get("target_volume_ml", {})
+    target_min, target_max = target_volume.get("min"), target_volume.get("max")
+    volume_range_valid = (
+        isinstance(volume_range, list)
+        and len(volume_range) == 2
+        and float(volume_range[0]) < float(volume_range[1])
+    )
+    add(
+        "v2_target_volume_within_profile_range",
+        volume_range_valid
+        and target_min is not None
+        and target_max is not None
+        and float(target_min) >= float(volume_range[0])
+        and float(target_max) <= float(volume_range[1]),
+        observed_min_ml=target_min,
+        observed_max_ml=target_max,
+        profile_range_ml=volume_range,
+    )
+    add(
+        "v2_large_volume_tail_exercised",
+        int(v2.get("large_volume_above_legacy_1900_ml_count", 0)) > 0,
+        comparator="frozen legacy design-envelope upper bound, not a medical threshold",
+        observed_count=int(v2.get("large_volume_above_legacy_1900_ml_count", 0)),
+        comparator_ml=1900.0,
+    )
+    morphology_counts = v2.get("morphology_counts", {})
+    add(
+        "v2_normal_and_cirrhotic_semantics_exercised",
+        int(morphology_counts.get("normal", 0)) > 0
+        and int(morphology_counts.get("cirrhotic", 0)) > 0
+        and sum(int(value) for value in morphology_counts.values()) == case_count,
+        observed=morphology_counts,
+        configured_cirrhosis_prevalence=contract.get("cirrhosis_prevalence"),
+        interpretation="traceability only; no fitted clinical-prevalence tolerance is asserted",
+    )
+    add(
+        "v2_caudate_semantics_exercised",
+        int(v2.get("caudate_enabled_count", 0)) > 0,
+        caudate_enabled_count=int(v2.get("caudate_enabled_count", 0)),
+    )
+    target_left = v2.get("target_left_fraction", {})
+    left_min, left_max = target_left.get("min"), target_left.get("max")
+    add(
+        "v2_left_fraction_is_sampled_not_forced_to_legacy_0p35",
+        left_min is not None
+        and left_max is not None
+        and float(left_min) < float(left_max)
+        and not (
+            np.isclose(float(left_min), 0.35, rtol=0.0, atol=1e-12)
+            and np.isclose(float(left_max), 0.35, rtol=0.0, atol=1e-12)
+        ),
+        observed_min=left_min,
+        observed_max=left_max,
+        source_reference=contract.get("left_fraction_reference"),
+        rejected_substitution="legacy fixed target_left_ratio=0.35",
+    )
+    left_error = v2.get("left_fraction_error", {})
+    volume_error = v2.get("volume_relative_error", {})
+    add(
+        "v2_target_actual_metrics_complete",
+        int(left_error.get("count", 0)) == case_count
+        and int(volume_error.get("count", 0)) == case_count,
+        left_fraction_error=left_error,
+        volume_relative_error=volume_error,
+    )
+    add(
+        "v2_source_shape_and_torso_hard_qc",
+        v2.get("all_shape_quality_passed") is True
+        and v2.get("all_torso_qc_passed") is True,
+        all_shape_quality_passed=v2.get("all_shape_quality_passed"),
+        all_torso_qc_passed=v2.get("all_torso_qc_passed"),
+    )
+    seed_counts = v2.get("child_seed_unique_counts", {})
+    add(
+        "v2_child_seeds_unique_per_namespace",
+        bool(seed_counts)
+        and all(int(seed_counts.get(name, 0)) == case_count for name in (
+            "patient", "liver", "tumor", "activity", "mu", "simind"
+        )),
+        unique_counts=seed_counts,
+        expected_per_namespace=case_count,
+    )
+
+    return {
+        "status": "passed" if all(row["status"] == "passed" for row in checks) else "failed",
+        "enforced": True,
+        "scope": (
+            "Gate A 100-case anatomy-only CPU pilot for the evidence-backed V2 population/liver "
+            "adapter and frozen master lesion/NPZ/QC contracts; not a clinical prevalence claim"
+        ),
+        "legacy_anatomy_checks_not_applied": sorted(excluded_legacy_anatomy_checks),
         "checks": checks,
     }

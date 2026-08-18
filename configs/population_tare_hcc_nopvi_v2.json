@@ -1,0 +1,356 @@
+{
+  "schema_version": "pars_profile_v2",
+  "profile_id": "population_tare_hcc_nopvi_v2",
+  "role": "population",
+  "population_claim": true,
+  "description": "Main 500-case no-PVI discrete or confluent TARE-HCC population profile.",
+  "parameters": {
+    "explicit_pvi": {
+      "value": false,
+      "unit": "boolean",
+      "source_type": "engineering_prior",
+      "evidence_ids": ["decision-scope-a-20260713"],
+      "applies_to": ["population_tare_hcc_nopvi_v2"]
+    },
+    "main_case_count": {
+      "value": 500,
+      "unit": "cases",
+      "source_type": "engineering_prior",
+      "evidence_ids": ["decision-scope-a-20260713"],
+      "applies_to": ["population_tare_hcc_nopvi_v2"]
+    },
+    "hepatic_only": {
+      "value": true,
+      "unit": "boolean",
+      "source_type": "engineering_prior",
+      "evidence_ids": ["decision-scope-a-20260713"],
+      "applies_to": ["population_tare_hcc_nopvi_v2"]
+    },
+    "cirrhosis_prevalence": {
+      "value": 0.8,
+      "unit": "probability",
+      "source_type": "engineering_prior",
+      "evidence_ids": ["decision-cirrhosis-a-20260713"],
+      "applies_to": ["population_tare_hcc_nopvi_v2"],
+      "notes": "General HCC engineering prior, not local TARE prevalence."
+    },
+    "cirrhosis_sensitivity_values": {
+      "value": [0.6, 0.9],
+      "unit": "probability_values",
+      "source_type": "engineering_prior",
+      "evidence_ids": ["decision-cirrhosis-a-20260713"],
+      "applies_to": ["population_tare_hcc_nopvi_v2"]
+    },
+    "tumor_count_bins": {
+      "value": {"1": 0.324, "2-5": 0.224, ">5": 0.452},
+      "unit": "probability_distribution",
+      "source_type": "literature_population",
+      "evidence_ids": ["karger-tare-hcc-2025-table3-nopvi"],
+      "applies_to": ["population_tare_hcc_nopvi_v2"]
+    },
+    "dmax_bins": {
+      "value": {"10-<80_mm": 0.603, "80-200_mm": 0.397},
+      "unit": "probability_distribution",
+      "source_type": "literature_population",
+      "evidence_ids": ["karger-tare-hcc-2025-table3-nopvi"],
+      "applies_to": ["population_tare_hcc_nopvi_v2"],
+      "notes": "Only the bin weights are literature population; within-bin shape is engineering."
+    },
+    "lobe_distribution": {
+      "value": {"unilobar": 0.587, "bilobar": 0.413},
+      "unit": "probability_distribution",
+      "source_type": "literature_population",
+      "evidence_ids": ["karger-tare-hcc-2025-table3-nopvi"],
+      "applies_to": ["population_tare_hcc_nopvi_v2"]
+    },
+    "dmax_min_mm": {
+      "value": 10,
+      "unit": "mm",
+      "source_type": "engineering_prior",
+      "evidence_ids": ["decision-dmax-a-20260713"],
+      "applies_to": ["population_tare_hcc_nopvi_v2"]
+    },
+    "dmax_max_mm": {
+      "value": 200,
+      "unit": "mm",
+      "source_type": "engineering_prior",
+      "evidence_ids": ["decision-dmax-a-20260713"],
+      "applies_to": ["population_tare_hcc_nopvi_v2"]
+    },
+    "confluent_required_above_mm": {
+      "value": 100,
+      "unit": "mm",
+      "source_type": "engineering_prior",
+      "evidence_ids": ["decision-dmax-a-20260713"],
+      "applies_to": ["population_tare_hcc_nopvi_v2"]
+    },
+    "tumor_burden_fraction_max": {
+      "value": 0.7,
+      "unit": "fraction",
+      "source_type": "engineering_prior",
+      "evidence_ids": ["engineering-tumor-geometry-v2"],
+      "applies_to": ["population_tare_hcc_nopvi_v2"]
+    },
+    "axis_ratio_range": {
+      "value": [0.7, 1.0],
+      "unit": "ratio_range",
+      "source_type": "engineering_prior",
+      "evidence_ids": ["engineering-tumor-geometry-v2"],
+      "applies_to": ["population_tare_hcc_nopvi_v2"]
+    },
+    "within_gt5_count_model": {
+      "value": {"family": "shifted_geometric", "minimum": 6, "maximum": 20, "success_probability": 0.25},
+      "unit": "model_specification",
+      "source_type": "engineering_prior",
+      "evidence_ids": ["engineering-tumor-geometry-v2"],
+      "applies_to": ["population_tare_hcc_nopvi_v2"],
+      "notes": "within_bin_assumption=true must be written per case."
+    },
+    "within_2_5_count_model": {
+      "value": {"family": "discrete_uniform", "minimum": 2, "maximum": 5},
+      "unit": "model_specification",
+      "source_type": "engineering_prior",
+      "evidence_ids": ["engineering-tumor-geometry-v2"],
+      "applies_to": ["population_tare_hcc_nopvi_v2"],
+      "notes": "The source reports only a 2-5 stratum; individual counts are an explicit within-bin assumption."
+    },
+    "morphology_set": {
+      "value": ["smooth_nodular", "lobulated_confluent"],
+      "unit": "categorical_set",
+      "source_type": "engineering_prior",
+      "evidence_ids": ["engineering-tumor-geometry-v2"],
+      "applies_to": ["population_tare_hcc_nopvi_v2"]
+    },
+    "tumor_geometry_model": {
+      "value": {
+        "dmax_lognormal_median_mm": 70.0,
+        "dmax_lognormal_sigma": 0.676,
+        "secondary_diameter_beta_shape": [1.3, 3.5],
+        "lobulated_probability_below_threshold": 0.25,
+        "subcapsular_probability": 0.20,
+        "subcapsular_clearance_max_mm": 5.0,
+        "confluent_primitive_count_range": [2, 4],
+        "dmax_tolerance_voxels": 0.75,
+        "placement_attempts_per_lesion": 192,
+        "instance_gap_mm": 0.0
+      },
+      "unit": "model_specification",
+      "source_type": "engineering_prior",
+      "evidence_ids": ["engineering-tumor-geometry-v2"],
+      "applies_to": ["population_tare_hcc_nopvi_v2"],
+      "notes": "Conditional within-bin sizes, morphology mixing, subcapsular coverage, raster tolerance and placement search are engineering QA controls pending local lesion-mask calibration."
+    },
+    "tnr_mean_reference": {
+      "value": 2.11,
+      "unit": "ratio",
+      "source_type": "literature_population",
+      "evidence_ids": ["ilhan-jnm-2015-hcc-table3"],
+      "applies_to": ["population_tare_hcc_nopvi_v2"]
+    },
+    "tnr_mean_sd": {
+      "value": 1.24,
+      "unit": "ratio",
+      "source_type": "literature_population",
+      "evidence_ids": ["ilhan-jnm-2015-hcc-table3"],
+      "applies_to": ["population_tare_hcc_nopvi_v2"]
+    },
+    "tnr_mean_range": {
+      "value": [0.29, 6.32],
+      "unit": "ratio_range",
+      "source_type": "literature_population",
+      "evidence_ids": ["ilhan-jnm-2015-hcc-table3"],
+      "applies_to": ["population_tare_hcc_nopvi_v2"]
+    },
+    "tnr_max_reference": {
+      "value": {"mean": 6.03, "sd": 4.67, "range": [1.43, 21.57]},
+      "unit": "ratio_summary",
+      "source_type": "literature_population",
+      "evidence_ids": ["ilhan-jnm-2015-hcc-table3"],
+      "applies_to": ["population_tare_hcc_nopvi_v2"]
+    },
+    "heterogeneous_fraction": {
+      "value": 0.75,
+      "unit": "probability",
+      "source_type": "literature_population",
+      "evidence_ids": ["ilhan-jnm-2015-hcc-table3"],
+      "applies_to": ["population_tare_hcc_nopvi_v2"]
+    },
+    "injection_territories": {
+      "value": {"whole_liver": 0.25, "right_lobar": 0.25, "left_lobar": 0.25, "sector_proxy": 0.25},
+      "unit": "probability_distribution",
+      "source_type": "coverage_sampling",
+      "evidence_ids": ["coverage-broad-hcc-v2-design"],
+      "applies_to": ["population_tare_hcc_nopvi_v2"],
+      "notes": "Coverage sampling only; not a TARE population prevalence. Infeasible non-mismatch territories are conditionally renormalized after tumor placement."
+    },
+    "activity_patterns": {
+      "value": ["physiologic_heterogeneous"],
+      "unit": "categorical_set",
+      "source_type": "engineering_prior",
+      "evidence_ids": ["engineering-activity-field-v2"],
+      "applies_to": ["population_tare_hcc_nopvi_v2"]
+    },
+    "activity_model_v2": {
+      "value": {
+        "residual_outside_territory_fraction": 0.05,
+        "background_log_sd": 0.06,
+        "background_correlation_length_mm": 18.0,
+        "tumor_log_sd": 0.28,
+        "tumor_correlation_length_mm": 10.0,
+        "necrosis_probability_midpoint_mm": 70.0,
+        "necrosis_probability_scale_mm": 18.0,
+        "necrosis_fraction_range": [0.08, 0.45],
+        "necrotic_core_uptake_fraction_range": [0.10, 0.35],
+        "within_patient_shared_variance_fraction": 0.50,
+        "tnr_mean_relative_tolerance": 0.02
+      },
+      "unit": "model_specification",
+      "source_type": "engineering_prior",
+      "evidence_ids": ["engineering-activity-field-v2"],
+      "applies_to": ["population_tare_hcc_nopvi_v2"],
+      "notes": "Low-frequency field, within-patient dependence and size-to-necrosis mapping are explicit engineering assumptions pending local lesion-mask and CT calibration."
+    },
+    "attenuation_coefficients_140kev_cm1": {
+      "value": {
+        "outside_air": 0.0,
+        "lung": 0.05,
+        "fat": 0.146,
+        "water": 0.15,
+        "soft_tissue": 0.15,
+        "liver": 0.16,
+        "bone": 0.30
+      },
+      "unit": "cm^-1_tissue_table",
+      "source_type": "physics_standard",
+      "evidence_ids": ["nist-xcom-140kev-v2"],
+      "applies_to": ["population_tare_hcc_nopvi_v2"],
+      "notes": "Water/fat are 140 keV anchors; retained lung/liver/bone values are the declared V2 monoenergetic approximations."
+    },
+    "ct_degradation_model_v2": {
+      "value": {
+        "hu_conversion": "single_energy_linear_water_reference",
+        "blur_sigma_mm": 1.5,
+        "hu_noise_sd": 15.0,
+        "hu_bias_field_sd": 5.0,
+        "hu_bias_correlation_length_mm": 40.0,
+        "hu_clip_range": [-1000.0, 2000.0],
+        "uncalibrated_ct_degradation": true
+      },
+      "unit": "model_specification",
+      "source_type": "engineering_prior",
+      "evidence_ids": ["engineering-ct-degradation-v2"],
+      "applies_to": ["population_tare_hcc_nopvi_v2"],
+      "notes": "Conservative HU-domain blur/noise placeholder pending the PHI-free local CT calibration in Task 8; never applied to mu_true_140kev."
+    },
+    "age_median_auxiliary_years": {
+      "value": 66,
+      "unit": "years",
+      "source_type": "literature_population",
+      "evidence_ids": ["karger-tare-hcc-2025-table1-full"],
+      "applies_to": ["population_tare_hcc_nopvi_v2"],
+      "notes": "Full-cohort auxiliary only; not a no-PVI subgroup distribution."
+    },
+    "male_fraction_auxiliary": {
+      "value": 0.835,
+      "unit": "probability",
+      "source_type": "literature_population",
+      "evidence_ids": ["karger-tare-hcc-2025-table1-full"],
+      "applies_to": ["population_tare_hcc_nopvi_v2"],
+      "notes": "Full-cohort auxiliary only."
+    },
+    "liver_volume_reference_ml": {
+      "value": {"mean": 1533, "sd": 375},
+      "unit": "ml_summary",
+      "source_type": "literature_population",
+      "evidence_ids": ["perez-radiology-2022-liver-volume"],
+      "applies_to": ["population_tare_hcc_nopvi_v2"],
+      "notes": "Do not use 14*weight+979 as a generative mean."
+    },
+    "liver_extent_reference_mm_zyx": {
+      "value": {
+        "axis_order": ["SI", "AP", "LR"],
+        "healthy_sample_size": 886,
+        "source_mean_mm_zyx": [172.0, 158.0, 197.0],
+        "source_sd_mm_zyx": [20.0, 19.0, 23.0],
+        "source_2p5_97p5_mm_zyx": [[136.0, 212.0], [126.0, 198.0], [158.0, 246.0]],
+        "source_mean_volume_ml": 1469.3,
+        "scaled_to_profile_volume_ml": 1533.0,
+        "mean_at_profile_volume": [174.5, 160.0, 200.0]
+      },
+      "unit": "mm_joint_summary",
+      "source_type": "literature_population",
+      "evidence_ids": ["seppelt-ship-mri-2022-liver-diameters"],
+      "applies_to": ["population_tare_hcc_nopvi_v2"],
+      "notes": "SHIP healthy means are isotropically scaled by (1533/1469.3)^(1/3). This is a joint centre, not a fixed shape or a claim that the axes independently predict volume."
+    },
+    "left_liver_fraction_reference": {
+      "value": {"median": 0.31, "range": [0.15, 0.45]},
+      "unit": "fraction_summary",
+      "source_type": "literature_population",
+      "evidence_ids": ["mise-2014-liver-segments"],
+      "applies_to": ["population_tare_hcc_nopvi_v2"]
+    },
+    "cirrhotic_segment_proxy_changes": {
+      "value": {"s4_to_s8": -0.17, "s1_to_s3": 0.59, "caudate": 1.75},
+      "unit": "relative_change",
+      "source_type": "literature_population",
+      "evidence_ids": ["hunt-cirrhosis-lsvr"],
+      "applies_to": ["population_tare_hcc_nopvi_v2"],
+      "notes": "Directional simplified-region targets, not exact Couinaud reconstruction."
+    },
+    "patient_joint_model": {
+      "value": {
+        "age_range_years": [40.0, 85.0],
+        "age_sd_years": 10.0,
+        "male_height_mean_cm": 174.0,
+        "male_height_sd_cm": 7.0,
+        "female_height_mean_cm": 162.0,
+        "female_height_sd_cm": 6.0,
+        "height_range_cm": [145.0, 195.0],
+        "bmi_mean": 26.5,
+        "bmi_sd": 4.2,
+        "bmi_range": [18.5, 38.0],
+        "bmi_age_slope_per_year": 0.035
+      },
+      "unit": "model_specification",
+      "source_type": "engineering_prior",
+      "evidence_ids": ["engineering-patient-joint-model-v2"],
+      "applies_to": ["population_tare_hcc_nopvi_v2"],
+      "notes": "Joint structure only; age median and male fraction retain their separate literature evidence."
+    },
+    "liver_geometry_model": {
+      "value": {
+        "volume_range_ml": [775.0, 2300.0],
+        "weight_center_kg": 79.0,
+        "weight_scale_kg": 17.0,
+        "height_center_cm": 172.0,
+        "height_scale_cm": 8.0,
+        "age_center_years": 66.0,
+        "age_scale_years": 10.0,
+        "volume_weight_z_coefficient": 0.45,
+        "volume_height_z_coefficient": 0.10,
+        "volume_age_z_coefficient": -0.08,
+        "volume_residual_z_sd": 0.88,
+        "extent_log_residual_sd_zyx": [0.055, 0.050, 0.055],
+        "bbox_fill_fraction_range": [0.255, 0.32],
+        "centroid_mean_mm_zyx": [-45.0, 15.0, 35.0],
+        "centroid_sd_mm_zyx": [10.0, 8.0, 12.0],
+        "left_fraction_sd": 0.06,
+        "left_lateral_share": 0.70,
+        "cirrhotic_left_fraction_max": 0.55,
+        "caudate_presence_probability_normal": 0.75,
+        "caudate_presence_probability_cirrhotic": 0.95,
+        "caudate_fraction_normal": 0.02,
+        "surface_roughness_target_normal": 0.256,
+        "surface_roughness_target_cirrhotic": 0.273,
+        "surface_field_amplitude_normal": 0.04,
+        "surface_field_amplitude_cirrhotic": 0.18
+      },
+      "unit": "model_specification",
+      "source_type": "engineering_prior",
+      "evidence_ids": ["engineering-liver-geometry-v2"],
+      "applies_to": ["population_tare_hcc_nopvi_v2"],
+      "notes": "All values define the conditional generator, not additional population prevalence. The separate literature_population extent parameter supplies the joint centre; residual covariance, CSG mapping and quality thresholds remain explicit engineering priors pending calibration against real masks."
+    }
+  }
+}
