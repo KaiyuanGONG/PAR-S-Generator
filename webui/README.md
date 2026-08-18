@@ -8,11 +8,23 @@ observed by diffing `run.json` + artifact counts (no runner changes).
 ## Run (Windows, repo root)
 
 ```powershell
-pip install -r webui/requirements-web.txt
-python webui/server/app.py            # serves http://127.0.0.1:8765
+pip install -r webui\requirements-web.txt
+
+# build the UI once (dist/ is git-ignored, so it must exist locally)
+cd webui\frontend; npm install; npm run build; cd ..\..
+
+python webui\server\app.py            # serves http://127.0.0.1:8765
 ```
 
+Either invocation works — `python webui\server\app.py` (direct script) or
+`python -m uvicorn webui.server.app:app --port 8765` (module, from the repo
+root). The script form adds the repo root to `sys.path` itself.
+
 Interactive API docs: http://127.0.0.1:8765/docs
+
+Frontend development with hot reload (optional): run the server as above, then
+`cd webui\frontend; npm run dev` and open http://localhost:5173 — the dev
+server talks to the API on port 8765.
 
 ## Endpoints (v0.1)
 

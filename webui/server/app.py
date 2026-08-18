@@ -30,9 +30,16 @@ from pipeline import contracts
 from pipeline.contracts import RunLayout, RunLedger, atomic_write_json
 from pipeline.runner import PipelineConfig, PipelinePaused, PipelineRunner
 
-from . import fsapi, previews
-from .state import REGISTRY
-from .watch import STAGE_ORDER, start_watcher
+try:  # normal package import (uvicorn webui.server.app:app)
+    from . import fsapi, previews
+    from .state import REGISTRY
+    from .watch import STAGE_ORDER, start_watcher
+except ImportError:  # run directly as a script: python webui/server/app.py
+    if str(REPO_ROOT) not in sys.path:
+        sys.path.insert(0, str(REPO_ROOT))
+    from webui.server import fsapi, previews
+    from webui.server.state import REGISTRY
+    from webui.server.watch import STAGE_ORDER, start_watcher
 
 app = FastAPI(title="PAR-S Generator service", version="0.1.0")
 app.add_middleware(
