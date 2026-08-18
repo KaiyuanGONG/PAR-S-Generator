@@ -23,10 +23,25 @@ _CACHE_LOCK = threading.Lock()
 _CACHE_MAX = 8
 
 
-def _to_png(array2d: np.ndarray, zoom: int = 3) -> bytes:
+def _to_png(array2d: np.ndarray, zoom: int = 3, gamma: float = 0.65) -> bytes:
+    """Robust grayscale window.
+
+    Volumes are mostly empty air, so a global percentile collapses the soft-tissue
+    range to black. The window is therefore computed over non-zero voxels only and
+    a mild gamma lifts the mid-tones, matching how the Qt viewer presents slices.
+    """
     arr = np.asarray(array2d, dtype=np.float64)
-    top = float(np.percentile(arr, 99.5)) if arr.size else 1.0
-    arr = np.clip(arr / top if top > 0 else arr, 0.0, 1.0)
+    positive = arr[arr > 0]
+    if positive.size:
+        lo = float(np.percentile(positive, 1.0))
+        hi = float(np.percentile(positive, 99.0))
+        if hi <= lo:
+            hi = float(positive.max())
+    else:
+        lo, hi = 0.0, 1.0
+    arr = np.clip((arr - lo) / (hi - lo) if hi > lo else arr * 0.0, 0.0, 1.0)
+    if gamma and gamma != 1.0:
+        arr = arr ** gamma
     img = Image.fromarray((arr * 255).astype(np.uint8), mode="L")
     if zoom > 1:
         img = img.resize((img.width * zoom, img.height * zoom), Image.NEAREST)

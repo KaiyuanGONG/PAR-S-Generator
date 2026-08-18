@@ -133,7 +133,15 @@ def run_cases(root: str, offset: int = 0, limit: int = 200) -> dict:
 @app.get("/api/run/stages")
 def run_stages(root: str) -> dict:
     payload = _open_run(root).load()
-    stages = payload.get("stages", {})
+    stages = dict(payload.get("stages", {}))
+    if payload.get("finalized") and "finalize" not in stages:
+        # ``finalize`` is a ledger flag rather than a stage record; surface it as
+        # the terminal stage so the UI rail matches the documented vocabulary.
+        stages["finalize"] = {
+            "status": "passed",
+            "package_sha256": payload.get("package_sha256"),
+            "finalized_utc": payload.get("finalized_utc"),
+        }
     ordered = [{"stage": name, **stages[name]} for name in STAGE_ORDER if name in stages]
     extra = [{"stage": name, **record} for name, record in stages.items() if name not in STAGE_ORDER]
     return {"stages": ordered + extra, "finalized": bool(payload.get("finalized"))}
@@ -321,6 +329,14 @@ def fs_list(path: str = Query(default="")) -> dict:
 @app.get("/api/fs/validate")
 def fs_validate(path: str, kind: str) -> dict:
     return fsapi.validate_path(path, kind, REPO_ROOT)
+
+
+# ── static frontend (built bundle) ─────────────────────────────────────────
+
+_DIST = Path(__file__).resolve().parents[1] / "frontend" / "dist"
+if _DIST.is_dir():
+    from fastapi.staticfiles import StaticFiles
+    app.mount("/", StaticFiles(directory=str(_DIST), html=True), name="ui")
 
 
 if __name__ == "__main__":

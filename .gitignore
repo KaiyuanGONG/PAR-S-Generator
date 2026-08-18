@@ -75,3 +75,8 @@ runs/**/*.npz
 
 # Keep shared pytest config tracked
 !pytest.ini
+
+# web UI build artefacts
+webui/frontend/node_modules/
+webui/frontend/dist/
+designs/*/
