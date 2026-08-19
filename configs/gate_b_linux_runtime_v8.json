@@ -1,0 +1,47 @@
+{
+  "schema_version": "pars_n2_science_runtime_linux_v8",
+  "platform": "Linux",
+  "architecture": "x86-64",
+  "official_package": {
+    "filename": "smc_linux_intel_64_v80.tar.gz",
+    "size_bytes": 16404180,
+    "sha256": "e4143681ffe936144caaef5e4a54b097c695d9dd6b49d4939a125168c0341919"
+  },
+  "runtime_layout": {
+    "binary_relative_path": "simind",
+    "smc_dir_relative_path": "smc_dir"
+  },
+  "simind": {
+    "size_bytes": 2231592,
+    "sha256": "e143e2e0b0315c9cd8b6bb187d6bd28448e096c255f8d16ee0c14787d1537f9d",
+    "format": "ELF64 little-endian",
+    "machine": "EM_X86_64"
+  },
+  "required_smc_files": [
+    {"name": "simind.ini", "size_bytes": 5824, "sha256": "211bc677fd4433bd313220f7782a8654792b1961b49f708d7c543c2297174412"},
+    {"name": "collim.col", "size_bytes": 15333, "sha256": "9637c6cb3e5df0bdee891cf32ff026bdf71c24bf61cf35eb36507c2e4375bb09"},
+    {"name": "h2o.cr4", "size_bytes": 474579, "sha256": "e0255ac2e9ff688719f137fdd730ff2133cb761a5d5b6eca8454acb1a05de450"},
+    {"name": "al.cr4", "size_bytes": 474573, "sha256": "ea5e28045bee05b8a08926f0f0818f1b4eeb86d811762f5aaf69a65f36f80c02"},
+    {"name": "czt.cr4", "size_bytes": 474590, "sha256": "4a2a2eeea8b4d14881e9b2a77baf88a3b345d16c6485cf72810f0ed965e3f845"},
+    {"name": "pmt.cr4", "size_bytes": 474606, "sha256": "97d81b145a48c2bf1826375f4273607aadb9773408f4213fa2f1e0299ac6cecb"},
+    {"name": "pb_sb2.cr4", "size_bytes": 474586, "sha256": "6dd8725f81e1f2366886c709669afb05e453b0c05af7ea457948ded0c9db1e32"},
+    {"name": "w.cr4", "size_bytes": 474571, "sha256": "1851a5edee76cce00fdae3e2e049709b10a73d52995cd31ad9b521ec4aad2e93"},
+    {"name": "errors.txt", "size_bytes": 19929, "sha256": "e3ca80ae8b48d8bc35e0b2add537711fd1f54d785dea65bed4d308a3cb6e4aba"},
+    {"name": "ctunits.ini", "size_bytes": 950, "sha256": "97890e337b433570b521f5dcedd051c58ad1d10b982acedf0d1f843ca1273f63"},
+    {"name": "intfile.key", "size_bytes": 8199, "sha256": "762a34c07b308bc9686372fe9e1fb3f6b2208d8468503b006f0d5796aefcc6d2"},
+    {"name": "ranlux2.num", "size_bytes": 305, "sha256": "997482a8166c67bfd6e2df2a418a191cb08ecc64e3140a0319e508f66d70f8ba"}
+  ],
+  "qualification_source": {
+    "report_schema": "pars_simind_runtime_qualification_v2",
+    "qualified_utc": "20260817T184125Z",
+    "required_smc_count": 12,
+    "native_linux_x86_64_elf": true,
+    "shared_libraries_missing": 0
+  },
+  "execution_policy": {
+    "official_runtime_read_only": true,
+    "copy_required_smc_to_fresh_private_job_directory": true,
+    "global_path_modification": false,
+    "profile_modification": false
+  }
+}

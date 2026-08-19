@@ -24,6 +24,10 @@ runs/stage3-simind-pilot-10-v3-20260818/figures/projection_qc_data.csv -text
 # checkout EOL keeps its SHA256 stable even on CRLF worktrees.
 manifests/legacy-v1-weighted-mc/file_inventory.sha256 text eol=lf
 
+# Gate-B qualified reference inputs are byte identities, including line ends.
+reference/simind/gate_b/ge870_czt_type7.smc -text
+reference/simind/gate_b/n2_photopeak.win -text
+
 *.png binary
 *.jpg binary
 *.jpeg binary
