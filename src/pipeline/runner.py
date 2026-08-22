@@ -39,8 +39,10 @@ from pipeline.contracts import (
     utc_now,
 )
 from pipeline.figures import export_run_figures
+from pipeline.gate_a_report import write_gate_a_reports
 from pipeline.observation import assign_empirical_count_targets, sample_poisson_observation
 from pipeline.qc import (
+    assess_gate_a_v2_population,
     assess_stage3_phantom_population,
     phantom_qc,
     summarize_phantom_population,
@@ -67,6 +69,7 @@ class PipelineConfig:
     case_numbers: list[int] | None = None
     projection_shape: tuple[int, int, int] = (60, 128, 128)
     simulation_mode: str = "prepare"  # prepare, mock, execute
+    execution_scope: str = "full"  # full, anatomy_only_gate_a
     create_poisson_observation: bool = False
     observation_scale: float = 1.0
     observation_seed_offset: int = 1_000_000
@@ -94,12 +97,23 @@ class PipelineConfig:
     def __post_init__(self):
         if self.simulation_mode not in {"prepare", "mock", "execute"}:
             raise ValueError("simulation_mode must be prepare, mock, or execute")
+        if self.execution_scope not in {"full", "anatomy_only_gate_a"}:
+            raise ValueError("execution_scope must be full or anatomy_only_gate_a")
         if not 1 <= int(self.max_simind_workers) <= 32:
             raise ValueError("max_simind_workers must be between 1 and 32")
         if int(self.simind_seed_base) < 1:
             raise ValueError("simind_seed_base must be positive")
         if self.phantom.n_cases < 1:
             raise ValueError("phantom.n_cases must be positive")
+        if self.execution_scope == "anatomy_only_gate_a":
+            if self.phantom.anatomy_model != "v2_population":
+                raise ValueError("anatomy_only_gate_a requires anatomy_model=v2_population")
+            if self.phantom.n_cases != 100:
+                raise ValueError("anatomy_only_gate_a requires exactly 100 cases")
+            if self.simulation_mode != "prepare":
+                raise ValueError("anatomy_only_gate_a never executes or mocks SIMIND")
+            if self.create_poisson_observation:
+                raise ValueError("anatomy_only_gate_a cannot create observations")
         if tuple(self.phantom.volume_shape) != (128, 128, 128):
             raise ValueError("Current validated scope requires a 128x128x128 phantom")
         if self.phantom.mu_contract_status != CURRENT_TYPE7_ATTENUATION_CONTRACT_STATUS:
@@ -225,7 +239,7 @@ class PipelineRunner:
     @staticmethod
     def _runtime_provenance(config: PipelineConfig) -> dict:
         src_root = Path(__file__).resolve().parents[1]
-        source_files = (
+        source_files = [
             src_root / "core" / "phantom_generator.py",
             src_root / "core" / "interfile_writer.py",
             src_root / "pipeline" / "runner.py",
@@ -233,7 +247,43 @@ class PipelineRunner:
             src_root / "pipeline" / "simind.py",
             src_root / "pipeline" / "observation.py",
             src_root / "pipeline" / "pilot.py",
-        )
+        ]
+        v2_inputs = None
+        if config.phantom.anatomy_model == "v2_population":
+            source_files.extend(
+                src_root / relative
+                for relative in (
+                    "core/anatomy_v2.py",
+                    "core/attenuation_model_v2.py",
+                    "core/hybrid_v2_adapter.py",
+                    "core/liver_geometry.py",
+                    "core/liver_regions.py",
+                    "core/measurements.py",
+                    "core/population_sampler.py",
+                    "core/schemas_v2.py",
+                    "core/seeds.py",
+                    "pipeline/gate_a_report.py",
+                )
+            )
+            project_root = src_root.parent
+            profile_path = Path(config.phantom.v2_population_profile)
+            registry_path = Path(config.phantom.v2_evidence_registry)
+            if not profile_path.is_absolute():
+                profile_path = project_root / profile_path
+            if not registry_path.is_absolute():
+                registry_path = project_root / registry_path
+            profile_path = profile_path.resolve()
+            registry_path = registry_path.resolve()
+            v2_inputs = {
+                "population_profile": {
+                    "path": str(profile_path),
+                    "sha256": sha256_file(profile_path),
+                },
+                "evidence_registry": {
+                    "path": str(registry_path),
+                    "sha256": sha256_file(registry_path),
+                },
+            }
         exe = Path(config.simind_exe).resolve()
         smc = Path(config.smc_file).resolve()
         evidence = Path(config.empirical_count_evidence).resolve()
@@ -267,6 +317,7 @@ class PipelineRunner:
             "software_sha256": {
                 path.relative_to(src_root).as_posix(): sha256_file(path) for path in source_files
             },
+            "v2_inputs": v2_inputs,
             "simind_executable": {
                 "path": str(exe),
                 "sha256": sha256_file(exe) if exe.is_file() else None,
@@ -429,7 +480,38 @@ class PipelineRunner:
         ]
         summary = summarize_phantom_population(qc_records)
         summary["failed_cases"] = failed
-        if len(cases) == 100:
+        if len(cases) == 100 and self.config.phantom.anatomy_model == "v2_population":
+            summary["stage3_population_acceptance"] = {
+                "status": "not_applicable",
+                "enforced": False,
+                "reason": "Legacy fixed-volume/fixed-left-ratio anatomy gates do not define V2 semantics",
+            }
+            summary["gate_a_population_acceptance"] = assess_gate_a_v2_population(
+                summary,
+                size_bins_mm=self.config.phantom.tumor_size_bins_mm,
+                size_probabilities=self.config.phantom.tumor_probs,
+                tumor_count_min=self.config.phantom.tumor_count_min,
+                tumor_count_max=self.config.phantom.tumor_count_max,
+                mode_probabilities=dict(zip(
+                    self.config.phantom.tumor_modes,
+                    self.config.phantom.tumor_mode_probs,
+                )),
+                target_contrast_range=(
+                    self.config.phantom.tumor_contrast_min,
+                    self.config.phantom.tumor_contrast_max,
+                ),
+                central_margin_mm=self.config.phantom.tumor_min_liver_margin_mm,
+            )
+            if summary["gate_a_population_acceptance"]["status"] != "passed":
+                summary["status"] = "failed"
+                failed.append("gate_a_population_distribution_gate")
+                summary["failed_cases"] = failed
+        elif len(cases) == 100:
+            summary["gate_a_population_acceptance"] = {
+                "status": "not_applicable",
+                "enforced": False,
+                "reason": "Gate A V2 checks require anatomy_model=v2_population",
+            }
             summary["stage3_population_acceptance"] = assess_stage3_phantom_population(
                 summary,
                 size_bins_mm=self.config.phantom.tumor_size_bins_mm,
@@ -456,6 +538,11 @@ class PipelineRunner:
                 "status": "not_enforced",
                 "enforced": False,
                 "reason": "Stage-3 population gates require exactly 100 generated cases",
+            }
+            summary["gate_a_population_acceptance"] = {
+                "status": "not_enforced",
+                "enforced": False,
+                "reason": "Gate A population gates require exactly 100 generated cases",
             }
         atomic_write_json(self.layout.subdir("qc") / "phantom_qc_summary.json", summary)
         self.ledger.update_stage(
@@ -866,6 +953,160 @@ class PipelineRunner:
             )
         return cases
 
+    def package_anatomy_only(self) -> Path:
+        """Package Gate A without export, SIMIND, observations, training or evaluation."""
+        if self.config.execution_scope != "anatomy_only_gate_a":
+            raise RuntimeError("package_anatomy_only requires anatomy_only_gate_a scope")
+        existing_state = self.ledger.load()
+        if existing_state.get("finalized"):
+            manifest = self.layout.root / "dataset_manifest.json"
+            self._assert_hash(
+                manifest,
+                existing_state.get("package_sha256"),
+                "finalized anatomy-only manifest",
+            )
+            return manifest
+        try:
+            cases = self.run_phantom_qc()
+        except Exception as exc:
+            cases = self.ledger.read_cases()
+            summary_path = self.layout.subdir("qc") / "phantom_qc_summary.json"
+            failure_path = self.layout.root / "gate_a_failures.json"
+            if summary_path.is_file() and len(cases) >= 5:
+                try:
+                    write_gate_a_reports(self.layout.root, cases, self.config)
+                except Exception as report_exc:
+                    if not failure_path.is_file():
+                        atomic_write_json(
+                            failure_path,
+                            {
+                                "schema_version": "pars_gate_a_v2_failures_v1",
+                                "status": "failed",
+                                "failure_count": 1,
+                                "failures": [{
+                                    "kind": "report_generation",
+                                    "error": str(report_exc),
+                                    "upstream_error": str(exc),
+                                }],
+                            },
+                        )
+            elif not failure_path.is_file():
+                atomic_write_json(
+                    failure_path,
+                    {
+                        "schema_version": "pars_gate_a_v2_failures_v1",
+                        "status": "failed",
+                        "failure_count": 1,
+                        "failures": [{
+                            "kind": "pipeline",
+                            "error": str(exc),
+                            "generated_case_count": len(cases),
+                        }],
+                    },
+                )
+            raise
+        summary_path = self.layout.subdir("qc") / "phantom_qc_summary.json"
+        summary = json.loads(summary_path.read_text(encoding="utf-8"))
+        if summary.get("gate_a_population_acceptance", {}).get("status") != "passed":
+            raise RuntimeError("Cannot package anatomy-only pilot: Gate A did not pass")
+
+        splits = {name: [] for name in ("train", "val", "test")}
+        for record in cases:
+            splits[record["split"]].append(record["case_id"])
+        atomic_write_json(
+            self.layout.root / "splits.json",
+            {
+                "seed": self.config.split_seed,
+                "fractions": list(self.config.split_fractions),
+                "assignment_unit": "phantom_id",
+                "splits": splits,
+            },
+        )
+        report = write_gate_a_reports(self.layout.root, cases, self.config)
+
+        inventory: list[dict] = []
+        excluded = {"dataset_manifest.json", "run.json"}
+        for path in sorted(
+            path
+            for path in self.layout.root.rglob("*")
+            if path.is_file() and path.name not in excluded
+        ):
+            inventory.append(
+                {
+                    "path": path.relative_to(self.layout.root).as_posix(),
+                    "bytes": path.stat().st_size,
+                    "sha256": sha256_file(path),
+                }
+            )
+        manifest = {
+            "dataset_id": self.config.run_id,
+            "created_utc": utc_now(),
+            "scope": "synthetic_liver_anatomy_only_gate_a",
+            "execution_scope": self.config.execution_scope,
+            "anatomy_model": self.config.phantom.anatomy_model,
+            "simulation_mode": "not_run_anatomy_only",
+            "case_count": len(cases),
+            "cases_manifest": "cases.jsonl",
+            "split_manifest": "splits.json",
+            "gate_a_report": "gate_a_report.json",
+            "gate_a_report_status": report["status"],
+            "gate_a_failure_list": "gate_a_failures.json",
+            "npz_contract": {
+                "required_keys": [
+                    "activity",
+                    "mu_map",
+                    "liver_mask",
+                    "left_mask",
+                    "right_mask",
+                    "tumor_masks",
+                ],
+                "metadata_suffix": "_meta.json",
+                "case_hashes_in_cases_jsonl": True,
+            },
+            "v2_profile": {
+                "path": self.config.phantom.v2_population_profile,
+                "evidence_registry": self.config.phantom.v2_evidence_registry,
+            },
+            "projection_orientation": CANONICAL_PROJECTION_TRANSFORM,
+            "attenuation_contract_status": self.config.phantom.mu_contract_status,
+            "type7_attenuation_contract": {
+                "status": "preserved_not_executed",
+                "stored_formula": "mu_cm_inverse * density_voxel_size_cm",
+                "density_threshold_times_1000": self.config.type7_density_threshold_times_1000,
+                "phantom_cross_sections": list(self.config.phantom_cross_sections),
+            },
+            "detector_contract": {
+                "status": "preserved_not_executed",
+                "index_100_101": [self.config.detector_matrix_i, self.config.detector_matrix_j],
+                "native_fov_cm": [39.36, 51.168],
+                "nn_multiplier": self.config.nn_multiplier,
+            },
+            "observation_contract": {
+                "enabled": False,
+                "status": "not_run_anatomy_only",
+            },
+            "prohibited_stages": [
+                "simind",
+                "gpu",
+                "e_cal",
+                "pars_training",
+                "sealed_evaluation",
+                "formal550",
+            ],
+            "files": inventory,
+        }
+        manifest_path = self.layout.root / "dataset_manifest.json"
+        atomic_write_json(manifest_path, manifest)
+        self.ledger.update_stage(
+            "package",
+            "passed",
+            manifest=str(manifest_path.resolve()),
+            manifest_sha256=sha256_file(manifest_path),
+            file_count=len(inventory),
+            execution_scope=self.config.execution_scope,
+        )
+        return manifest_path
+
     def package(self) -> Path:
         existing_state = self.ledger.load()
         if existing_state.get("finalized"):
@@ -974,6 +1215,11 @@ class PipelineRunner:
             manifest = self.layout.root / "dataset_manifest.json"
             self._assert_hash(manifest, state.get("package_sha256"), "finalized dataset manifest")
             return state
+        if self.config.execution_scope == "anatomy_only_gate_a":
+            manifest = self.package_anatomy_only()
+            if finalize:
+                return self.ledger.finalize(package_sha256=sha256_file(manifest))
+            return self.ledger.load()
         if finalize:
             return self.finalize()
         self.package()

@@ -74,6 +74,10 @@ runs/**/*.bin
 runs/**/*.a00
 runs/**/*.npz
 
+# The only authorized local Gate A pilot output. Reports and manifests stay
+# reviewable in place but are not mixed into the implementation commit.
+runs/gate-a-v2-master-100-20260819/
+
 # Keep shared pytest config tracked
 !pytest.ini
 

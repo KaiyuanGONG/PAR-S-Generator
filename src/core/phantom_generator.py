@@ -80,6 +80,13 @@ class PhantomConfig:
     smooth_sigma: float = 1.2
     smooth_thr: float = 0.5
 
+    # Anatomy integration.  ``legacy`` preserves the frozen master path;
+    # ``v2_population`` activates the additive Gate A adapter.
+    anatomy_model: str = "legacy"
+    v2_population_profile: str = "configs/population_tare_hcc_nopvi_v2.json"
+    v2_evidence_registry: str = "configs/evidence_registry_v2.json"
+    v2_max_liver_shape_attempts: int = 16
+
     # Lobe splitting
     target_left_ratio: float = 0.35
     cantlie_tilt_range: tuple = (-6.0, 10.0)
@@ -324,6 +331,7 @@ class PhantomResult:
     mu_unit: str
     mu_reference_energy_kev: float
     mu_contract_status: str
+    v2_metadata: dict | None
     generation_time_s: float
 
     def save(self, output_dir: Path):
@@ -374,6 +382,8 @@ class PhantomResult:
             "volume_shape": list(self.volume_shape),
             "generation_time_s": self.generation_time_s,
         }
+        if self.v2_metadata is not None:
+            meta["v2"] = self.v2_metadata
         with open(output_dir / f"case_{self.case_id:04d}_meta.json", "w") as f:
             json.dump(meta, f, indent=2)
 
@@ -394,6 +404,22 @@ class PhantomGenerator:
 
     def __init__(self, config: PhantomConfig):
         self.cfg = config
+        if config.anatomy_model not in {"legacy", "v2_population"}:
+            raise ValueError("anatomy_model must be legacy or v2_population")
+        self._hybrid_v2_adapter_instance = None
+
+    def _hybrid_v2_adapter(self):
+        if self._hybrid_v2_adapter_instance is None:
+            from .hybrid_v2_adapter import HybridV2Adapter
+
+            self._hybrid_v2_adapter_instance = HybridV2Adapter(
+                profile_path=self.cfg.v2_population_profile,
+                evidence_registry_path=self.cfg.v2_evidence_registry,
+                volume_shape=tuple(int(value) for value in self.cfg.volume_shape),
+                voxel_size_mm=float(self.cfg.voxel_size_mm),
+                max_shape_attempts=int(self.cfg.v2_max_liver_shape_attempts),
+            )
+        return self._hybrid_v2_adapter_instance
 
     def _resolve_perfusion_mode(self, rng, overrides: PreviewOverrides | None):
         if overrides and overrides.perfusion_mode in self.PERFUSION_POLICY_MAP.values():
@@ -495,110 +521,173 @@ class PhantomGenerator:
         )
         return left, right, best_offset, error <= cfg.cantlie_tolerance, iterations, error, search_evidence
 
+    def _generate_legacy_anatomy(self, rng: np.random.Generator) -> tuple:
+        """Run the frozen master anatomy path without changing its RNG order."""
+        cfg = self.cfg
+        shape = cfg.volume_shape
+        base_center = np.array(cfg.liver_base_center)
+        global_shift = rng.uniform(-cfg.global_shift_range, cfg.global_shift_range, 3)
+        center = base_center + global_shift
+
+        right_radii = tuple(
+            radius * rng.uniform(1 - cfg.scale_jitter, 1 + cfg.scale_jitter)
+            for radius in cfg.right_radii
+        )
+        right_template = Geometry3D.create_ellipsoid(
+            shape,
+            tuple(center + np.array(cfg.right_shift)),
+            right_radii,
+            rotation_deg=cfg.right_rot_deg,
+            rotation_plane="xz",
+            rng=rng,
+        )
+        left_radii = tuple(
+            radius * rng.uniform(1 - cfg.scale_jitter, 1 + cfg.scale_jitter)
+            for radius in cfg.left_radii
+        )
+        left_template = Geometry3D.create_ellipsoid(
+            shape,
+            tuple(center + np.array(cfg.left_shift)),
+            left_radii,
+            rotation_deg=cfg.left_rot_deg,
+            rotation_plane="xz",
+            rng=rng,
+        )
+        body = Geometry3D.create_ellipsoid(shape, (0, 0, 0), (0.67, 0.39, 0.60))
+        dome_radius = cfg.dome_radius + rng.uniform(-cfg.detail_jitter, cfg.detail_jitter)
+        dome = Geometry3D.create_ellipsoid(
+            shape,
+            tuple(center + np.array(cfg.dome_offset)),
+            (dome_radius,) * 3,
+            rng=rng,
+        )
+        fossa_radius = cfg.fossa_radius + rng.uniform(-cfg.detail_jitter, cfg.detail_jitter)
+        fossa = Geometry3D.create_ellipsoid(
+            shape,
+            tuple(center + np.array(cfg.fossa_offset)),
+            (fossa_radius,) * 3,
+            rng=rng,
+        )
+        liver = (right_template | left_template) & body & dome & ~fossa
+        if cfg.smooth_sigma > 0:
+            liver = gaussian_filter(liver.astype(float), sigma=cfg.smooth_sigma) > cfg.smooth_thr
+        if not np.any(liver):
+            raise RuntimeError("Generated liver mask is empty. Adjust geometry parameters and retry.")
+
+        tilt = float(rng.uniform(*cfg.cantlie_tilt_range))
+        (
+            left_mask,
+            right_mask,
+            best_offset,
+            converged,
+            iterations,
+            absolute_error,
+            search_evidence,
+        ) = self._split_liver_to_target(liver, tilt)
+
+        mu_map = np.ones(shape, dtype=np.float32) * cfg.mu_water
+        right_lung = Geometry3D.create_ellipsoid(
+            shape, (0.38, 0.05, -0.22), (0.20, 0.14, 0.18)
+        )
+        left_lung = Geometry3D.create_ellipsoid(
+            shape, (0.38, 0.05, 0.22), (0.20, 0.14, 0.18)
+        )
+        mu_map[right_lung | left_lung] = cfg.mu_lung
+        _, y_grid, x_grid = Geometry3D.get_grid(shape)
+        spine_mask = ((x_grid - 0) ** 2 + (y_grid + 0.30) ** 2) <= 0.06**2
+        mu_map[spine_mask] = cfg.mu_spine
+        mu_map[liver] = cfg.mu_liver
+        outer_body = Geometry3D.create_ellipsoid(shape, (0, 0, 0), (0.69, 0.41, 0.62))
+        mu_map[outer_body & ~body] = cfg.mu_fat
+        noise = rng.random(shape).astype(np.float32)
+        noise = gaussian_filter(noise, sigma=cfg.mu_noise_sigma).astype(np.float32)
+        noise = (noise - noise.mean()) * cfg.mu_noise_amp
+        mu_map = np.clip(mu_map + noise, 0, None)
+        mu_map[~outer_body] = 0.0
+        return (
+            liver,
+            left_mask,
+            right_mask,
+            mu_map.astype(np.float32, copy=False),
+            best_offset,
+            tilt,
+            converged,
+            iterations,
+            absolute_error,
+            search_evidence,
+        )
+
     def generate_one(self, case_id: int, seed: Optional[int] = None, overrides: PreviewOverrides | None = None) -> PhantomResult:
         t0 = time.time()
         cfg = self.cfg
 
         if seed is None:
             if cfg.use_global_seed:
+                v2_global_seed = int(cfg.global_seed)
                 seed = cfg.global_seed + case_id
             else:
                 seed = np.random.randint(0, 2**31)
+                v2_global_seed = int(seed)
+        else:
+            v2_global_seed = int(seed)
 
         rng = np.random.default_rng(seed)
         shape = cfg.volume_shape
+        v2_metadata = None
+        v2_tumor_seed = None
 
-        # ── 1. Build liver mask ──
-        base_center = np.array(cfg.liver_base_center)
-        global_shift = rng.uniform(-cfg.global_shift_range, cfg.global_shift_range, 3)
-        center = base_center + global_shift
-
-        jitter = {'center': 0.0, 'radii': cfg.scale_jitter, 'rot_deg': cfg.rot_jitter_deg}
-
-        right_radii = tuple(r * rng.uniform(1 - cfg.scale_jitter, 1 + cfg.scale_jitter)
-                            for r in cfg.right_radii)
-        right_center = tuple(center + np.array(cfg.right_shift))
-        rt = Geometry3D.create_ellipsoid(
-            shape, right_center, right_radii,
-            rotation_deg=cfg.right_rot_deg, rotation_plane='xz', rng=rng
-        )
-
-        left_radii = tuple(r * rng.uniform(1 - cfg.scale_jitter, 1 + cfg.scale_jitter)
-                           for r in cfg.left_radii)
-        left_center = tuple(center + np.array(cfg.left_shift))
-        lt = Geometry3D.create_ellipsoid(
-            shape, left_center, left_radii,
-            rotation_deg=cfg.left_rot_deg, rotation_plane='xz', rng=rng
-        )
-
-        # body inner shell — realistic adult torso (Z=37.9cm, Y=22.1cm, X=33.9cm)
-        # Ref: typical adult supine CT dimensions for abdominal SPECT
-        body = Geometry3D.create_ellipsoid(shape, (0, 0, 0), (0.67, 0.39, 0.60))
-
-        dome_r = cfg.dome_radius + rng.uniform(-cfg.detail_jitter, cfg.detail_jitter)
-        dome = Geometry3D.create_ellipsoid(
-            shape, tuple(center + np.array(cfg.dome_offset)), (dome_r,) * 3, rng=rng
-        )
-
-        fossa_r = cfg.fossa_radius + rng.uniform(-cfg.detail_jitter, cfg.detail_jitter)
-        fossa = Geometry3D.create_ellipsoid(
-            shape, tuple(center + np.array(cfg.fossa_offset)), (fossa_r,) * 3, rng=rng
-        )
-
-        liver = (rt | lt) & body & dome & ~fossa
-
-        if cfg.smooth_sigma > 0:
-            liver = gaussian_filter(liver.astype(float), sigma=cfg.smooth_sigma) > cfg.smooth_thr
-
-        liver_vol = int(liver.sum())
-        if liver_vol <= 0:
-            raise RuntimeError("Generated liver mask is empty. Adjust geometry parameters and retry.")
-
-        # ── 2. Lobe splitting (Cantlie plane) ──
-        tilt = rng.uniform(*cfg.cantlie_tilt_range)
-        (
-            left_mask,
-            right_mask,
-            best_offset,
-            cantlie_converged,
-            cantlie_iterations,
-            cantlie_abs_error,
-            cantlie_search_evidence,
-        ) = self._split_liver_to_target(liver, float(tilt))
-        actual_left_ratio = left_mask.sum() / liver_vol if liver_vol > 0 else 0.5
-
-        # ── 3. μ-map ──
-        mu = np.ones(shape, dtype=np.float32) * cfg.mu_water
-
-        # Lungs — centers at Z=0.38 (10.8cm above FOV center), above the diaphragm.
-        # Semi-axes (rz=0.20, ry=0.14, rx=0.18): lung top Z=0.58 < body top 0.69 ✓
-        # 2.5cm diaphragm gap between liver dome top (Z=0.09) and lung bottom (Z=0.18) ✓
-        lung_r = Geometry3D.create_ellipsoid(shape, (0.38, 0.05, -0.22), (0.20, 0.14, 0.18))
-        lung_l = Geometry3D.create_ellipsoid(shape, (0.38, 0.05,  0.22), (0.20, 0.14, 0.18))
-        mu[lung_r | lung_l] = cfg.mu_lung
-
-        # Spine — vertebral body ~3.4cm diameter, 8.5cm posterior from FOV center.
-        # Y=-0.30 is 73% of body AP semi-axis (0.41) toward posterior — anatomically correct.
-        Z, Y, X = Geometry3D.get_grid(shape)
-        spine_mask = ((X - 0) ** 2 + (Y + 0.30) ** 2) <= 0.06 ** 2
-        mu[spine_mask] = cfg.mu_spine
-
-        # Liver
-        mu[liver] = cfg.mu_liver
-
-        # Fat layer (outer body shell) — adds ~0.57cm fat per side to body
-        outer_body = Geometry3D.create_ellipsoid(shape, (0, 0, 0), (0.69, 0.41, 0.62))
-        fat_layer = outer_body & ~body
-        mu[fat_layer] = cfg.mu_fat
-
-        # Noise
-        noise = rng.random(shape).astype(np.float32)
-        noise = gaussian_filter(noise, sigma=cfg.mu_noise_sigma).astype(np.float32)
-        noise = (noise - noise.mean()) * cfg.mu_noise_amp
-        mu = np.clip(mu + noise, 0, None)
-
-        # Air: voxels outside the body boundary must be 0.0 (μ_air = 0)
-        mu[~outer_body] = 0.0
+        if cfg.anatomy_model == "v2_population":
+            v2_case = self._hybrid_v2_adapter().generate(
+                case_id=f"case_{case_id:04d}",
+                global_seed=v2_global_seed,
+            )
+            liver = np.asarray(v2_case.geometry.mask, dtype=bool)
+            labels = np.asarray(v2_case.geometry.region_labels)
+            left_mask = np.isin(labels, (1, 2, 3))
+            right_mask = np.isin(labels, (4, 5))
+            mu = np.asarray(v2_case.mu_map, dtype=np.float32)
+            liver_vol = int(liver.sum())
+            actual_left_ratio = float(left_mask.sum() / liver_vol)
+            target_left_ratio = float(v2_case.target.left_fraction)
+            cantlie_abs_error = abs(actual_left_ratio - target_left_ratio)
+            best_offset = 0.0
+            tilt = 0.0
+            cantlie_converged = bool(
+                cantlie_abs_error <= (1.0 / max(liver_vol, 1)) + 1e-12
+            )
+            cantlie_iterations = 0
+            cantlie_search_evidence = {
+                "method": "v2_region_proxy_partition",
+                "legacy_cantlie_not_used": True,
+                "target_left_fraction": target_left_ratio,
+                "actual_left_fraction": actual_left_ratio,
+                "voxel_quantization_tolerance": 1.0 / max(liver_vol, 1),
+                "expanded_beyond_initial_range": False,
+                "target_bracketed": True,
+            }
+            if not cantlie_converged:
+                raise RuntimeError(
+                    "V2 left/right region adapter exceeded one-voxel target tolerance"
+                )
+            v2_metadata = v2_case.metadata
+            rng = np.random.default_rng(v2_case.seed_bundle.activity)
+            v2_tumor_seed = int(v2_case.seed_bundle.tumor)
+        else:
+            (
+                liver,
+                left_mask,
+                right_mask,
+                mu,
+                best_offset,
+                tilt,
+                cantlie_converged,
+                cantlie_iterations,
+                cantlie_abs_error,
+                cantlie_search_evidence,
+            ) = self._generate_legacy_anatomy(rng)
+            liver_vol = int(liver.sum())
+            actual_left_ratio = float(left_mask.sum() / liver_vol)
+            target_left_ratio = float(cfg.target_left_ratio)
 
         # ── 4. Perfusion mode & base activity (determined before tumor placement) ──
         perfusion_mode = self._resolve_perfusion_mode(rng, overrides)
@@ -621,6 +710,11 @@ class PhantomGenerator:
             Z_grid, _, _ = Geometry3D.get_grid(shape)
             grad = (Z_grid + 1) / 2 * cfg.gradient_gain
             activity += (grad * liver).astype(np.float32)
+
+        # V2 uses a separate child stream so patient/liver/activity acceptance
+        # cannot bias the frozen master lesion sampler.
+        if v2_tumor_seed is not None:
+            rng = np.random.default_rng(v2_tumor_seed)
 
         # ── 5. Tumors ──
         # Geometry and perfusion are independent sampled factors.  Restricting
@@ -918,7 +1012,7 @@ class PhantomGenerator:
             total_counts_actual=total_counts_actual,
             liver_volume_ml=liver_volume_ml,
             left_ratio=float(actual_left_ratio),
-            cantlie_target_ratio=float(cfg.target_left_ratio),
+            cantlie_target_ratio=float(target_left_ratio),
             cantlie_offset=float(best_offset),
             cantlie_tilt_deg=float(tilt),
             cantlie_converged=bool(cantlie_converged),
@@ -931,6 +1025,7 @@ class PhantomGenerator:
             mu_unit=cfg.mu_unit,
             mu_reference_energy_kev=cfg.mu_reference_energy_kev,
             mu_contract_status=cfg.mu_contract_status,
+            v2_metadata=v2_metadata,
             generation_time_s=time.time() - t0,
         )
         return result

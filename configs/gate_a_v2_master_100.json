@@ -1,0 +1,20 @@
+{
+  "run_id": "gate-a-v2-master-100-20260819",
+  "runs_root": "runs",
+  "execution_scope": "anatomy_only_gate_a",
+  "simulation_mode": "prepare",
+  "protocol_label": "Gate A V2 population anatomy on frozen master PipelineRunner",
+  "protocol_status": "gate_a_anatomy_only_cpu_pilot",
+  "split_seed": 260819101,
+  "create_poisson_observation": false,
+  "phantom": {
+    "anatomy_model": "v2_population",
+    "v2_population_profile": "configs/population_tare_hcc_nopvi_v2.json",
+    "v2_evidence_registry": "configs/evidence_registry_v2.json",
+    "v2_max_liver_shape_attempts": 16,
+    "n_cases": 100,
+    "global_seed": 260819001,
+    "use_global_seed": true,
+    "output_dir": "managed_by_pipeline"
+  }
+}

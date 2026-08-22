@@ -51,7 +51,10 @@ def _cmd_run(args) -> int:
     # A prepared-only run intentionally has no projection expectation and
     # therefore cannot be finalized.  It should still complete successfully
     # as a reviewable command/input package without requiring a special flag.
-    should_finalize = not args.no_finalize and config.simulation_mode != "prepare"
+    should_finalize = not args.no_finalize and (
+        config.simulation_mode != "prepare"
+        or config.execution_scope == "anatomy_only_gate_a"
+    )
     result = runner.run_all(finalize=should_finalize)
     print(json.dumps({"run": str(runner.layout.root), "finalized": result.get("finalized", False)}, indent=2))
     return 0

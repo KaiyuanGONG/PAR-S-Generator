@@ -13,6 +13,17 @@
 *.res text eol=lf -whitespace
 *.hct text eol=lf -whitespace
 
+# Preserve the exact bytes of frozen Stage-3 CSV evidence that predates the
+# repository-wide LF rule; this prevents line-ending-only worktree changes.
+runs/stage3-phantom-100-v3-20260818/figures/phantom_distribution_data.csv -text
+runs/stage3-phantom-100-v3-20260818/figures/projection_qc_data.csv -text
+runs/stage3-simind-pilot-10-v3-20260818/figures/phantom_distribution_data.csv -text
+runs/stage3-simind-pilot-10-v3-20260818/figures/projection_qc_data.csv -text
+
+# The legacy checksum inventory is itself a byte-level LF freeze.  An explicit
+# checkout EOL keeps its SHA256 stable even on CRLF worktrees.
+manifests/legacy-v1-weighted-mc/file_inventory.sha256 text eol=lf
+
 *.png binary
 *.jpg binary
 *.jpeg binary
