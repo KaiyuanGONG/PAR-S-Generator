@@ -41,14 +41,14 @@ def write_bin(
     output_stem = Path(output_stem)
     bin_path = output_stem.parent / (output_stem.name + suffix + ".bin")
     output_stem.parent.mkdir(parents=True, exist_ok=True)
-    encoded = np.asarray(volume, dtype=np.float32, order="C")
+    encoded = np.ascontiguousarray(volume, dtype=np.dtype("<f4"))
     if encoded.ndim != 3 or not np.isfinite(encoded).all():
         raise ValueError("SIMIND binary volumes must be finite 3D arrays")
     temp = bin_path.with_name(f".{bin_path.name}.{os.getpid()}.tmp")
     encoded.tofile(str(temp))
     # Read back before publishing the file.  This makes dtype/order/length an
     # executable contract instead of a comment beside an unchecked write.
-    decoded = np.fromfile(temp, dtype=np.float32)
+    decoded = np.fromfile(temp, dtype=np.dtype("<f4"))
     if decoded.size != encoded.size or not np.array_equal(decoded.reshape(encoded.shape), encoded):
         temp.unlink(missing_ok=True)
         raise IOError(f"Binary read-back failed for {bin_path}")
@@ -92,15 +92,17 @@ def convert_npz_to_interfile(
         if "activity" not in data or "mu_map" not in data:
             raise ValueError(f"{npz_path.name}: missing required arrays 'activity' and/or 'mu_map'.")
 
-        activity = np.asarray(data["activity"], dtype=np.float32)
-        mu_map = np.asarray(data["mu_map"], dtype=np.float32)
+        activity = np.ascontiguousarray(data["activity"], dtype=np.dtype("<f4"))
+        mu_map = np.ascontiguousarray(data["mu_map"], dtype=np.dtype("<f4"))
         _validate_npz_arrays(npz_path, activity, mu_map)
 
         voxel_size_cm = float(voxel_size_mm) / 10.0
         if not np.isfinite(voxel_size_cm) or voxel_size_cm <= 0:
             raise ValueError("voxel_size_mm must be finite and positive")
-        type7_attenuation = np.asarray(mu_map * voxel_size_cm, dtype=np.float32)
-        recovered_mu = np.asarray(type7_attenuation / voxel_size_cm, dtype=np.float32)
+        type7_attenuation = np.ascontiguousarray(
+            mu_map * np.float32(voxel_size_cm), dtype=np.dtype("<f4")
+        )
+        recovered_mu = np.asarray(type7_attenuation / np.float32(voxel_size_cm), dtype=np.float32)
         max_roundtrip_error = float(np.max(np.abs(recovered_mu - mu_map)))
         if max_roundtrip_error > 1e-6:
             raise IOError(
@@ -121,8 +123,10 @@ def convert_npz_to_interfile(
     result.update(
         {
             "shape": list(activity.shape),
-            "dtype": "float32",
+            "dtype": "<f4",
+            "byte_order": "little",
             "order": "C (Z,Y,X)",
+            "expected_bytes": expected_bytes,
             "voxel_size_mm": float(voxel_size_mm),
             "voxel_size_cm": voxel_size_cm,
             "act_sha256": sha256_file(result["act_bin"]),
