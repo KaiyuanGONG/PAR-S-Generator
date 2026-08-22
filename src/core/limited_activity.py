@@ -25,6 +25,8 @@ class LimitedActivityOutput:
 
 
 _CANDIDATE_ORDER = ("whole_liver", "right_lobar", "left_lobar")
+_AUTO_TERRITORY_POLICY = "auto_equal_feasible"
+_TERRITORY_POLICIES = (_AUTO_TERRITORY_POLICY, *_CANDIDATE_ORDER)
 _RAW_WEIGHTS = {name: 1.0 / 3.0 for name in _CANDIDATE_ORDER}
 _RING_DESCRIPTION = "1-3 voxel Euclidean distance inside territory, excluding all tumors"
 _DIAMETER_ALIAS_RTOL = 1e-6
@@ -189,6 +191,7 @@ def build_limited_activity(
     total_counts: float,
     tumor_records: list[dict[str, Any]] | None = None,
     target_tnrs: list[float] | None = None,
+    territory_policy: str = _AUTO_TERRITORY_POLICY,
 ) -> LimitedActivityOutput:
     """Build one exact, feasible perfusion territory and its normalized activity."""
     liver = _as_mask("liver_mask", liver_mask)
@@ -210,8 +213,17 @@ def build_limited_activity(
     if not feasible:
         raise LimitedActivityError("no feasible territory with a background ring")
     conditional_weights = {name: 1.0 / len(feasible) for name in feasible}
-    territory_rng = np.random.default_rng(derive_domain_seed(activity_seed, "territory"))
-    selected = str(territory_rng.choice(feasible, p=[conditional_weights[name] for name in feasible]))
+    if territory_policy not in _TERRITORY_POLICIES:
+        raise LimitedActivityError("unknown territory policy")
+    if territory_policy == _AUTO_TERRITORY_POLICY:
+        territory_rng = np.random.default_rng(derive_domain_seed(activity_seed, "territory"))
+        selected = str(
+            territory_rng.choice(feasible, p=[conditional_weights[name] for name in feasible])
+        )
+    else:
+        if territory_policy not in feasible:
+            raise LimitedActivityError(f"requested territory is not feasible: {territory_policy}")
+        selected = territory_policy
     perfusion_mask = candidates[selected].copy()
 
     activity = np.zeros(liver.shape, dtype=np.float64)
@@ -265,6 +277,7 @@ def build_limited_activity(
         "feasible_candidates": feasible,
         "conditional_weights": conditional_weights,
         "selected_territory": selected,
+        "territory_policy": territory_policy,
         "coverage_fraction": 1.0,
         "mismatch_challenge": False,
         "background_ring_definition": _RING_DESCRIPTION,
@@ -339,6 +352,11 @@ def verify_limited_activity(
         raise LimitedActivityError("selected territory is not feasible")
     if contract.get("selected_territory") != selected_territory:
         raise LimitedActivityError("metadata selected territory disagrees with arrays")
+    territory_policy = contract.get("territory_policy")
+    if territory_policy not in _TERRITORY_POLICIES:
+        raise LimitedActivityError("metadata territory policy disagrees with adapter contract")
+    if territory_policy != _AUTO_TERRITORY_POLICY and territory_policy != selected_territory:
+        raise LimitedActivityError("exact territory policy disagrees with selected territory")
     if contract.get("adapter_source_sha256") != _adapter_source_sha256():
         raise LimitedActivityError("adapter source SHA disagrees with current adapter")
     coverage = 1.0 if not tumors else float(np.count_nonzero(tumor_union & perfusion) / np.count_nonzero(tumor_union))

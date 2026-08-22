@@ -287,6 +287,39 @@ def test_true_negative_keeps_nonzero_liver_activity():
     )
 
 
+def test_exact_territory_policy_selects_requested_feasible_lobe():
+    out = build_limited_activity(
+        liver_mask=LIVER,
+        left_mask=LEFT,
+        right_mask=RIGHT,
+        tumor_masks=[RIGHT_TUMOR],
+        tumor_records=[{"effective_diameter_mm": 12.0}],
+        activity_seed=1234,
+        residual_bg=0.05,
+        gradient_gain=0.10,
+        total_counts=80_000.0,
+        territory_policy="right_lobar",
+    )
+    assert out.selected_territory == "right_lobar"
+    assert out.contract["territory_policy"] == "right_lobar"
+
+
+def test_exact_territory_policy_rejects_an_infeasible_lobe():
+    with pytest.raises(LimitedActivityError, match="not feasible"):
+        build_limited_activity(
+            liver_mask=LIVER,
+            left_mask=LEFT,
+            right_mask=RIGHT,
+            tumor_masks=[LEFT_TUMOR],
+            tumor_records=[{"effective_diameter_mm": 12.0}],
+            activity_seed=1234,
+            residual_bg=0.05,
+            gradient_gain=0.10,
+            total_counts=80_000.0,
+            territory_policy="right_lobar",
+        )
+
+
 def test_verifier_rejects_one_uncovered_tumor_voxel():
     """A verifier that only checks aggregate coverage would miss a perfusion hole."""
     out = build_fixture()
@@ -350,5 +383,3 @@ def test_verifier_rejects_negative_metadata_with_tumors():
     contract = {**out.contract, "is_true_negative": True}
     with pytest.raises(LimitedActivityError, match="negative semantics"):
         verify_out(out, contract=contract)
-
-

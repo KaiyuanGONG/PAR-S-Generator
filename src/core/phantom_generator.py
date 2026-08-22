@@ -7,6 +7,7 @@ Ported and enhanced from PAR-S/notebooks/DataCreation_SYN.ipynb
 
 from __future__ import annotations
 import json
+import hashlib
 import time
 from dataclasses import dataclass, field, asdict
 from pathlib import Path
@@ -83,6 +84,8 @@ class PhantomConfig:
     # Anatomy integration.  ``legacy`` preserves the frozen master path;
     # ``v2_population`` activates the additive Gate A adapter.
     anatomy_model: str = "legacy"
+    activity_model: str = "legacy"
+    territory_policy: str = "auto_equal_feasible"
     v2_population_profile: str = "configs/population_tare_hcc_nopvi_v2.json"
     v2_evidence_registry: str = "configs/evidence_registry_v2.json"
     v2_max_liver_shape_attempts: int = 16
@@ -406,6 +409,10 @@ class PhantomGenerator:
         self.cfg = config
         if config.anatomy_model not in {"legacy", "v2_population"}:
             raise ValueError("anatomy_model must be legacy or v2_population")
+        if config.activity_model not in {"legacy", "limited_v1"}:
+            raise ValueError("activity_model must be legacy or limited_v1")
+        if config.activity_model == "limited_v1" and config.anatomy_model != "v2_population":
+            raise ValueError("limited_v1 activity requires v2_population anatomy")
         self._hybrid_v2_adapter_instance = None
 
     def _hybrid_v2_adapter(self):
@@ -635,6 +642,7 @@ class PhantomGenerator:
         shape = cfg.volume_shape
         v2_metadata = None
         v2_tumor_seed = None
+        v2_activity_seed = None
 
         if cfg.anatomy_model == "v2_population":
             v2_case = self._hybrid_v2_adapter().generate(
@@ -670,6 +678,7 @@ class PhantomGenerator:
                     "V2 left/right region adapter exceeded one-voxel target tolerance"
                 )
             v2_metadata = v2_case.metadata
+            v2_activity_seed = int(v2_case.seed_bundle.activity)
             rng = np.random.default_rng(v2_case.seed_bundle.activity)
             v2_tumor_seed = int(v2_case.seed_bundle.tumor)
         else:
@@ -991,6 +1000,83 @@ class PhantomGenerator:
                 }
             )
             tumor_diameters_mm.append(effective_diameter_mm)
+
+        if cfg.activity_model == "limited_v1":
+            if v2_activity_seed is None or v2_metadata is None:
+                raise RuntimeError("limited_v1 activity requires V2 seed and anatomy metadata")
+            from .limited_activity import build_limited_activity, derive_domain_seed
+            from .windows_v1 import (
+                GATE_A_GENERATOR_COMMIT,
+                GATE_C_CONFIG_SHA256,
+                GENERATION_PROFILE,
+                LIMITED_ACTIVITY_UPSTREAM_SOURCE_SHA256,
+            )
+
+            stale_activity_fields = {
+                "perfusion_region",
+                "target_contrast",
+                "tnr_local",
+                "tnr_global",
+            }
+            clean_records = [
+                {key: value for key, value in record.items() if key not in stale_activity_fields}
+                for record in tumor_records
+            ]
+            target_tnrs = None
+            if not (
+                np.isclose(cfg.tumor_contrast_min, 2.0)
+                and np.isclose(cfg.tumor_contrast_max, 8.0)
+            ):
+                target_tnrs = [
+                    float(
+                        np.random.default_rng(
+                            derive_domain_seed(v2_activity_seed, "tnr", index)
+                        ).uniform(cfg.tumor_contrast_min, cfg.tumor_contrast_max)
+                    )
+                    for index in range(len(tumor_masks))
+                ]
+            limited = build_limited_activity(
+                liver_mask=liver,
+                left_mask=left_mask,
+                right_mask=right_mask,
+                tumor_masks=[np.ascontiguousarray(mask, dtype=bool) for mask in tumor_masks],
+                tumor_records=clean_records,
+                activity_seed=v2_activity_seed,
+                residual_bg=cfg.residual_bg,
+                gradient_gain=cfg.gradient_gain,
+                total_counts=cfg.total_counts,
+                target_tnrs=target_tnrs,
+                territory_policy=cfg.territory_policy,
+            )
+            activity = limited.activity
+            perfusion_mode = limited.selected_territory
+            tumor_records = limited.tumor_records
+            total_counts_actual = float(np.sum(activity, dtype=np.float64))
+            contract_sha256 = hashlib.sha256(
+                json.dumps(
+                    limited.contract,
+                    sort_keys=True,
+                    separators=(",", ":"),
+                ).encode("utf-8")
+            ).hexdigest()
+            v2_metadata.setdefault("adapters", {})["activity"] = (
+                "hybrid_v2_limited_activity_v1_sole_authority"
+            )
+            v2_metadata.setdefault("contracts", {})["generation_profile"] = GENERATION_PROFILE
+            v2_metadata["limited_activity"] = {
+                "schema_version": "pars_hybrid_v2_limited_activity_v1",
+                "status": "PASS",
+                "generation_profile": GENERATION_PROFILE,
+                "gate_a_generator_commit": GATE_A_GENERATOR_COMMIT,
+                "gate_c_config_sha256": GATE_C_CONFIG_SHA256,
+                "upstream_source_sha256": LIMITED_ACTIVITY_UPSTREAM_SOURCE_SHA256,
+                "adapter_source_sha256": limited.contract["adapter_source_sha256"],
+                "selected_territory": limited.selected_territory,
+                "contract": limited.contract,
+                "contract_sha256": contract_sha256,
+                "tumor_records": limited.tumor_records,
+                "upstream_activity_and_perfusion": "discarded_not_persisted",
+            }
 
         # ── 6. Metadata ──
         liver_volume_ml = float(liver.sum() * voxel_volume_ml)

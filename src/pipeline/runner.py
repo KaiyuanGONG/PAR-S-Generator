@@ -16,8 +16,14 @@ from typing import Callable
 import numpy as np
 
 from core.interfile_writer import convert_npz_to_interfile
-from core.phantom_generator import PhantomConfig, PhantomGenerator
+from core.phantom_generator import PhantomConfig, PhantomGenerator, PreviewOverrides
 from core.smc_parser import parse_smc
+from core.windows_v1 import (
+    GENERATION_PROFILE,
+    RUNTIME_BACKEND,
+    SCHEMA_VERSION,
+    WindowsV1Config,
+)
 from pipeline.contracts import (
     ACTIVITY_TIME_CONTRACT_STATUS,
     CANONICAL_PROJECTION_TRANSFORM,
@@ -59,6 +65,10 @@ class PipelinePaused(RuntimeError):
 class PipelineConfig:
     run_id: str
     runs_root: str = "runs"
+    schema_version: str = "legacy_internal_v0"
+    generation_profile: str = "legacy_master"
+    runtime_backend: str = RUNTIME_BACKEND
+    windows_v1: WindowsV1Config | None = None
     phantom: PhantomConfig = field(default_factory=PhantomConfig)
     simind_exe: str = "simind/simind.exe"
     smc_file: str = "simind/ge870_czt.smc"
@@ -95,6 +105,28 @@ class PipelineConfig:
     activity_time_contract_status: str = ACTIVITY_TIME_CONTRACT_STATUS
 
     def __post_init__(self):
+        if self.schema_version == SCHEMA_VERSION:
+            if self.generation_profile != GENERATION_PROFILE:
+                raise ValueError(f"Windows v1 generation_profile must be {GENERATION_PROFILE}")
+            if self.runtime_backend != RUNTIME_BACKEND:
+                raise ValueError(f"Windows v1 runtime_backend must be {RUNTIME_BACKEND}")
+            if not isinstance(self.windows_v1, WindowsV1Config):
+                raise ValueError("Windows v1 requires an authoritative windows_v1 configuration")
+            expected_phantom = self.windows_v1.to_phantom_config()
+            if json.loads(json.dumps(self.phantom.to_dict())) != json.loads(
+                json.dumps(expected_phantom.to_dict())
+            ):
+                raise ValueError("Windows v1 phantom fields differ from the locked authoritative profile")
+            if self.case_numbers is not None:
+                raise ValueError("Windows v1 derives case order and roles from the cohort")
+        elif self.windows_v1 is not None:
+            raise ValueError("windows_v1 controls require schema_version=windows_v1")
+        if (
+            isinstance(self.nn_multiplier, bool)
+            or not isinstance(self.nn_multiplier, int)
+            or not 1 <= self.nn_multiplier <= 1_000_000
+        ):
+            raise ValueError("nn_multiplier must be an integer between 1 and 1000000")
         if self.simulation_mode not in {"prepare", "mock", "execute"}:
             raise ValueError("simulation_mode must be prepare, mock, or execute")
         if self.execution_scope not in {"full", "anatomy_only_gate_a"}:
@@ -182,6 +214,7 @@ class PipelineConfig:
     def to_dict(self) -> dict:
         payload = asdict(self)
         payload["phantom"] = self.phantom.to_dict()
+        payload["windows_v1"] = self.windows_v1.to_dict() if self.windows_v1 is not None else None
         # Canonicalize tuples and NumPy-compatible scalar values to the exact
         # JSON representation persisted in run.json, so resume comparison is
         # structural rather than Python-container-type dependent.
@@ -190,7 +223,32 @@ class PipelineConfig:
     @classmethod
     def from_dict(cls, payload: dict) -> "PipelineConfig":
         data = dict(payload)
-        data["phantom"] = PhantomConfig.from_dict(data.get("phantom", {}))
+        if data.get("schema_version") == SCHEMA_VERSION:
+            allowed = set(cls.__dataclass_fields__)
+            unknown = sorted(set(data) - allowed)
+            if unknown:
+                raise ValueError(f"unknown Windows v1 pipeline fields: {', '.join(unknown)}")
+            controls = WindowsV1Config.from_dict(data.get("windows_v1"))
+            phantom_payload = data.get("phantom")
+            if not isinstance(phantom_payload, dict):
+                raise ValueError("Windows v1 requires a serialized phantom object")
+            phantom_unknown = sorted(
+                set(phantom_payload) - set(PhantomConfig.__dataclass_fields__)
+            )
+            if phantom_unknown:
+                raise ValueError(
+                    f"unknown Windows v1 phantom fields: {', '.join(phantom_unknown)}"
+                )
+            phantom = PhantomConfig.from_dict(phantom_payload)
+            if json.loads(json.dumps(phantom.to_dict())) != json.loads(
+                json.dumps(controls.to_phantom_config().to_dict())
+            ):
+                raise ValueError("Windows v1 phantom fields differ from the locked authoritative profile")
+            data["windows_v1"] = controls
+            data["phantom"] = phantom
+        else:
+            data["phantom"] = PhantomConfig.from_dict(data.get("phantom", {}))
+            data["windows_v1"] = None
         if "simind_overrides" in data:
             data["simind_overrides"] = [
                 (int(pair[0]), str(pair[1])) for pair in data["simind_overrides"]
@@ -205,6 +263,26 @@ class PipelineConfig:
             if key in data:
                 data[key] = tuple(data[key])
         return cls(**data)
+
+    @classmethod
+    def for_windows_v1(
+        cls,
+        *,
+        run_id: str,
+        windows_v1: WindowsV1Config,
+        runs_root: str = "runs",
+        **kwargs,
+    ) -> "PipelineConfig":
+        return cls(
+            run_id=run_id,
+            runs_root=runs_root,
+            schema_version=SCHEMA_VERSION,
+            generation_profile=GENERATION_PROFILE,
+            runtime_backend=RUNTIME_BACKEND,
+            windows_v1=windows_v1,
+            phantom=windows_v1.to_phantom_config(),
+            **kwargs,
+        )
 
 
 class PipelineRunner:
@@ -265,6 +343,13 @@ class PipelineRunner:
                     "pipeline/gate_a_report.py",
                 )
             )
+            if config.phantom.activity_model == "limited_v1":
+                source_files.extend(
+                    (
+                        src_root / "core" / "limited_activity.py",
+                        src_root / "core" / "windows_v1.py",
+                    )
+                )
             project_root = src_root.parent
             profile_path = Path(config.phantom.v2_population_profile)
             registry_path = Path(config.phantom.v2_evidence_registry)
@@ -312,6 +397,9 @@ class PipelineRunner:
                 raise ValueError("SMC density voxel size conflicts with the phantom voxel size")
         return {
             "generator": "PhantomGenerator.generate_one",
+            "schema_version": config.schema_version,
+            "generation_profile": config.generation_profile,
+            "runtime_backend": config.runtime_backend,
             "projection_orientation": CANONICAL_PROJECTION_TRANSFORM,
             "protocol_scope": "liver_only_current_protocol",
             "software_sha256": {
@@ -366,10 +454,26 @@ class PipelineRunner:
         return self.ledger.load().get("stages", {}).get(stage, {}).get("status") == "passed"
 
     def _case_ids(self) -> list[str]:
-        numbers = self.config.case_numbers or list(
-            range(1, self.config.phantom.n_cases + 1)
+        return [spec["case_id"] for spec in self._case_specs()]
+
+    def _case_specs(self) -> list[dict]:
+        numbers = self.config.case_numbers or list(range(1, self.config.phantom.n_cases + 1))
+        roles = (
+            self.config.windows_v1.case_roles()
+            if self.config.windows_v1 is not None
+            else ["legacy"] * len(numbers)
         )
-        return [f"case_{index:04d}" for index in numbers]
+        return [
+            {
+                "case_id": f"case_{number:04d}",
+                "numeric_id": int(number),
+                "case_role": role,
+                "split_role": (
+                    "independent_test_control" if role == "true_negative" else "dataset_member"
+                ),
+            }
+            for number, role in zip(numbers, roles, strict=True)
+        ]
 
     def _assert_hash(self, path: Path, expected: str, context: str) -> None:
         if not path.is_file() or not expected or sha256_file(path) != expected:
@@ -389,12 +493,21 @@ class PipelineRunner:
 
         self.ledger.update_stage("generate", "running")
         generator = PhantomGenerator(self.config.phantom)
-        case_ids = self._case_ids()
-        splits = assign_fixed_splits(case_ids, self.config.split_seed, self.config.split_fractions)
+        case_specs = self._case_specs()
+        case_ids = [spec["case_id"] for spec in case_specs]
+        dataset_case_ids = [
+            spec["case_id"] for spec in case_specs if spec["case_role"] != "true_negative"
+        ]
+        splits = (
+            assign_fixed_splits(dataset_case_ids, self.config.split_seed, self.config.split_fractions)
+            if dataset_case_ids
+            else {}
+        )
         existing = {record["case_id"]: record for record in self.ledger.read_cases()}
         cases: list[dict] = []
         try:
-            for index, case_id in enumerate(case_ids, 1):
+            for index, spec in enumerate(case_specs, 1):
+                case_id = spec["case_id"]
                 self._pause_if_requested("generate", completed_cases=len(cases))
                 prior = existing.get(case_id)
                 if prior:
@@ -409,16 +522,36 @@ class PipelineRunner:
                     ):
                         cases.append(prior)
                         continue
-                numeric_id = int(case_id.rsplit("_", 1)[1])
-                result = generator.generate_one(numeric_id)
+                numeric_id = int(spec["numeric_id"])
+                overrides = (
+                    PreviewOverrides(exact_tumor_count=0)
+                    if spec["case_role"] == "true_negative"
+                    else None
+                )
+                result = generator.generate_one(numeric_id, overrides=overrides)
                 result.save(self.layout.subdir("phantom"))
                 npz = self.layout.subdir("phantom") / f"{case_id}.npz"
                 meta = self.layout.subdir("phantom") / f"{case_id}_meta.json"
+                meta_payload = json.loads(meta.read_text(encoding="utf-8"))
+                meta_payload.update(
+                    {
+                        "schema_version": self.config.schema_version,
+                        "generation_profile": self.config.generation_profile,
+                        "runtime_backend": self.config.runtime_backend,
+                        "case_role": spec["case_role"],
+                        "split_role": spec["split_role"],
+                    }
+                )
+                atomic_write_json(meta, meta_payload)
                 cases.append(
                     {
                         "case_id": case_id,
                         "phantom_id": case_id,
-                        "split": splits[case_id],
+                        "case_role": spec["case_role"],
+                        "split_role": spec["split_role"],
+                        "split": (
+                            "test" if spec["case_role"] == "true_negative" else splits[case_id]
+                        ),
                         "seed": int(result.seed),
                         "phantom": {
                             "npz": str(npz.resolve()),
