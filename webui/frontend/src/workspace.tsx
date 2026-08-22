@@ -360,10 +360,7 @@ const PROTOCOL_FIELDS = [
   "activity_time_contract_status",
 ] as const;
 
-function draftFromPipelineConfig(
-  defaults: Record<string, unknown> | null | undefined,
-  useNewRunObservationDefaults: boolean,
-): DraftRunConfig {
+function draftFromPipelineConfig(defaults: Record<string, unknown> | null | undefined): DraftRunConfig {
   const source = defaults ?? {};
   const phantom = jsonObject(source.phantom);
   const windowsV1 = jsonObject(source.windows_v1);
@@ -383,15 +380,10 @@ function draftFromPipelineConfig(
   const runId = stringValue(source.run_id, "liver-spect-run");
   const observation = knownPipelineFields(source, OBSERVATION_FIELDS) as ObservationDraft;
 
-  // POST /api/runs deliberately starts new datasets with the empirical
-  // observation contract, while raw PipelineConfig defaults describe the
-  // lower-level fixed-scale mode. Match the resource-creation contract here.
-  if (useNewRunObservationDefaults) {
-    observation.create_poisson_observation = true;
-    observation.observation_policy = "empirical_total_counts";
-    observation.observation_protocol_status = "empirical_protocol_matching";
-    observation.observation_scale ??= 1;
-  }
+  observation.create_poisson_observation = false;
+  observation.observation_policy = "fixed_scale";
+  observation.observation_protocol_status = "toy";
+  observation.observation_scale ??= 1;
 
   return {
     identity: {
@@ -414,7 +406,7 @@ function draftFromPipelineConfig(
 
 /** Convert /api/defaults into the editable defaults for a newly created run. */
 export function draftFromDefaults(defaults?: Record<string, unknown> | null): DraftRunConfig {
-  return draftFromPipelineConfig(defaults, true);
+  return draftFromPipelineConfig(defaults);
 }
 
 /**
@@ -472,7 +464,7 @@ export function toCreateRunRequest(draft: DraftRunConfig): CreateRunRequest {
 }
 
 function canonicalDraft(config: Record<string, unknown>, previous: DraftRunConfig): DraftRunConfig {
-  const canonical = draftFromPipelineConfig(config, false);
+  const canonical = draftFromPipelineConfig(config);
   return {
     ...canonical,
     identity: {

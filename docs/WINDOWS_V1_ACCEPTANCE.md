@@ -104,7 +104,7 @@
 
 1. 新建 `mixed` 1 阳性 + 1 真阴性、mode=mock、NN=1。
 2. 开始任务，在可用阶段执行 Pause；状态显示 Paused 且已有检查点保留。
-3. Resume 后跑完 generation、phantom QC、export、mock expectation、projection QC、observation、package/finalize。
+3. Resume 后跑完 generation、phantom QC、export、mock expectation、projection QC、package/finalize；确认 Windows v1 不创建历史离线 Poisson observation。
 4. 检查真阴性 mask 为空、病灶数为 0、病例用途正确；阳性病例病灶数处于设置区间。
 5. 检查 `run.json`、`cases.jsonl`、`splits.json`、`dataset_manifest.json`，并确认 mock 投影明确标记 `deterministic_mock_not_simind`，不得标记为 SIMIND 科学结果。
 6. 重启软件，从列表打开该 run；只读查看与证据仍完整。

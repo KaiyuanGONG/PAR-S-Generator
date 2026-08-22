@@ -8,6 +8,7 @@ from core.windows_v1 import (
     WindowsV1Config,
     WindowsV1ConfigError,
 )
+from pipeline.runner import PipelineConfig
 
 
 def test_default_profile_compiles_only_locked_hybrid_v2_contract():
@@ -33,6 +34,22 @@ def test_default_profile_compiles_only_locked_hybrid_v2_contract():
     assert phantom.tumor_count_max == 5
     assert phantom.tumor_size_bins_mm == [[10.0, 20.0], [20.0, 40.0], [40.0, 60.0]]
     assert phantom.tumor_probs == [0.45, 0.40, 0.15]
+
+
+def test_windows_v1_is_expectation_only_and_rejects_legacy_observation_output():
+    windows = WindowsV1Config.from_dict({})
+    config = PipelineConfig.for_windows_v1(run_id="expectation-only", windows_v1=windows)
+    assert config.create_poisson_observation is False
+    assert config.observation_policy == "fixed_scale"
+
+    with pytest.raises(ValueError, match="offline observation"):
+        PipelineConfig.for_windows_v1(
+            run_id="invalid-observation",
+            windows_v1=windows,
+            create_poisson_observation=True,
+            observation_policy="empirical_total_counts",
+            observation_protocol_status="empirical_protocol_matching",
+        )
 
 
 @pytest.mark.parametrize(

@@ -127,6 +127,12 @@ class PipelineConfig:
                 raise ValueError("Windows v1 phantom fields differ from the locked authoritative profile")
             if self.case_numbers is not None:
                 raise ValueError("Windows v1 derives case order and roles from the cohort")
+            if (
+                self.create_poisson_observation
+                or self.observation_policy != "fixed_scale"
+                or self.observation_protocol_status != "toy"
+            ):
+                raise ValueError("Windows v1 does not create an offline observation output")
         elif self.windows_v1 is not None:
             raise ValueError("windows_v1 controls require schema_version=windows_v1")
         if (
@@ -281,6 +287,15 @@ class PipelineConfig:
         runs_root: str = "runs",
         **kwargs,
     ) -> "PipelineConfig":
+        observation_contract = {
+            "create_poisson_observation": False,
+            "observation_policy": "fixed_scale",
+            "observation_protocol_status": "toy",
+        }
+        for key, expected in observation_contract.items():
+            if key in kwargs and kwargs[key] != expected:
+                raise ValueError("Windows v1 does not create an offline observation output")
+        kwargs.update(observation_contract)
         return cls(
             run_id=run_id,
             runs_root=runs_root,
@@ -1284,7 +1299,11 @@ class PipelineRunner:
                 "finalized dataset manifest",
             )
             return manifest
-        cases = self.create_observations()
+        cases = (
+            self.simulate_or_mock()
+            if self.config.schema_version == SCHEMA_VERSION
+            else self.create_observations()
+        )
         required_data_stage = "expectation"
         if self.config.simulation_mode == "prepare":
             required_data_stage = "simind_plan"

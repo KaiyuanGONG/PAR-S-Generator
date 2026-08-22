@@ -33,6 +33,8 @@ def test_cli_init_writes_only_the_windows_v1_profile(tmp_path):
         "negative_cases": 1,
     }
     assert payload["phantom"]["n_cases"] == 3
+    assert payload["create_poisson_observation"] is False
+    assert payload["observation_policy"] == "fixed_scale"
 
 
 def test_cli_run_rejects_a_legacy_production_config(tmp_path):

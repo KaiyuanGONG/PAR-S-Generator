@@ -116,6 +116,8 @@ def test_create_run_persists_only_authoritative_windows_v1_controls(tmp_path: Pa
     assert effective["windows_v1"]["seed"] == 1234
     assert effective["nn_multiplier"] == 7
     assert effective["max_simind_workers"] == 2
+    assert effective["create_poisson_observation"] is False
+    assert effective["observation_policy"] == "fixed_scale"
     assert json.loads(Path(payload["config_path"]).read_text(encoding="utf-8")) == effective
 
 

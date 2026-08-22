@@ -160,7 +160,7 @@ export default function Simulation() {
 
       <section className="simulation-observation" aria-labelledby="simulation-observation-title">
         <header className="workspace-section-head"><div><span className="run-eyebrow">03</span><h2 id="simulation-observation-title">{t("simulation.observation")}</h2></div><span>{t("simulation.separateLayers")}</span></header>
-        <p className="observation-explainer">Windows v1 fixes the expectation/observation separation and empirical-count observation policy. It is recorded in the effective configuration and cannot be overridden by a production draft.</p>
+        <p className="observation-explainer">{t("simulation.observationExplanation")}</p>
       </section>
 
       <section className="simulation-preflight" aria-labelledby="simulation-preflight-title">

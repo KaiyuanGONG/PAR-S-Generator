@@ -40,7 +40,7 @@ The interface has six sequential data-preparation areas:
 
 1. **Project / Protocol** — run identity, protocol and unresolved decisions.
 2. **Phantom** — one-case visual preview using the same effective values as the run.
-3. **Simulation** — SIMIND/SMC provenance, expectation/observation policy and experiment preparation.
+3. **Simulation** — native Windows SIMIND/SMC provenance, expectation output and experiment preparation.
 4. **Run** — the only create/resume/pause/execute entry point.
 5. **QC / Dataset** — stage evidence, case records and canonical projection view.
 6. **Finalize** — completeness checks and immutable manifest.
@@ -133,7 +133,7 @@ runs/<run_id>/
 └── figures/
 ```
 
-Activity and attenuation are exported atomically as C-order ZYX little-endian `<f4`, immediately read back, size-checked and checksummed. A SIMIND expectation is kept separate from any seeded offline Poisson observation. Observation records reference their parent phantom and inherit its fixed split.
+Activity and attenuation are exported atomically as C-order ZYX little-endian `<f4`, immediately read back, size-checked and checksummed. Windows v1 finalizes the SIMIND expectation after projection QC and does not create a seeded offline Poisson observation. The historical observation implementation remains available only for read-only evidence from earlier profiles.
 
 ## Physics-validation packages
 

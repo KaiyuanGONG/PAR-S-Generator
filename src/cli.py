@@ -8,7 +8,7 @@ from pathlib import Path
 
 from core.windows_runtime import assess_windows_runtime
 from core.windows_v1 import SCHEMA_VERSION, WindowsV1Config
-from pipeline.contracts import EMPIRICAL_OBSERVATION_PROTOCOL_STATUS, atomic_write_json
+from pipeline.contracts import atomic_write_json
 from pipeline.experiments import (
     EXPERIMENT_NAMES,
     analyze_experiment,
@@ -54,9 +54,6 @@ def _cmd_init(args) -> int:
         smc_file=args.smc,
         nn_multiplier=args.nn,
         max_simind_workers=args.workers,
-        create_poisson_observation=True,
-        observation_policy="empirical_total_counts",
-        observation_protocol_status=EMPIRICAL_OBSERVATION_PROTOCOL_STATUS,
     )
     atomic_write_json(Path(args.output), config.to_dict())
     print(Path(args.output).resolve())

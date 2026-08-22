@@ -296,9 +296,6 @@ def _pipeline_config_from_request(body: CreateRun) -> PipelineConfig:
             smc_file=body.smc_file,
             nn_multiplier=body.nn_multiplier,
             max_simind_workers=body.max_simind_workers,
-            create_poisson_observation=True,
-            observation_policy="empirical_total_counts",
-            observation_protocol_status=contracts.EMPIRICAL_OBSERVATION_PROTOCOL_STATUS,
         )
     except (ValueError, TypeError) as exc:
         raise HTTPException(422, str(exc)) from exc

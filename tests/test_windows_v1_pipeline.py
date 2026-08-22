@@ -151,3 +151,4 @@ def test_windows_v1_package_manifest_contains_full_runtime_and_config_contract(t
     assert manifest["simind_jobs"][0]["command"][0].lower().endswith("simind.exe")
     assert "/NN:10" in manifest["simind_jobs"][0]["command"]
     assert any(token.startswith("/RR:") for token in manifest["simind_jobs"][0]["command"])
+    assert "observation" not in runner.ledger.load()["stages"]
