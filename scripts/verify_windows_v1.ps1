@@ -98,7 +98,7 @@ try {
             if ($Launcher.HasExited) { throw "Launcher exited early. See $LauncherErr" }
             try {
                 $Health = Invoke-RestMethod -Uri "http://127.0.0.1:$Port/api/health" -TimeoutSec 1
-                if ($Health.status -eq "ok") { $Ready = $true; break }
+                if ($Health.service -eq "par-s") { $Ready = $true; break }
             }
             catch { Start-Sleep -Milliseconds 100 }
         }

@@ -10,6 +10,8 @@ def test_setup_script_locks_python_and_builds_the_frontend() -> None:
     assert "requirements-windows-v1.lock.txt" in script
     assert "npm.cmd ci" in script
     assert "npm.cmd run build" in script
+    assert "[string]$Python" in script
+    assert "conda info --envs --json" in script
 
 
 def test_start_script_uses_the_managed_environment_and_web_entrypoint() -> None:

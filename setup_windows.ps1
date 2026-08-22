@@ -1,5 +1,7 @@
 [CmdletBinding()]
-param()
+param(
+    [string]$Python
+)
 
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
@@ -10,17 +12,41 @@ $EnvironmentPython = Join-Path $EnvironmentRoot "Scripts\python.exe"
 $FrontendRoot = Join-Path $RepoRoot "webui\frontend"
 $LockFile = Join-Path $RepoRoot "requirements-windows-v1.lock.txt"
 
-if (-not (Get-Command py -ErrorAction SilentlyContinue)) {
-    throw "Python Launcher (py.exe) is required. Install 64-bit Python 3.11, then rerun setup_windows.ps1."
+function Test-Python311 {
+    param([string]$Candidate)
+    if (-not (Test-Path -LiteralPath $Candidate -PathType Leaf)) { return $false }
+    & $Candidate -c "import sys; raise SystemExit(0 if sys.version_info[:2] == (3, 11) and sys.maxsize > 2**32 else 1)"
+    return $LASTEXITCODE -eq 0
 }
 
-& py -3.11 -c "import sys; assert sys.version_info[:2] == (3, 11), sys.version"
-if ($LASTEXITCODE -ne 0) {
-    throw "A usable Python 3.11 installation was not found."
+if (-not [string]::IsNullOrWhiteSpace($Python)) {
+    $BasePython = (Resolve-Path -LiteralPath $Python).Path
+}
+else {
+    $BasePython = $null
+    if (Get-Command py -ErrorAction SilentlyContinue) {
+        $Discovered = & py -3.11 -c "import sys; print(sys.executable)" 2>$null
+        if ($LASTEXITCODE -eq 0 -and $Discovered) { $BasePython = $Discovered.Trim() }
+    }
+    if (-not $BasePython -and (Get-Command conda -ErrorAction SilentlyContinue)) {
+        $CondaEnvironments = (& conda info --envs --json | ConvertFrom-Json).envs
+        foreach ($Environment in $CondaEnvironments) {
+            $Candidate = Join-Path $Environment "python.exe"
+            if (Test-Python311 $Candidate) { $BasePython = $Candidate; break }
+        }
+    }
+    if (-not $BasePython -and (Get-Command python -ErrorAction SilentlyContinue)) {
+        $Candidate = (Get-Command python).Source
+        if (Test-Python311 $Candidate) { $BasePython = $Candidate }
+    }
+}
+
+if (-not $BasePython -or -not (Test-Python311 $BasePython)) {
+    throw "A usable 64-bit Python 3.11 installation was not found. Pass -Python C:\path\to\python.exe if it is not registered with py.exe or Conda."
 }
 
 if (-not (Test-Path -LiteralPath $EnvironmentPython -PathType Leaf)) {
-    & py -3.11 -m venv $EnvironmentRoot
+    & $BasePython -m venv $EnvironmentRoot
     if ($LASTEXITCODE -ne 0) { throw "Failed to create $EnvironmentRoot" }
 }
 
