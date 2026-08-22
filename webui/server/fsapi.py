@@ -34,7 +34,8 @@ def _inside(path: Path, roots: list[Path]) -> bool:
 
 def list_dir(path_str: str, repo_root: Path) -> dict:
     roots = allowed_roots(repo_root)
-    path = Path(path_str) if path_str else repo_root
+    requested = Path(path_str) if path_str else repo_root
+    path = (requested if requested.is_absolute() else repo_root / requested).resolve()
     if not _inside(path, roots):
         return {"error": "outside_allowed_roots", "roots": [str(r) for r in roots]}
     if not path.is_dir():
@@ -61,7 +62,17 @@ def list_dir(path_str: str, repo_root: Path) -> dict:
 
 
 def validate_path(path_str: str, kind: str, repo_root: Path) -> dict:
+    roots = allowed_roots(repo_root)
     path = Path(path_str)
+    path = (path if path.is_absolute() else repo_root / path).resolve()
+    if not _inside(path, roots):
+        return {
+            "error": "outside_allowed_roots",
+            "path": str(path),
+            "roots": [str(root) for root in roots],
+        }
+    if kind not in {"simind_exe", "smc", "runs_root"}:
+        return {"error": "unsupported_kind", "path": str(path), "kind": kind}
     ok, detail = False, ""
     if kind == "simind_exe":
         ok = path.is_file() and path.suffix.lower() == ".exe"

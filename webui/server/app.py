@@ -11,11 +11,14 @@ Launch (repo root):
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import json
+import math
 import sys
 import threading
 from dataclasses import asdict, is_dataclass
 from pathlib import Path
+from typing import Literal
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(REPO_ROOT / "src") not in sys.path:
@@ -24,7 +27,7 @@ if str(REPO_ROOT / "src") not in sys.path:
 from fastapi import FastAPI, HTTPException, Query, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from pipeline import contracts
 from pipeline.contracts import RunLayout, RunLedger, atomic_write_json
@@ -87,7 +90,29 @@ def protocol() -> dict:
 
 def _runs_root(root: str | None) -> Path:
     path = Path(root) if root else REPO_ROOT / "runs"
-    return path if path.is_absolute() else REPO_ROOT / path
+    resolved = (path if path.is_absolute() else REPO_ROOT / path).resolve()
+    if not _allowed_path(resolved):
+        raise HTTPException(403, f"runs root is outside the configured filesystem roots: {resolved}")
+    return resolved
+
+
+def _allowed_path(path: Path) -> bool:
+    resolved = path.resolve()
+    for allowed_root in fsapi.allowed_roots(REPO_ROOT):
+        try:
+            resolved.relative_to(allowed_root)
+            return True
+        except ValueError:
+            continue
+    return False
+
+
+def _run_root(root: str) -> Path:
+    path = Path(root)
+    resolved = (path if path.is_absolute() else REPO_ROOT / path).resolve()
+    if not _allowed_path(resolved):
+        raise HTTPException(403, f"run root is outside the configured filesystem roots: {resolved}")
+    return resolved
 
 
 @app.get("/api/runs")
@@ -102,9 +127,11 @@ def list_runs(root: str | None = None) -> dict:
                 continue
             stages = payload.get("stages", {})
             config = payload.get("effective_config", {})
+            config_path = ledger_path.parent.parent / f"{ledger_path.parent.name}.config.json"
             items.append({
                 "run_id": payload.get("run_id", ledger_path.parent.name),
                 "root": str(ledger_path.parent),
+                "config_path": str(config_path) if config_path.is_file() else None,
                 "created_utc": payload.get("created_utc"),
                 "mode": config.get("simulation_mode"),
                 "case_count": config.get("phantom", {}).get("n_cases"),
@@ -115,12 +142,28 @@ def list_runs(root: str | None = None) -> dict:
 
 
 def _open_run(run_root: str) -> RunLedger:
-    root = Path(run_root)
-    if not root.is_absolute():
-        root = REPO_ROOT / root
+    root = _run_root(run_root)
     if not (root / "run.json").is_file():
         raise HTTPException(404, f"run.json not found under {root}")
     return RunLedger(RunLayout.open(root))
+
+
+def _run_json_file(run_root: str, filename: str) -> dict:
+    root = _run_root(run_root)
+    if not (root / "run.json").is_file():
+        raise HTTPException(404, f"run.json not found under {root}")
+    path = root / filename
+    if not path.is_file():
+        raise HTTPException(404, f"{filename} not found under {root}")
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise HTTPException(422, f"invalid JSON in {filename}: {exc}") from exc
+    except OSError as exc:
+        raise HTTPException(409, f"cannot read {filename}: {exc}") from exc
+    if not isinstance(payload, dict):
+        raise HTTPException(422, f"{filename} must contain a JSON object")
+    return payload
 
 
 @app.get("/api/run")
@@ -135,6 +178,54 @@ def run_detail(root: str) -> dict:
 def run_cases(root: str, offset: int = 0, limit: int = 200) -> dict:
     cases = _open_run(root).read_cases()
     return {"total": len(cases), "offset": offset, "cases": cases[offset:offset + limit]}
+
+
+@app.get("/api/run/case-evidence")
+def run_case_evidence(
+    root: str,
+    case: str = Query(pattern=r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"),
+) -> dict:
+    run_root = _run_root(root)
+    ledger = _open_run(str(run_root))
+    record = next((item for item in ledger.read_cases() if item.get("case_id") == case), None)
+    if record is None:
+        raise HTTPException(404, f"case not found in ledger: {case}")
+    run_payload = ledger.load()
+    config = run_payload.get("effective_config", {})
+    expectation = record.get("expectation", {}) if isinstance(record.get("expectation"), dict) else {}
+    res_excerpt = None
+    res_value = expectation.get("res")
+    if isinstance(res_value, str) and res_value:
+        res_path = Path(res_value)
+        res_path = (res_path if res_path.is_absolute() else run_root / res_path).resolve()
+        try:
+            res_path.relative_to(run_root)
+        except ValueError:
+            raise HTTPException(409, f"case result path escapes the run root: {res_path}")
+        if res_path.is_file():
+            try:
+                text = res_path.read_text(encoding="utf-8", errors="replace")
+                res_excerpt = text[-16_000:]
+            except OSError as exc:
+                raise HTTPException(409, f"cannot read result evidence: {exc}") from exc
+    phantom = config.get("phantom", {}) if isinstance(config, dict) else {}
+    return {
+        "case": record,
+        "effective": {
+            "projection_shape": config.get("projection_shape"),
+            "nn_multiplier": config.get("nn_multiplier"),
+            "detector_matrix": [config.get("detector_matrix_i"), config.get("detector_matrix_j")],
+            "voxel_size_mm": phantom.get("voxel_size_mm") if isinstance(phantom, dict) else None,
+            "source_activity_mbq": config.get("source_activity_mbq"),
+            "exposure_time_s_per_projection": config.get("exposure_time_s_per_projection"),
+            "smc_index25_activity_time": config.get("smc_index25_activity_time"),
+            "type7_density_threshold_times_1000": config.get("type7_density_threshold_times_1000"),
+            "phantom_cross_sections": config.get("phantom_cross_sections"),
+        },
+        "backend": expectation.get("backend"),
+        "rr_seed": expectation.get("rr_seed"),
+        "res_excerpt": res_excerpt,
+    }
 
 
 @app.get("/api/run/stages")
@@ -154,24 +245,34 @@ def run_stages(root: str) -> dict:
     return {"stages": ordered + extra, "finalized": bool(payload.get("finalized"))}
 
 
+@app.get("/api/run/manifest")
+def run_manifest(root: str) -> dict:
+    return _run_json_file(root, "dataset_manifest.json")
+
+
+@app.get("/api/run/splits")
+def run_splits(root: str) -> dict:
+    return _run_json_file(root, "splits.json")
+
+
 # ── actions ────────────────────────────────────────────────────────────────
 
 class CreateRun(BaseModel):
-    run_id: str
+    run_id: str = Field(pattern=r"^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$")
     runs_root: str = "runs"
-    cases: int = 2
-    mode: str = "prepare"
-    config_overrides: dict = {}
+    cases: int = Field(default=2, ge=1, le=100_000)
+    mode: Literal["prepare", "mock", "execute"] = "prepare"
+    config_overrides: dict = Field(default_factory=dict)
 
 
-@app.post("/api/runs")
-def create_run(body: CreateRun) -> dict:
+def _pipeline_config_from_request(body: CreateRun) -> PipelineConfig:
     from core.phantom_generator import PhantomConfig as _PhantomConfig
+    runs_root = _runs_root(body.runs_root)
     phantom = _PhantomConfig(n_cases=body.cases, output_dir="managed_by_pipeline")
     try:
         config = PipelineConfig(
             run_id=body.run_id,
-            runs_root=str(_runs_root(body.runs_root)),
+            runs_root=str(runs_root),
             phantom=phantom,
             simulation_mode=body.mode,
             create_poisson_observation=True,
@@ -180,40 +281,251 @@ def create_run(body: CreateRun) -> dict:
         )
         payload = config.to_dict()
         payload.update(body.config_overrides or {})
+        payload["run_id"] = body.run_id
+        payload["runs_root"] = str(runs_root)
+        payload["simulation_mode"] = body.mode
+        payload.setdefault("phantom", {})["n_cases"] = body.cases
         config = PipelineConfig.from_dict(payload)   # re-validate after overrides
     except (ValueError, TypeError) as exc:
         raise HTTPException(422, str(exc)) from exc
-    config_path = _runs_root(body.runs_root) / f"{body.run_id}.config.json"
+    return config
+
+
+def _config_file(path_value: str, label: str) -> Path:
+    requested = Path(path_value)
+    resolved = (requested if requested.is_absolute() else REPO_ROOT / requested).resolve()
+    if not _allowed_path(resolved):
+        raise HTTPException(403, f"{label} is outside the configured filesystem roots: {resolved}")
+    return resolved
+
+
+def _validate_config_paths(config: PipelineConfig, *, require_inputs: bool) -> dict[str, Path]:
+    _runs_root(config.runs_root)
+    paths = {
+        "simind_exe": _config_file(config.simind_exe, "SIMIND executable"),
+        "smc_file": _config_file(config.smc_file, "SMC file"),
+        "empirical_count_evidence": _config_file(
+            config.empirical_count_evidence,
+            "empirical count evidence",
+        ),
+    }
+    if config.pilot_selection_evidence:
+        paths["pilot_selection_evidence"] = _config_file(
+            config.pilot_selection_evidence,
+            "pilot selection evidence",
+        )
+    if require_inputs:
+        for label in ("simind_exe", "smc_file"):
+            if not paths[label].is_file():
+                raise HTTPException(404, f"{label} not found: {paths[label]}")
+    return paths
+
+
+@app.post("/api/runs")
+def create_run(body: CreateRun) -> dict:
+    runs_root = _runs_root(body.runs_root)
+    config_path = runs_root / f"{body.run_id}.config.json"
+    run_root = runs_root / body.run_id
+    if config_path.exists() or run_root.exists():
+        raise HTTPException(409, f"run id already exists under {runs_root}: {body.run_id}")
+    config = _pipeline_config_from_request(body)
+    _validate_config_paths(config, require_inputs=True)
     config_path.parent.mkdir(parents=True, exist_ok=True)
     atomic_write_json(config_path, config.to_dict())
     return {"config_path": str(config_path), "config": config.to_dict()}
 
 
+@app.post("/api/run/preflight")
+def preflight_run(body: CreateRun) -> dict:
+    from core.smc_parser import parse_smc
+
+    config = _pipeline_config_from_request(body)
+    paths = _validate_config_paths(config, require_inputs=False)
+    checks: list[dict] = []
+    errors: list[str] = []
+    warnings: list[str] = []
+
+    def check(identifier: str, passed: bool, detail: str, *, warning: bool = False) -> None:
+        status = "passed" if passed else "warning" if warning else "failed"
+        checks.append({"id": identifier, "status": status, "detail": detail})
+        if not passed:
+            (warnings if warning else errors).append(detail)
+
+    check("simind_executable", paths["simind_exe"].is_file(), f"SIMIND executable: {paths['simind_exe']}")
+    check("smc_file", paths["smc_file"].is_file(), f"SMC file: {paths['smc_file']}")
+    smc_summary = None
+    if paths["smc_file"].is_file():
+        try:
+            smc = parse_smc(paths["smc_file"])
+            cross_sections = [value.lower() for value in smc.data_files[:2]]
+            check(
+                "type7_source_density",
+                int(round(smc.get_value(14))) == -7 and int(round(smc.get_value(15))) == -7,
+                f"SMC Index-14/15 must both be -7; found {smc.get_value(14):g}/{smc.get_value(15):g}",
+            )
+            check(
+                "phantom_interactions",
+                bool(smc.get_flag(11)),
+                "SMC Flag-11 phantom interactions must be enabled",
+            )
+            check(
+                "density_sampling",
+                math.isclose(smc.get_value(31), config.phantom.voxel_size_mm / 10.0, abs_tol=1e-6),
+                f"SMC Index-31 must equal {config.phantom.voxel_size_mm / 10.0:g} cm",
+            )
+            density_shape = tuple(int(round(smc.get_value(index))) for index in (81, 82, 34))
+            check(
+                "density_shape",
+                density_shape == tuple(int(value) for value in config.phantom.volume_shape),
+                f"SMC density shape must equal {tuple(config.phantom.volume_shape)}; found {density_shape}",
+            )
+            check(
+                "cross_sections",
+                cross_sections == [value.lower() for value in config.phantom_cross_sections],
+                f"SMC cross sections must be {list(config.phantom_cross_sections)}; found {cross_sections}",
+            )
+            check(
+                "activity_time",
+                math.isclose(smc.get_value(25), config.smc_index25_activity_time, rel_tol=1e-6, abs_tol=1e-3),
+                f"SMC Index-25 must equal {config.smc_index25_activity_time:g}; found {smc.get_value(25):g}",
+            )
+            check(
+                "detector_request",
+                int(round(smc.get_value(100))) == config.detector_matrix_i
+                and int(round(smc.get_value(101))) == config.detector_matrix_j,
+                (
+                    f"Raw SMC detector request is {smc.get_value(100):g}×{smc.get_value(101):g}; "
+                    f"effective runtime contract is {config.detector_matrix_i}×{config.detector_matrix_j}"
+                ),
+                warning=True,
+            )
+            smc_summary = {
+                "path": str(paths["smc_file"]),
+                "description": smc.description,
+                "energy_kev": smc.get_value(1),
+                "window_kev": [smc.get_value(21), smc.get_value(20)],
+                "views": int(round(smc.get_value(29))),
+                "rotation_radius_cm": smc.get_value(12),
+                "density_shape": [
+                    int(round(smc.get_value(81))),
+                    int(round(smc.get_value(82))),
+                    int(round(smc.get_value(34))),
+                ],
+                "density_voxel_cm": smc.get_value(31),
+                "detector_request": [
+                    int(round(smc.get_value(100))),
+                    int(round(smc.get_value(101))),
+                ],
+                "detector_pitch_cm": smc.get_value(95),
+                "activity_time_index25": smc.get_value(25),
+                "raw_indices": {
+                    str(index): smc.get_value(index)
+                    for index in (14, 15, 25, 26, 81, 82, 100, 101)
+                },
+                "enabled_flags": [index for index, enabled in enumerate(smc.flags, 1) if enabled],
+            }
+        except (OSError, ValueError, IndexError) as exc:
+            check("smc_parse", False, f"SMC cannot be parsed: {exc}")
+
+    canonical = config.to_dict()
+    digest = hashlib.sha256(
+        json.dumps(canonical, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+    return {
+        "ready": not errors,
+        "config_digest": digest,
+        "checks": checks,
+        "errors": errors,
+        "warnings": warnings,
+        "smc": smc_summary,
+        "canonical_config": canonical,
+        "provenance": {
+            "simind_executable": str(paths["simind_exe"]),
+            "smc_file": str(paths["smc_file"]),
+            "mode": config.simulation_mode,
+            "execution_authorized": False,
+        },
+    }
+
+
+class PrepareExperimentsRequest(BaseModel):
+    destination: str
+    simind_exe: str
+    smc_file: str
+
+
+@app.post("/api/experiments/prepare")
+def prepare_experiments(body: PrepareExperimentsRequest) -> dict:
+    """Prepare the five frozen validation command packages; never execute SIMIND."""
+    from pipeline.experiments import prepare_all_experiments
+
+    destination = Path(body.destination)
+    destination = (destination if destination.is_absolute() else REPO_ROOT / destination).resolve()
+    if not _allowed_path(destination):
+        raise HTTPException(403, f"experiment destination is outside configured roots: {destination}")
+    if destination.exists() and not destination.is_dir():
+        raise HTTPException(422, f"experiment destination is not a directory: {destination}")
+    simind_exe = _config_file(body.simind_exe, "SIMIND executable")
+    smc_file = _config_file(body.smc_file, "SMC file")
+    if not simind_exe.is_file():
+        raise HTTPException(404, f"SIMIND executable not found: {simind_exe}")
+    if not smc_file.is_file():
+        raise HTTPException(404, f"SMC file not found: {smc_file}")
+    try:
+        roots = prepare_all_experiments(
+            destination,
+            simind_exe=simind_exe,
+            smc_file=smc_file,
+        )
+    except FileExistsError as exc:
+        raise HTTPException(409, str(exc)) from exc
+    except (OSError, ValueError) as exc:
+        raise HTTPException(422, str(exc)) from exc
+    return {
+        "prepared": len(roots),
+        "execution_status": "prepared_not_run",
+        "roots": [str(root) for root in roots],
+    }
+
+
 class StartRun(BaseModel):
     config_path: str
     resume: bool = False
-    finalize: bool = True
+    finalize: bool = False
     allow_simind_execution: bool = False
 
 
 @app.post("/api/run/start")
 def start_run(body: StartRun) -> dict:
     config_path = Path(body.config_path)
-    if not config_path.is_absolute():
-        config_path = REPO_ROOT / config_path
+    config_path = (config_path if config_path.is_absolute() else REPO_ROOT / config_path).resolve()
+    if not _allowed_path(config_path):
+        raise HTTPException(403, f"config is outside the configured filesystem roots: {config_path}")
     if not config_path.is_file():
         raise HTTPException(404, f"config not found: {config_path}")
-    config = PipelineConfig.from_dict(json.loads(config_path.read_text(encoding="utf-8")))
+    try:
+        config = PipelineConfig.from_dict(json.loads(config_path.read_text(encoding="utf-8")))
+    except (OSError, json.JSONDecodeError, TypeError, ValueError) as exc:
+        raise HTTPException(422, f"invalid run config: {exc}") from exc
+    _validate_config_paths(config, require_inputs=True)
     if config.simulation_mode == "execute" and not body.allow_simind_execution:
         raise HTTPException(403, "Refusing to launch SIMIND without explicit allow_simind_execution confirmation.")
     existing = REGISTRY.active_for_run(config.run_id)
-    if existing:
+    if existing and (existing.status == "running" or not body.resume):
         raise HTTPException(409, f"run already active in task {existing.task_id}")
     try:
         runner = PipelineRunner(config, resume=body.resume)
     except (RuntimeError, FileExistsError, ValueError) as exc:
         raise HTTPException(409, str(exc)) from exc
-    task = REGISTRY.create(config.run_id, runner.layout.root)
+    task, blocking, finalizing = REGISTRY.create_for_start(
+        config.run_id,
+        runner.layout.root,
+        resume=body.resume,
+    )
+    if task is None:
+        if finalizing:
+            raise HTTPException(409, f"run {config.run_id} is being finalized")
+        raise HTTPException(409, f"run already active in task {blocking.task_id}")
     task.runner = runner
     should_finalize = body.finalize and config.simulation_mode != "prepare"
 
@@ -233,6 +545,53 @@ def start_run(body: StartRun) -> dict:
     task.thread.start()
     start_watcher(task, total_cases=config.phantom.n_cases)
     return {"task_id": task.task_id, "run_root": task.run_root}
+
+
+class FinalizeRun(BaseModel):
+    run_root: str
+
+
+@app.post("/api/run/finalize")
+def finalize_run(body: FinalizeRun) -> dict:
+    root = _run_root(body.run_root)
+    if not (root / "run.json").is_file():
+        raise HTTPException(404, f"run.json not found under {root}")
+    ledger_state = _run_json_file(str(root), "run.json")
+    run_id = ledger_state.get("run_id")
+    if not isinstance(run_id, str) or not run_id:
+        raise HTTPException(422, "run.json does not contain a valid run_id")
+    reserved, blocking = REGISTRY.begin_finalize(run_id)
+    if not reserved:
+        if blocking is not None:
+            raise HTTPException(409, f"run already active in task {blocking.task_id}")
+        raise HTTPException(409, f"run {run_id} is already being finalized")
+    try:
+        runner = PipelineRunner.open(root)
+        opened_root = Path(runner.layout.root).resolve()
+        if opened_root != root:
+            raise HTTPException(
+                409,
+                f"run ledger resolves to a different root: requested {root}, opened {opened_root}",
+            )
+        state = runner.finalize()
+    except HTTPException:
+        raise
+    except FileNotFoundError as exc:
+        raise HTTPException(404, str(exc)) from exc
+    except (json.JSONDecodeError, KeyError, TypeError, ValueError) as exc:
+        raise HTTPException(422, str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(409, str(exc)) from exc
+    finally:
+        REGISTRY.end_finalize(run_id)
+    manifest_path = root / "dataset_manifest.json"
+    if not manifest_path.is_file():
+        raise HTTPException(409, "finalize completed without dataset_manifest.json")
+    return {
+        "finalized": bool(state.get("finalized")),
+        "package_sha256": state.get("package_sha256"),
+        "manifest_path": str(manifest_path),
+    }
 
 
 @app.post("/api/tasks/{task_id}/pause")
@@ -285,32 +644,86 @@ async def task_events(ws: WebSocket, task_id: str) -> None:
 # ── previews ───────────────────────────────────────────────────────────────
 
 class PreviewRequest(BaseModel):
-    phantom_config: dict = {}
+    phantom_config: dict = Field(default_factory=dict)
     case_index: int = 1
     seed: int | None = None
+    overrides: dict = Field(default_factory=dict)
 
 
 @app.post("/api/preview/phantom")
 async def preview_phantom(body: PreviewRequest) -> dict:
     try:
         return await asyncio.to_thread(
-            previews.generate_phantom_preview, body.phantom_config, body.case_index, body.seed
+            previews.generate_phantom_preview,
+            body.phantom_config,
+            body.case_index,
+            body.seed,
+            body.overrides,
         )
     except (ValueError, RuntimeError, TypeError) as exc:
         raise HTTPException(422, str(exc)) from exc
 
 
 @app.get("/api/preview/phantom/{pid}/slice")
-def preview_slice(pid: str, plane: str = "axial", index: int = 64, layer: str = "activity") -> Response:
-    png = previews.phantom_slice_png(pid, plane, index, layer)
+def preview_slice(
+    pid: str,
+    plane: Literal["axial", "coronal", "sagittal"] = "axial",
+    index: int = 64,
+    layer: Literal["activity", "mu"] = "activity",
+    overlay: Literal["liver_and_tumors", "tumors", "liver", "contours", "none"] = "liver_and_tumors",
+) -> Response:
+    try:
+        png = previews.phantom_slice_png(pid, plane, index, layer, overlay)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
     if png is None:
         raise HTTPException(404, "preview expired — regenerate")
     return Response(png, media_type="image/png")
 
 
+@app.get("/api/preview/phantom/{pid}/mip")
+def preview_mip(
+    pid: str,
+    plane: Literal["axial", "coronal", "sagittal"] = "axial",
+    layer: Literal["activity", "mu"] = "activity",
+    overlay: Literal["liver_and_tumors", "tumors", "liver", "contours", "none"] = "liver_and_tumors",
+) -> Response:
+    png = previews.phantom_mip_png(pid, plane, layer, overlay)
+    if png is None:
+        raise HTTPException(404, "preview expired — regenerate")
+    return Response(png, media_type="image/png")
+
+
+@app.get("/api/preview/phantom/{pid}/probe")
+def preview_probe(pid: str, x: int, y: int, z: int) -> dict:
+    try:
+        payload = previews.phantom_probe(pid, x, y, z)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
+    if payload is None:
+        raise HTTPException(404, "preview expired — regenerate")
+    return payload
+
+
+@app.get("/api/preview/phantom/{pid}/mesh")
+def preview_mesh(
+    pid: str,
+    structure: Literal["all", "liver", "tumors"] = "all",
+) -> dict:
+    payload = previews.phantom_mesh(pid, structure)
+    if payload is None:
+        raise HTTPException(404, "preview expired — regenerate")
+    return payload
+
+
 @app.get("/api/run/projection")
-def run_projection(root: str, case: str, view: int = 0, layer: str = "expectation") -> Response:
-    run_root = Path(root) if Path(root).is_absolute() else REPO_ROOT / root
+def run_projection(
+    root: str,
+    case: str = Query(pattern=r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"),
+    view: int = 0,
+    layer: Literal["expectation", "observation"] = "expectation",
+) -> Response:
+    run_root = _run_root(root)
     png = previews.projection_png(run_root, case, view, layer)
     if png is None:
         raise HTTPException(404, f"no {layer} projection for {case}")
@@ -318,11 +731,57 @@ def run_projection(root: str, case: str, view: int = 0, layer: str = "expectatio
 
 
 @app.get("/api/run/sinogram")
-def run_sinogram(root: str, case: str, row: int = 64, layer: str = "expectation") -> Response:
-    run_root = Path(root) if Path(root).is_absolute() else REPO_ROOT / root
+def run_sinogram(
+    root: str,
+    case: str = Query(pattern=r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"),
+    row: int = 64,
+    layer: Literal["expectation", "observation"] = "expectation",
+) -> Response:
+    run_root = _run_root(root)
     png = previews.sinogram_png(run_root, case, row, layer)
     if png is None:
         raise HTTPException(404, f"no {layer} projection for {case}")
+    return Response(png, media_type="image/png")
+
+
+def _artifact_path(path: str) -> Path:
+    resolved = _config_file(path, "artifact")
+    if not resolved.is_file():
+        raise HTTPException(404, f"artifact not found: {resolved}")
+    if resolved.suffix.lower() != ".a00":
+        raise HTTPException(422, f"only .a00 projection artifacts can be inspected: {resolved}")
+    return resolved
+
+
+@app.get("/api/artifact/inspect")
+def inspect_artifact(path: str) -> dict:
+    try:
+        return previews.artifact_summary(_artifact_path(path))
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
+    except OSError as exc:
+        raise HTTPException(409, str(exc)) from exc
+
+
+@app.get("/api/artifact/projection")
+def artifact_projection(path: str, view: int = 0) -> Response:
+    try:
+        png = previews.artifact_projection_png(_artifact_path(path), view)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
+    except OSError as exc:
+        raise HTTPException(409, str(exc)) from exc
+    return Response(png, media_type="image/png")
+
+
+@app.get("/api/artifact/sinogram")
+def artifact_sinogram(path: str, row: int = 64) -> Response:
+    try:
+        png = previews.artifact_sinogram_png(_artifact_path(path), row)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
+    except OSError as exc:
+        raise HTTPException(409, str(exc)) from exc
     return Response(png, media_type="image/png")
 
 
@@ -330,12 +789,30 @@ def run_sinogram(root: str, case: str, row: int = 64, layer: str = "expectation"
 
 @app.get("/api/fs/list")
 def fs_list(path: str = Query(default="")) -> dict:
-    return fsapi.list_dir(path, REPO_ROOT)
+    payload = fsapi.list_dir(path, REPO_ROOT)
+    error = payload.get("error")
+    if error == "outside_allowed_roots":
+        raise HTTPException(403, payload)
+    if error == "not_a_directory":
+        target = Path(payload.get("path", ""))
+        raise HTTPException(404 if not target.exists() else 422, payload)
+    if error:
+        raise HTTPException(409, payload)
+    return payload
 
 
 @app.get("/api/fs/validate")
 def fs_validate(path: str, kind: str) -> dict:
-    return fsapi.validate_path(path, kind, REPO_ROOT)
+    payload = fsapi.validate_path(path, kind, REPO_ROOT)
+    error = payload.get("error")
+    if error == "outside_allowed_roots":
+        raise HTTPException(403, payload)
+    if error == "unsupported_kind":
+        raise HTTPException(422, payload)
+    if not payload.get("valid"):
+        target = Path(payload["path"])
+        raise HTTPException(404 if not target.exists() else 422, payload)
+    return payload
 
 
 # ── static frontend (built bundle) ─────────────────────────────────────────

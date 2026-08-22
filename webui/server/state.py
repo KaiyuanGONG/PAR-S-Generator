@@ -55,6 +55,7 @@ class Task:
 class TaskRegistry:
     def __init__(self) -> None:
         self._tasks: dict[str, Task] = {}
+        self._finalizing_runs: set[str] = set()
         self._lock = threading.Lock()
 
     def create(self, run_id: str, run_root: Path) -> Task:
@@ -63,6 +64,40 @@ class TaskRegistry:
             self._tasks[task.task_id] = task
         return task
 
+    def create_for_start(
+        self,
+        run_id: str,
+        run_root: Path,
+        *,
+        resume: bool,
+    ) -> tuple[Task | None, Task | None, bool]:
+        """Atomically register a start, optionally superseding a paused task.
+
+        Returns ``(task, blocking_task, finalizing)``. A paused task may only be
+        superseded by an explicit resume; the old task remains queryable but is
+        marked finished once the new task has been registered successfully.
+        """
+
+        task = Task(task_id=uuid.uuid4().hex[:12], run_id=run_id, run_root=str(run_root))
+        with self._lock:
+            if run_id in self._finalizing_runs:
+                return None, None, True
+            unsettled = [
+                candidate
+                for candidate in reversed(tuple(self._tasks.values()))
+                if candidate.run_id == run_id and candidate.status in {"running", "paused"}
+            ]
+            running = next((candidate for candidate in unsettled if candidate.status == "running"), None)
+            if running is not None:
+                return None, running, False
+            if unsettled and not resume:
+                return None, unsettled[0], False
+            self._tasks[task.task_id] = task
+            for paused in unsettled:
+                paused.status = "finished"
+                paused.result = {**(paused.result or {}), "resumed_by": task.task_id}
+            return task, None, False
+
     def get(self, task_id: str) -> Task | None:
         return self._tasks.get(task_id)
 
@@ -70,10 +105,36 @@ class TaskRegistry:
         return [t.public() for t in self._tasks.values()]
 
     def active_for_run(self, run_id: str) -> Task | None:
-        for t in self._tasks.values():
-            if t.run_id == run_id and t.status in {"running", "paused"}:
-                return t
-        return None
+        with self._lock:
+            return next(
+                (
+                    task
+                    for task in reversed(tuple(self._tasks.values()))
+                    if task.run_id == run_id and task.status in {"running", "paused"}
+                ),
+                None,
+            )
+
+    def begin_finalize(self, run_id: str) -> tuple[bool, Task | None]:
+        """Reserve a run for finalize unless execution is active or paused."""
+
+        with self._lock:
+            blocking = next(
+                (
+                    task
+                    for task in reversed(tuple(self._tasks.values()))
+                    if task.run_id == run_id and task.status in {"running", "paused"}
+                ),
+                None,
+            )
+            if blocking is not None or run_id in self._finalizing_runs:
+                return False, blocking
+            self._finalizing_runs.add(run_id)
+            return True, None
+
+    def end_finalize(self, run_id: str) -> None:
+        with self._lock:
+            self._finalizing_runs.discard(run_id)
 
 
 REGISTRY = TaskRegistry()
