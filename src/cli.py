@@ -6,7 +6,8 @@ import argparse
 import json
 from pathlib import Path
 
-from core.phantom_generator import PhantomConfig
+from core.windows_runtime import assess_windows_runtime
+from core.windows_v1 import SCHEMA_VERSION, WindowsV1Config
 from pipeline.contracts import EMPIRICAL_OBSERVATION_PROTOCOL_STATUS, atomic_write_json
 from pipeline.experiments import (
     EXPERIMENT_NAMES,
@@ -26,12 +27,33 @@ def _load_config(path: Path) -> PipelineConfig:
 
 
 def _cmd_init(args) -> int:
-    phantom = PhantomConfig(n_cases=args.cases, output_dir="managed_by_pipeline")
-    config = PipelineConfig(
+    windows_v1 = WindowsV1Config.from_dict(
+        {
+            "cohort": {
+                "mode": args.cohort_mode,
+                "positive_cases": args.positive_cases,
+                "negative_cases": args.negative_cases,
+            },
+            "lesions": {
+                "tumor_count_min": args.tumor_count_min,
+                "tumor_count_max": args.tumor_count_max,
+                "size_band_weights": args.size_band_weights,
+                "tnr_min": args.tnr_min,
+                "tnr_max": args.tnr_max,
+                "territory_policy": args.territory_policy,
+            },
+            "seed": args.seed,
+        }
+    )
+    config = PipelineConfig.for_windows_v1(
         run_id=args.run_id,
         runs_root=args.runs_root,
-        phantom=phantom,
+        windows_v1=windows_v1,
         simulation_mode=args.mode,
+        simind_exe=args.simind_exe,
+        smc_file=args.smc,
+        nn_multiplier=args.nn,
+        max_simind_workers=args.workers,
         create_poisson_observation=True,
         observation_policy="empirical_total_counts",
         observation_protocol_status=EMPIRICAL_OBSERVATION_PROTOCOL_STATUS,
@@ -43,10 +65,24 @@ def _cmd_init(args) -> int:
 
 def _cmd_run(args) -> int:
     config = _load_config(Path(args.config))
+    if config.schema_version != SCHEMA_VERSION or config.windows_v1 is None:
+        raise SystemExit(
+            "Only the Windows v1 schema (schema_version=windows_v1) can create or resume production runs. Legacy configs are inspect-only."
+        )
     if config.simulation_mode == "execute" and not args.allow_simind_execution:
         raise SystemExit(
             "Refusing to launch SIMIND. Re-run with --allow-simind-execution after reviewing run config and commands."
         )
+    if config.simulation_mode == "execute":
+        runtime = assess_windows_runtime(config.simind_exe, config.smc_file)
+        if runtime.status == "unverified_runtime" and not args.allow_unverified_runtime:
+            raise SystemExit(
+                "Runtime hashes are unverified. Re-run with --allow-unverified-runtime after reviewing both hashes."
+            )
+        if config.phantom.n_cases > 10 and not args.allow_large_simind_execution:
+            raise SystemExit(
+                "More than 10 real SIMIND cases require --allow-large-simind-execution after reviewing cost."
+            )
     runner = PipelineRunner(config, resume=args.resume)
     # A prepared-only run intentionally has no projection expectation and
     # therefore cannot be finalized.  It should still complete successfully
@@ -138,8 +174,29 @@ def build_parser() -> argparse.ArgumentParser:
     init = sub.add_parser("init", help="Write an editable effective pipeline configuration")
     init.add_argument("--run-id", required=True)
     init.add_argument("--runs-root", default="runs")
-    init.add_argument("--cases", type=int, default=2)
+    init.add_argument(
+        "--cohort-mode",
+        choices=("positive_only", "true_negative_only", "mixed"),
+        default="positive_only",
+    )
+    init.add_argument("--positive-cases", type=int, default=2)
+    init.add_argument("--negative-cases", type=int, default=0)
+    init.add_argument("--tumor-count-min", type=int, default=1)
+    init.add_argument("--tumor-count-max", type=int, default=5)
+    init.add_argument("--size-band-weights", type=float, nargs=3, default=(0.45, 0.40, 0.15))
+    init.add_argument("--tnr-min", type=float, default=2.0)
+    init.add_argument("--tnr-max", type=float, default=8.0)
+    init.add_argument(
+        "--territory-policy",
+        choices=("auto_equal_feasible", "whole_liver", "right_lobar", "left_lobar"),
+        default="auto_equal_feasible",
+    )
+    init.add_argument("--seed", type=int, default=42)
     init.add_argument("--mode", choices=("prepare", "mock", "execute"), default="prepare")
+    init.add_argument("--simind-exe", default="simind/simind.exe")
+    init.add_argument("--smc", default="simind/ge870_czt.smc")
+    init.add_argument("--nn", type=int, default=10)
+    init.add_argument("--workers", type=int, default=1)
     init.add_argument("--output", required=True)
     init.set_defaults(func=_cmd_init)
 
@@ -148,6 +205,8 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument("--resume", action="store_true")
     run.add_argument("--no-finalize", action="store_true")
     run.add_argument("--allow-simind-execution", action="store_true")
+    run.add_argument("--allow-unverified-runtime", action="store_true")
+    run.add_argument("--allow-large-simind-execution", action="store_true")
     run.set_defaults(func=_cmd_run)
 
     inspect = sub.add_parser("inspect", help="Print run state without modifying it")

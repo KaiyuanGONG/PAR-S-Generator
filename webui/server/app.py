@@ -27,11 +27,17 @@ if str(REPO_ROOT / "src") not in sys.path:
 from fastapi import FastAPI, HTTPException, Query, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from pipeline import contracts
 from pipeline.contracts import RunLayout, RunLedger, atomic_write_json
 from pipeline.runner import PipelineConfig, PipelinePaused, PipelineRunner
+from core.windows_runtime import (
+    WindowsPathError,
+    assess_windows_runtime,
+    validate_windows_path,
+)
+from core.windows_v1 import WindowsV1Config
 
 try:  # normal package import (uvicorn webui.server.app:app)
     from . import fsapi, previews
@@ -44,7 +50,7 @@ except ImportError:  # run directly as a script: python webui/server/app.py
     from webui.server.state import REGISTRY
     from webui.server.watch import STAGE_ORDER, start_watcher
 
-app = FastAPI(title="PAR-S Generator service", version="0.1.0")
+app = FastAPI(title="PAR-S Generator service", version="1.0.0")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
@@ -67,7 +73,10 @@ def health() -> dict:
 
 @app.get("/api/defaults")
 def defaults() -> dict:
-    return PipelineConfig(run_id="unnamed").to_dict()
+    return PipelineConfig.for_windows_v1(
+        run_id="unnamed",
+        windows_v1=WindowsV1Config.from_dict(None),
+    ).to_dict()
 
 
 @app.get("/api/protocol")
@@ -93,6 +102,10 @@ def _runs_root(root: str | None) -> Path:
     resolved = (path if path.is_absolute() else REPO_ROOT / path).resolve()
     if not _allowed_path(resolved):
         raise HTTPException(403, f"runs root is outside the configured filesystem roots: {resolved}")
+    try:
+        validate_windows_path(resolved, "runs_root")
+    except WindowsPathError as exc:
+        raise HTTPException(422, str(exc)) from exc
     return resolved
 
 
@@ -258,52 +271,58 @@ def run_splits(root: str) -> dict:
 # ── actions ────────────────────────────────────────────────────────────────
 
 class CreateRun(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     run_id: str = Field(pattern=r"^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$")
     runs_root: str = "runs"
-    cases: int = Field(default=2, ge=1, le=100_000)
     mode: Literal["prepare", "mock", "execute"] = "prepare"
-    config_overrides: dict = Field(default_factory=dict)
+    windows_v1: dict = Field(default_factory=dict)
+    simind_exe: str = "simind/simind.exe"
+    smc_file: str = "simind/ge870_czt.smc"
+    nn_multiplier: int = Field(default=10, ge=1, le=1_000_000, strict=True)
+    max_simind_workers: int = Field(default=1, ge=1, le=32, strict=True)
 
 
 def _pipeline_config_from_request(body: CreateRun) -> PipelineConfig:
-    from core.phantom_generator import PhantomConfig as _PhantomConfig
     runs_root = _runs_root(body.runs_root)
-    phantom = _PhantomConfig(n_cases=body.cases, output_dir="managed_by_pipeline")
     try:
-        config = PipelineConfig(
+        windows_v1 = WindowsV1Config.from_dict(body.windows_v1)
+        config = PipelineConfig.for_windows_v1(
             run_id=body.run_id,
             runs_root=str(runs_root),
-            phantom=phantom,
+            windows_v1=windows_v1,
             simulation_mode=body.mode,
+            simind_exe=body.simind_exe,
+            smc_file=body.smc_file,
+            nn_multiplier=body.nn_multiplier,
+            max_simind_workers=body.max_simind_workers,
             create_poisson_observation=True,
             observation_policy="empirical_total_counts",
             observation_protocol_status=contracts.EMPIRICAL_OBSERVATION_PROTOCOL_STATUS,
         )
-        payload = config.to_dict()
-        payload.update(body.config_overrides or {})
-        payload["run_id"] = body.run_id
-        payload["runs_root"] = str(runs_root)
-        payload["simulation_mode"] = body.mode
-        payload.setdefault("phantom", {})["n_cases"] = body.cases
-        config = PipelineConfig.from_dict(payload)   # re-validate after overrides
     except (ValueError, TypeError) as exc:
         raise HTTPException(422, str(exc)) from exc
     return config
 
 
-def _config_file(path_value: str, label: str) -> Path:
+def _config_file(path_value: str, label: str, kind: str | None = None) -> Path:
     requested = Path(path_value)
     resolved = (requested if requested.is_absolute() else REPO_ROOT / requested).resolve()
     if not _allowed_path(resolved):
         raise HTTPException(403, f"{label} is outside the configured filesystem roots: {resolved}")
+    if kind is not None:
+        try:
+            validate_windows_path(resolved, kind, require_exists=False)
+        except WindowsPathError as exc:
+            raise HTTPException(422, str(exc)) from exc
     return resolved
 
 
 def _validate_config_paths(config: PipelineConfig, *, require_inputs: bool) -> dict[str, Path]:
     _runs_root(config.runs_root)
     paths = {
-        "simind_exe": _config_file(config.simind_exe, "SIMIND executable"),
-        "smc_file": _config_file(config.smc_file, "SMC file"),
+        "simind_exe": _config_file(config.simind_exe, "SIMIND executable", "simind_exe"),
+        "smc_file": _config_file(config.smc_file, "SMC file", "smc"),
         "empirical_count_evidence": _config_file(
             config.empirical_count_evidence,
             "empirical count evidence",
@@ -353,6 +372,18 @@ def preflight_run(body: CreateRun) -> dict:
 
     check("simind_executable", paths["simind_exe"].is_file(), f"SIMIND executable: {paths['simind_exe']}")
     check("smc_file", paths["smc_file"].is_file(), f"SMC file: {paths['smc_file']}")
+    runtime = assess_windows_runtime(paths["simind_exe"], paths["smc_file"])
+    if runtime.status != "missing_runtime":
+        check(
+            "windows_runtime_hashes",
+            runtime.validated,
+            (
+                "SIMIND/SMC hashes match the validated Windows v1 runtime"
+                if runtime.validated
+                else "Runtime hashes do not match the validated Windows v1 pair; execute requires separate confirmation"
+            ),
+            warning=not runtime.validated,
+        )
     smc_summary = None
     if paths["smc_file"].is_file():
         try:
@@ -444,6 +475,7 @@ def preflight_run(body: CreateRun) -> dict:
             "smc_file": str(paths["smc_file"]),
             "mode": config.simulation_mode,
             "execution_authorized": False,
+            "windows_runtime": runtime.to_dict(),
         },
     }
 
@@ -465,8 +497,12 @@ def prepare_experiments(body: PrepareExperimentsRequest) -> dict:
         raise HTTPException(403, f"experiment destination is outside configured roots: {destination}")
     if destination.exists() and not destination.is_dir():
         raise HTTPException(422, f"experiment destination is not a directory: {destination}")
-    simind_exe = _config_file(body.simind_exe, "SIMIND executable")
-    smc_file = _config_file(body.smc_file, "SMC file")
+    try:
+        validate_windows_path(destination, "export_root")
+    except WindowsPathError as exc:
+        raise HTTPException(422, str(exc)) from exc
+    simind_exe = _config_file(body.simind_exe, "SIMIND executable", "simind_exe")
+    smc_file = _config_file(body.smc_file, "SMC file", "smc")
     if not simind_exe.is_file():
         raise HTTPException(404, f"SIMIND executable not found: {simind_exe}")
     if not smc_file.is_file():
@@ -493,6 +529,8 @@ class StartRun(BaseModel):
     resume: bool = False
     finalize: bool = False
     allow_simind_execution: bool = False
+    allow_unverified_runtime: bool = False
+    allow_large_simind_execution: bool = False
 
 
 @app.post("/api/run/start")
@@ -510,6 +548,18 @@ def start_run(body: StartRun) -> dict:
     _validate_config_paths(config, require_inputs=True)
     if config.simulation_mode == "execute" and not body.allow_simind_execution:
         raise HTTPException(403, "Refusing to launch SIMIND without explicit allow_simind_execution confirmation.")
+    if config.simulation_mode == "execute":
+        runtime = assess_windows_runtime(config.simind_exe, config.smc_file)
+        if runtime.status == "unverified_runtime" and not body.allow_unverified_runtime:
+            raise HTTPException(
+                403,
+                "Runtime is unverified; set allow_unverified_runtime only after reviewing both hashes.",
+            )
+        if config.phantom.n_cases > 10 and not body.allow_large_simind_execution:
+            raise HTTPException(
+                403,
+                "More than 10 real SIMIND cases require a cost review and allow_large_simind_execution confirmation.",
+            )
     existing = REGISTRY.active_for_run(config.run_id)
     if existing and (existing.status == "running" or not body.resume):
         raise HTTPException(409, f"run already active in task {existing.task_id}")
@@ -812,6 +862,22 @@ def fs_validate(path: str, kind: str) -> dict:
     if not payload.get("valid"):
         target = Path(payload["path"])
         raise HTTPException(404 if not target.exists() else 422, payload)
+    return payload
+
+
+class NativePathRequest(BaseModel):
+    kind: Literal["simind_exe", "smc", "runs_root", "export_root"]
+    initial_path: str = ""
+
+
+@app.post("/api/fs/pick")
+def fs_pick(body: NativePathRequest) -> dict:
+    payload = fsapi.pick_native_path(body.kind, body.initial_path, REPO_ROOT)
+    error = payload.get("error")
+    if error == "unsupported_kind":
+        raise HTTPException(422, payload)
+    if error:
+        raise HTTPException(422, payload)
     return payload
 
 

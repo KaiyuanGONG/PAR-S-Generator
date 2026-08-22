@@ -19,13 +19,16 @@ def _allow_test_root(tmp_path: Path, monkeypatch):
 
 
 def _request(tmp_path: Path, **overrides) -> dict:
-    return {
+    payload = {
         "run_id": "preflight-run",
         "runs_root": str(tmp_path),
-        "cases": 2,
         "mode": "prepare",
-        "config_overrides": overrides,
+        "windows_v1": {
+            "cohort": {"mode": "positive_only", "positive_cases": 2, "negative_cases": 0},
+        },
     }
+    payload.update(overrides)
+    return payload
 
 
 def test_preflight_parses_real_smc_without_creating_or_running_a_run(tmp_path: Path) -> None:
@@ -40,8 +43,29 @@ def test_preflight_parses_real_smc_without_creating_or_running_a_run(tmp_path: P
     assert payload["smc"]["views"] == 60
     assert payload["smc"]["raw_indices"]["25"] == 1704.0
     assert payload["provenance"]["execution_authorized"] is False
+    assert payload["provenance"]["windows_runtime"]["status"] == "validated_windows_v1"
     assert not (tmp_path / "preflight-run.config.json").exists()
     assert not (tmp_path / "preflight-run").exists()
+
+
+def test_preflight_allows_but_marks_hash_mismatched_runtime_unverified(
+    tmp_path: Path,
+) -> None:
+    custom_exe = tmp_path / "custom simind.exe"
+    custom_exe.write_bytes(b"not the validated executable")
+
+    with TestClient(server_app.app) as client:
+        response = client.post(
+            "/api/run/preflight",
+            json=_request(tmp_path, simind_exe=str(custom_exe)),
+        )
+
+    assert response.status_code == 200, response.text
+    payload = response.json()
+    assert payload["ready"] is True
+    assert payload["provenance"]["windows_runtime"]["status"] == "unverified_runtime"
+    assert any(check["id"] == "windows_runtime_hashes" and check["status"] == "warning"
+               for check in payload["checks"])
 
 
 def test_preflight_reports_parse_failure_and_rejects_outside_paths(tmp_path: Path, monkeypatch) -> None:
@@ -78,7 +102,7 @@ def test_preflight_rejects_phantom_matrix_outside_the_validated_run_contract(tmp
         )
 
     assert response.status_code == 422
-    assert "128x128x128 phantom" in response.json()["detail"]
+    assert "phantom" in str(response.json()["detail"])
 
 
 def test_prepare_experiments_delegates_to_frozen_preparer_without_execution(tmp_path: Path, monkeypatch) -> None:

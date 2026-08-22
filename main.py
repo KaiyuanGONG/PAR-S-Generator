@@ -1,44 +1,31 @@
-﻿"""
-PAR-S Generator entrypoint.
-"""
+"""PAR-S Generator native Windows v1 Web entrypoint."""
 
-import os
+import argparse
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).parent / "src"))
 
-from PyQt6.QtGui import QFont
-from PyQt6.QtWidgets import QApplication
+REPO_ROOT = Path(__file__).resolve().parent
+sys.path.insert(0, str(REPO_ROOT / "src"))
 
-from ui.i18n import init_language
-from ui.main_window import MainWindow
-from ui.settings_store import SettingsStore
+from windows_launcher import AlreadyRunningError, run_windows_web
 
 
-def load_stylesheet(app: QApplication) -> None:
-    settings = SettingsStore().load()
-    theme = settings["appearance"].get("theme", "dark")
-    qss_name = "light_theme.qss" if theme == "light" else "dark_theme.qss"
-    qss_path = Path(__file__).parent / "resources" / "styles" / qss_name
-    if not qss_path.exists():
-        qss_path = Path(__file__).parent / "resources" / "styles" / "dark_theme.qss"
-    if qss_path.exists():
-        app.setStyleSheet(qss_path.read_text(encoding="utf-8"))
-
-
-def main():
-    os.environ.setdefault("QT_AUTO_SCREEN_SCALE_FACTOR", "1")
-    init_language()
-    app = QApplication(sys.argv)
-    app.setApplicationName("PAR-S Generator")
-    app.setApplicationVersion("0.4.0")
-    app.setFont(QFont("Segoe UI", 10))
-    load_stylesheet(app)
-    window = MainWindow()
-    window.show()
-    sys.exit(app.exec())
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description="Start PAR-S Generator Windows v1")
+    parser.add_argument("--port", type=int, default=8765, help="preferred loopback port")
+    parser.add_argument("--no-browser", action="store_true", help="do not open the default browser")
+    args = parser.parse_args(argv)
+    try:
+        return run_windows_web(
+            REPO_ROOT,
+            preferred_port=args.port,
+            open_browser=not args.no_browser,
+        )
+    except AlreadyRunningError as exc:
+        parser.error(str(exc))
+    return 2
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

@@ -8,6 +8,9 @@ evaluation component.
 from __future__ import annotations
 
 import json
+import hashlib
+import platform
+import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
@@ -17,13 +20,18 @@ import numpy as np
 
 from core.interfile_writer import convert_npz_to_interfile
 from core.phantom_generator import PhantomConfig, PhantomGenerator, PreviewOverrides
+from core.seeds import SeedBundle
 from core.smc_parser import parse_smc
 from core.windows_v1 import (
+    GATE_A_GENERATOR_COMMIT,
+    GATE_C_CONFIG_SHA256,
     GENERATION_PROFILE,
+    LIMITED_ACTIVITY_UPSTREAM_SOURCE_SHA256,
     RUNTIME_BACKEND,
     SCHEMA_VERSION,
     WindowsV1Config,
 )
+from core.windows_runtime import assess_windows_runtime
 from pipeline.contracts import (
     ACTIVITY_TIME_CONTRACT_STATUS,
     CANONICAL_PROJECTION_TRANSFORM,
@@ -400,6 +408,18 @@ class PipelineRunner:
             "schema_version": config.schema_version,
             "generation_profile": config.generation_profile,
             "runtime_backend": config.runtime_backend,
+            "scientific_authority": {
+                "gate_a_generator_commit": GATE_A_GENERATOR_COMMIT,
+                "limited_activity_upstream_source_sha256": LIMITED_ACTIVITY_UPSTREAM_SOURCE_SHA256,
+                "gate_c_config_sha256": GATE_C_CONFIG_SHA256,
+            },
+            "windows_platform": {
+                "system": platform.system(),
+                "release": platform.release(),
+                "version": platform.version(),
+                "machine": platform.machine(),
+                "python": sys.version,
+            },
             "projection_orientation": CANONICAL_PROJECTION_TRANSFORM,
             "protocol_scope": "liver_only_current_protocol",
             "software_sha256": {
@@ -414,6 +434,7 @@ class PipelineRunner:
                 "path": str(smc),
                 "sha256": sha256_file(smc) if smc.is_file() else None,
             },
+            "windows_runtime": assess_windows_runtime(exe, smc).to_dict(),
             "type7_attenuation": {
                 "stored_formula": "mu_cm_inverse * density_voxel_size_cm",
                 "density_threshold_times_1000": config.type7_density_threshold_times_1000,
@@ -763,6 +784,9 @@ class PipelineRunner:
     def _jobs(self, cases: list[dict]) -> list[SimindJob]:
         exe = Path(self.config.simind_exe).resolve()
         smc = Path(self.config.smc_file).resolve()
+        provenance = self.ledger.load().get("provenance", {})
+        expected_executable_sha256 = provenance.get("simind_executable", {}).get("sha256")
+        expected_smc_sha256 = provenance.get("smc", {}).get("sha256")
         overrides = list(self.config.simind_overrides)
         if not any(int(index) == 25 for index, _ in overrides):
             overrides.append((25, f"{self.config.smc_index25_activity_time:g}"))
@@ -780,11 +804,21 @@ class PipelineRunner:
                 source_stem=record["case_id"],
                 density_stem=record["case_id"],
                 nn_multiplier=self.config.nn_multiplier,
-                rr_seed=self.config.simind_seed_base + int(record["case_id"].rsplit("_", 1)[1]),
+                rr_seed=(
+                    SeedBundle.from_case(
+                        self.config.windows_v1.seed,
+                        record["case_id"],
+                    ).simind
+                    if self.config.windows_v1 is not None
+                    else self.config.simind_seed_base
+                    + int(record["case_id"].rsplit("_", 1)[1])
+                ),
                 overrides=tuple(overrides),
                 runtime_switches=(
                     f"/IN:x21,{self.config.type7_density_threshold_times_1000}x",
                 ),
+                expected_executable_sha256=expected_executable_sha256,
+                expected_smc_sha256=expected_smc_sha256,
             )
             for record in cases
         ]
@@ -1283,11 +1317,40 @@ class PipelineRunner:
         manifest = {
             "dataset_id": self.config.run_id,
             "created_utc": utc_now(),
+            "schema_version": self.config.schema_version,
+            "generation_profile": self.config.generation_profile,
+            "runtime_backend": self.config.runtime_backend,
+            "windows_v1": (
+                self.config.windows_v1.to_dict()
+                if self.config.windows_v1 is not None
+                else None
+            ),
+            "effective_config_sha256": hashlib.sha256(
+                json.dumps(
+                    self.config.to_dict(),
+                    sort_keys=True,
+                    separators=(",", ":"),
+                ).encode("utf-8")
+            ).hexdigest(),
             "scope": "synthetic_liver_spect_data_preparation_only",
             "protocol_label": self.config.protocol_label,
             "protocol_status": self.config.protocol_status,
             "simulation_mode": self.config.simulation_mode,
             "case_count": len(cases),
+            "case_roles": {
+                record["case_id"]: record.get("case_role", "legacy") for record in cases
+            },
+            "case_artifacts": {
+                record["case_id"]: {
+                    "case_role": record.get("case_role"),
+                    "split_role": record.get("split_role"),
+                    "seed": record.get("seed"),
+                    "simind_input": record.get("simind_input"),
+                    "expectation": record.get("expectation"),
+                    "qc": record.get("qc"),
+                }
+                for record in cases
+            },
             "cases_manifest": "cases.jsonl",
             "split_manifest": "splits.json",
             "projection_orientation": CANONICAL_PROJECTION_TRANSFORM,
@@ -1315,6 +1378,18 @@ class PipelineRunner:
                 "protocol_status": self.config.observation_protocol_status,
                 "absolute_cps_per_mbq_claim": False,
             },
+            "scientific_authority": self.ledger.load()
+            .get("provenance", {})
+            .get("scientific_authority"),
+            "windows_runtime": self.ledger.load()
+            .get("provenance", {})
+            .get("windows_runtime"),
+            "windows_platform": self.ledger.load()
+            .get("provenance", {})
+            .get("windows_platform"),
+            "simind_jobs": json.loads(
+                (self.layout.subdir("logs") / "simind_jobs.json").read_text(encoding="utf-8")
+            ),
             "files": inventory,
             "figure_evidence": figure_evidence,
         }

@@ -25,6 +25,7 @@ from pipeline.simind import (
     simind_output_argument,
 )
 from core.simind_runner import build_simind_command
+from core.windows_v1 import WindowsV1Config
 
 
 def test_fixed_split_is_deterministic_and_phantom_level():
@@ -447,10 +448,18 @@ def test_pause_checkpoints_and_resume_reuses_completed_case(tmp_path: Path):
 
 
 def test_cli_prepare_mode_completes_without_attempting_finalize(tmp_path: Path):
-    config = _smoke_config(tmp_path, "cli-prepare")
-    config.phantom.n_cases = 1
-    config.simulation_mode = "prepare"
-    config.create_poisson_observation = False
+    config = PipelineConfig.for_windows_v1(
+        run_id="cli-prepare",
+        runs_root=str(tmp_path / "runs"),
+        windows_v1=WindowsV1Config.from_dict(
+            {
+                "cohort": {"mode": "positive_only", "positive_cases": 1, "negative_cases": 0},
+                "lesions": {"tumor_count_min": 1, "tumor_count_max": 1},
+            }
+        ),
+        simulation_mode="prepare",
+        create_poisson_observation=False,
+    )
     config_path = tmp_path / "prepare.json"
     config_path.write_text(json.dumps(config.to_dict()), encoding="utf-8")
 

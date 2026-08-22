@@ -79,26 +79,26 @@ def test_run_summary_exposes_adjacent_config_path(tmp_path: Path) -> None:
     assert response.json()["runs"][0]["config_path"] == str(config_path)
 
 
-def test_create_run_persists_phantom_simulation_and_observation_overrides(tmp_path: Path) -> None:
+def test_create_run_persists_only_authoritative_windows_v1_controls(tmp_path: Path) -> None:
     run_id = f"web-overrides-{uuid.uuid4().hex}"
     request = {
         "run_id": run_id,
         "runs_root": str(tmp_path),
-        "cases": 3,
         "mode": "mock",
-        "config_overrides": {
-            "phantom": {
-                "n_cases": 3,
-                "target_left_ratio": 0.37,
-                "tumor_count_min": 0,
+        "windows_v1": {
+            "cohort": {"mode": "mixed", "positive_cases": 2, "negative_cases": 1},
+            "lesions": {
+                "tumor_count_min": 1,
                 "tumor_count_max": 2,
+                "size_band_weights": [2, 1, 1],
+                "tnr_min": 3,
+                "tnr_max": 7,
+                "territory_policy": "whole_liver",
             },
-            "nn_multiplier": 7,
-            "max_simind_workers": 2,
-            "create_poisson_observation": False,
-            "observation_policy": "fixed_scale",
-            "observation_protocol_status": "toy",
+            "seed": 1234,
         },
+        "nn_multiplier": 7,
+        "max_simind_workers": 2,
     }
 
     with TestClient(server_app.app) as client:
@@ -107,15 +107,34 @@ def test_create_run_persists_phantom_simulation_and_observation_overrides(tmp_pa
     assert response.status_code == 200
     payload = response.json()
     effective = payload["config"]
+    assert effective["schema_version"] == "windows_v1"
+    assert effective["generation_profile"] == "hybrid_v2_limited_activity_v1"
     assert effective["phantom"]["n_cases"] == 3
-    assert effective["phantom"]["target_left_ratio"] == 0.37
     assert effective["phantom"]["tumor_count_max"] == 2
+    assert effective["phantom"]["tumor_probs"] == [0.5, 0.25, 0.25]
+    assert effective["windows_v1"]["cohort"]["mode"] == "mixed"
+    assert effective["windows_v1"]["seed"] == 1234
     assert effective["nn_multiplier"] == 7
     assert effective["max_simind_workers"] == 2
-    assert effective["create_poisson_observation"] is False
-    assert effective["observation_policy"] == "fixed_scale"
-    assert effective["observation_protocol_status"] == "toy"
     assert json.loads(Path(payload["config_path"]).read_text(encoding="utf-8")) == effective
+
+
+def test_new_run_rejects_legacy_or_unknown_creation_fields(tmp_path: Path) -> None:
+    with TestClient(server_app.app) as client:
+        response = client.post(
+            "/api/runs",
+            json={
+                "run_id": "legacy-create",
+                "runs_root": str(tmp_path),
+                "cases": 2,
+                "config_overrides": {"phantom": {"anatomy_model": "legacy"}},
+            },
+        )
+
+    assert response.status_code == 422
+    detail = response.json()["detail"]
+    assert "cases" in str(detail)
+    assert "config_overrides" in str(detail)
 
 
 def test_manifest_and_splits_read_run_files(tmp_path: Path) -> None:

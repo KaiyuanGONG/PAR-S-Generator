@@ -26,6 +26,8 @@ class SimindJob:
     overrides: tuple[tuple[int, str], ...] = field(default_factory=tuple)
     runtime_switches: tuple[str, ...] = field(default_factory=tuple)
     primary_artifact_suffix: str = ".a00"
+    expected_executable_sha256: str | None = None
+    expected_smc_sha256: str | None = None
 
 
 def build_simind_args(job: SimindJob) -> list[str]:
@@ -195,19 +197,23 @@ def build_simind_tokens(
 
 
 def job_record(job: SimindJob) -> dict:
+    args = build_simind_args(job)
     return {
         "case_id": job.case_id,
         "executable": str(job.simind_exe.resolve()),
         "executable_sha256": sha256_file(job.simind_exe) if job.simind_exe.exists() else None,
         "smc": str(job.smc_file.resolve()),
         "smc_sha256": sha256_file(job.smc_file) if job.smc_file.exists() else None,
+        "expected_executable_sha256": job.expected_executable_sha256,
+        "expected_smc_sha256": job.expected_smc_sha256,
         "working_dir": str(job.working_dir.resolve()),
         "output_stem": str(job.output_stem.resolve()),
         "output_argument": simind_output_argument(job.output_stem, job.working_dir),
         "staging_output_stem": str(staged_output_stem(job)),
         "primary_artifact_suffix": job.primary_artifact_suffix,
         "rr_seed": job.rr_seed,
-        "args": build_simind_args(job),
+        "args": args,
+        "command": [str(job.simind_exe.resolve()), *args],
         "prepared_utc": utc_now(),
     }
 
@@ -289,6 +295,23 @@ def completion_qc(job: SimindJob, shape=DEFAULT_PROJECTION_SHAPE) -> dict:
 def run_job(job: SimindJob, log_path: Path, shape=DEFAULT_PROJECTION_SHAPE) -> dict:
     """Run one prepared job.  Callers must explicitly authorize this stage."""
     assert_simind_artifact_paths_clear(staged_output_stem(job), job.output_stem)
+    runtime_smc = job.working_dir.resolve() / job.smc_file.name
+    before = {
+        "simind_executable": sha256_file(job.simind_exe),
+        "smc": sha256_file(runtime_smc),
+    }
+    expected = {
+        "simind_executable": job.expected_executable_sha256,
+        "smc": job.expected_smc_sha256,
+    }
+    changed_since_plan = [
+        name for name, expected_hash in expected.items()
+        if expected_hash is not None and before[name] != expected_hash
+    ]
+    if changed_since_plan:
+        raise RuntimeError(
+            "SIMIND runtime changed since planning: " + ", ".join(changed_since_plan)
+        )
     command = [str(job.simind_exe.resolve()), *build_simind_args(job)]
     completed = subprocess.run(
         command,
@@ -317,6 +340,17 @@ def run_job(job: SimindJob, log_path: Path, shape=DEFAULT_PROJECTION_SHAPE) -> d
         handle.write("\n")
     qc = completion_qc(job, shape=shape)
     qc["exit_code"] = completed.returncode
+    after = {
+        "simind_executable": sha256_file(job.simind_exe),
+        "smc": sha256_file(runtime_smc),
+    }
+    qc["runtime_hashes"] = {"expected": expected, "before": before, "after": after}
+    runtime_drift = [name for name in before if before[name] != after[name]]
+    if runtime_drift:
+        qc["status"] = "failed"
+        qc.setdefault("failures", []).extend(
+            f"runtime_hash_drift:{name}" for name in runtime_drift
+        )
     if relocation_error is not None:
         qc["status"] = "failed"
         qc.setdefault("failures", []).append(f"artifact_relocation:{relocation_error}")

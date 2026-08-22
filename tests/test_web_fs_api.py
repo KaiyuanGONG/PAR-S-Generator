@@ -7,6 +7,52 @@ from fastapi.testclient import TestClient
 from webui.server import app as server_app
 
 
+def test_native_picker_authorizes_only_the_selected_parent_for_this_session(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    selected = tmp_path / "含 空格" / "simind.exe"
+    selected.parent.mkdir()
+    selected.write_bytes(b"stub")
+    monkeypatch.setattr(server_app.fsapi, "_SESSION_ROOTS", set())
+    monkeypatch.setattr(
+        server_app.fsapi,
+        "_native_dialog",
+        lambda kind, initial: str(selected),
+    )
+
+    with TestClient(server_app.app) as client:
+        picked = client.post(
+            "/api/fs/pick",
+            json={"kind": "simind_exe", "initial_path": str(tmp_path)},
+        )
+        validated = client.get(
+            "/api/fs/validate",
+            params={"path": str(selected), "kind": "simind_exe"},
+        )
+
+    assert picked.status_code == 200, picked.text
+    assert picked.json() == {"cancelled": False, "path": str(selected.resolve())}
+    assert validated.status_code == 200, validated.text
+    assert selected.parent.resolve() in server_app.fsapi._SESSION_ROOTS
+
+
+def test_native_picker_cancel_does_not_change_session_authorization(tmp_path: Path, monkeypatch) -> None:
+    prior = {tmp_path.resolve()}
+    monkeypatch.setattr(server_app.fsapi, "_SESSION_ROOTS", set(prior))
+    monkeypatch.setattr(server_app.fsapi, "_native_dialog", lambda kind, initial: "")
+
+    with TestClient(server_app.app) as client:
+        response = client.post(
+            "/api/fs/pick",
+            json={"kind": "runs_root", "initial_path": str(tmp_path)},
+        )
+
+    assert response.status_code == 200
+    assert response.json() == {"cancelled": True, "path": None}
+    assert server_app.fsapi._SESSION_ROOTS == prior
+
+
 def test_filesystem_list_and_validate_use_typed_http_errors(tmp_path: Path, monkeypatch) -> None:
     allowed = tmp_path / "allowed"
     outside = tmp_path / "outside"
