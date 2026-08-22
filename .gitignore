@@ -45,6 +45,7 @@ logs/
 
 # Settings (user-specific)
 *.ini
+.claude/settings.local.json
 
 # Pytest / local temp artifacts
 .pytest_cache/
@@ -79,4 +80,5 @@ runs/**/*.npz
 # web UI build artefacts
 webui/frontend/node_modules/
 webui/frontend/dist/
+.test-artifacts/
 designs/*/

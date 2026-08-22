@@ -1,80 +1,122 @@
-# PAR-S Web API Contract — Draft v0.1 (D0)
+# PAR-S local Web API contract — v1
 
-Scope: thin local service wrapping the existing `PipelineRunner`. The frontend never
-constructs SIMIND commands, never computes QC, never writes run state. All state is
-read from `run.json` / `cases.jsonl` / `splits.json` via the service. One pipeline,
-one grammar — same as CLI/GUI today.
+Scope: a localhost-only FastAPI boundary around the existing `PipelineRunner`,
+phantom generator, SMC parser, validation-experiment preparer and projection
+readback code. The frontend does not construct SIMIND commands, compute QC,
+invent manifests or write run ledgers.
 
-Transport: FastAPI on `127.0.0.1:<port>` (localhost only). JSON over HTTP + one
-WebSocket for progress. Static React bundle served from the same origin (`/`).
+Transport: JSON/PNG over HTTP on `127.0.0.1:<port>`, plus a WebSocket event
+stream. The production React bundle is served from the same origin.
 
-## 1. Resources (GET)
+## 1. Read resources
 
-| Endpoint | Returns | Source of truth |
-|---|---|---|
-| `/api/health` | `{version, python, pyqt_available}` | — |
-| `/api/defaults` | full `PipelineConfig.to_dict()` defaults incl. nested `PhantomConfig` | `runner.PipelineConfig`, `phantom_generator.PhantomConfig` |
-| `/api/protocol` | protocol constants: 60 MBq, 28.4 s, Index-25 1704, detector 160×208, projection (60,128,128), canonical transform `raw[:,::-1,:]`, contract statuses | `pipeline.contracts` |
-| `/api/runs?root=<path>` | list of runs: `{run_id, root, created_utc, mode, case_count, finalized, stage_summary}` | scan `<root>/*/run.json` |
-| `/api/runs/{id}` | full `run.json` payload + `case_count` (= CLI `inspect`) | `RunLedger.load()` |
-| `/api/runs/{id}/cases` | array from `cases.jsonl` (paginated `?offset&limit`) | `RunLedger.read_cases()` |
-| `/api/runs/{id}/stages` | ordered stage records `{stage, status, evidence}` | `run.json` stages |
-| `/api/runs/{id}/manifest` | `dataset_manifest.json` if finalized | file |
-| `/api/runs/{id}/splits` | `splits.json` | file |
+| Endpoint | Result / authority |
+|---|---|
+| `GET /api/health` | service version, Python/PyQt availability and repository root |
+| `GET /api/defaults` | `PipelineConfig.to_dict()` including nested `PhantomConfig` |
+| `GET /api/protocol` | scoped protocol constants, stage order, detector/projection geometry and canonical transform |
+| `GET /api/runs?root=<runs_root>` | allowlisted run scan including `config_path` for recovery |
+| `GET /api/run?root=<run_root>` | full `run.json`, case count and effective configuration |
+| `GET /api/run/cases?root=&offset=&limit=` | paginated `cases.jsonl` records |
+| `GET /api/run/case-evidence?root=&case=` | selected case backend, effective SMC values and bounded `.res` excerpt |
+| `GET /api/run/stages?root=` | ordered stage records; finalized ledgers expose a terminal `finalize` record |
+| `GET /api/run/manifest?root=` | parsed real `dataset_manifest.json` |
+| `GET /api/run/splits?root=` | parsed real `splits.json` |
+| `GET /api/tasks` | in-process task registry used for refresh recovery |
+| `GET /api/tasks/{task_id}?cursor=` | task status plus incremental events and next cursor |
 
-## 2. Actions (POST)
+Every root/path endpoint resolves the requested path and checks it against the
+filesystem allowlist before reading it.
+
+## 2. Planning and lifecycle actions
 
 | Endpoint | Body | Semantics |
 |---|---|---|
-| `/api/runs` | `{run_id, runs_root, cases, mode, config_overrides?}` | = CLI `init`; writes editable config JSON; **does not execute** |
-| `/api/runs/{id}/start` | `{resume: bool, finalize: bool, allow_simind_execution: bool}` | = CLI `run`. Server refuses `mode=execute` without `allow_simind_execution:true` (mirror of `--allow-simind-execution`). Returns `{task_id}`; runs in background thread via `PipelineRunner(config, resume=...)`, `run_all()` |
-| `/api/tasks/{task_id}/pause` | — | `runner.request_pause()`; resume = new `start` with `resume:true` |
-| `/api/preview/phantom` | `{phantom_config, seed, overrides?}` | one-case in-memory `PhantomGenerator.generate_one`; returns case summary (liver_volume_ml, left_ratio, lesion table with measured diameters/margins/TNR) + preview id |
-| `/api/runs/{id}/select-pilot` | `{count}` | = CLI `select-pilot` |
-| `/api/runs/{id}/finalize` | `{}` | `runner.finalize()` — only when stage gates allow |
+| `POST /api/run/preflight` | create-run payload | Normalize and validate the complete draft, parse the selected SMC, return checks/digest/canonical config; writes nothing and never launches SIMIND |
+| `POST /api/runs` | `{run_id,runs_root,cases,mode,config_overrides}` | Create one editable, server-normalized config JSON; no run execution |
+| `POST /api/experiments/prepare` | `{destination,simind_exe,smc_file}` | Call the frozen five-experiment preparer; returns `prepared_not_run` and never executes SIMIND |
+| `POST /api/run/start` | `{config_path,resume=false,finalize=false,allow_simind_execution=false}` | Start or explicitly resume `PipelineRunner.run_all()` in a background task. The Web UI always sends `finalize:false` |
+| `POST /api/tasks/{task_id}/pause` | none | `runner.request_pause()`; the task stops at the next safe boundary |
+| `POST /api/run/finalize` | `{run_root}` | Reserve the run and call only `PipelineRunner.open(root).finalize()`; returns finalized state, manifest path and package SHA-256 |
 
-Rule: every action endpoint is a 1:1 mapping onto an existing runner/CLI verb.
-No new orchestration logic lives in the service.
+The complete draft is mapped as top-level protocol, simulation and observation
+fields plus `config_overrides.phantom`. Preview and create use the same
+PhantomConfig-shaped object.
 
-## 3. Previews (GET, PNG)
-
-| Endpoint | Notes |
-|---|---|
-| `/api/preview/phantom/{pid}/slice?plane=axial\|coronal\|sagittal&index=0..127&layer=activity\|mu` | server-rendered PNG (matplotlib/PIL, grayscale) |
-| `/api/runs/{id}/cases/{case}/projection?view=0..59&layer=expectation\|observation` | applies validated transform `raw[:,::-1,:]` before rendering |
-| `/api/runs/{id}/cases/{case}/sinogram?row=0..127` | one detector row across all views |
-
-## 4. Filesystem (server-side, replaces native dialogs)
+## 3. Phantom-derived inspection
 
 | Endpoint | Notes |
 |---|---|
-| `GET /api/fs/list?path=` | dirs + files with size/mtime; roots restricted to configured allowlist (repo root, runs root, drives on demand) |
-| `GET /api/fs/validate?path=&kind=simind_exe\|smc\|runs_root` | existence + extension + (smc) parseable check |
+| `POST /api/preview/phantom` | `{phantom_config,case_index,seed,overrides}`; generates one bounded in-memory preview and returns geometry, measured summary, config digest and opaque preview ID |
+| `GET /api/preview/phantom/{id}/slice?plane=&index=&layer=&overlay=` | fixed-window PNG for axial/coronal/sagittal; activity or μ; liver/tumor/contour/none overlays |
+| `GET /api/preview/phantom/{id}/mip?plane=&layer=&overlay=` | maximum-intensity projection using the same windows/overlays |
+| `GET /api/preview/phantom/{id}/probe?x=&y=&z=` | voxel/physical position, activity, μ, liver membership and lesion IDs |
+| `GET /api/preview/phantom/{id}/mesh?structure=` | gzip-friendly flat XYZ vertices/faces derived by marching cubes for liver and/or tumors |
 
-## 5. Progress events — `WS /api/ws/tasks/{task_id}`
+Preview entries are process-local, TTL/LRU bounded and read-only. A missing or
+expired preview returns 404; invalid indices/config return 422. Raw 3D arrays are
+never transferred to the browser.
+
+## 4. Projection and artifact inspection
+
+| Endpoint | Notes |
+|---|---|
+| `GET /api/run/projection?root=&case=&view=&layer=` | selected run case/view, expectation or observation, after `raw[:,::-1,:]` |
+| `GET /api/run/sinogram?root=&case=&row=&layer=` | detector columns horizontal and acquisition views vertical |
+| `GET /api/artifact/inspect?path=` | safe `.a00` shape/type/transform/count statistics; rejects malformed or excessive stacks |
+| `GET /api/artifact/projection?path=&view=` | selected canonical projection PNG |
+| `GET /api/artifact/sinogram?path=&row=` | linked canonical sinogram PNG |
+
+Artifact endpoints only accept allowlisted `.a00` files containing whole
+128×128 float32 views and cap the view count at 4096.
+
+## 5. Server-side filesystem browser
+
+| Endpoint | Notes |
+|---|---|
+| `GET /api/fs/list?path=` | roots, parent, directories and files with size/mtime; never lists outside configured roots |
+| `GET /api/fs/validate?path=&kind=simind_exe\|smc\|runs_root` | existence/type/extension and SMC parsing as applicable |
+
+Filesystem errors use HTTP rather than an `{error}` payload with status 200:
+403 outside allowlist, 404 missing, 409 I/O/runtime conflict and 422 wrong type,
+extension, parse or configuration.
+
+## 6. Progress stream
+
+`WS /api/ws/tasks/{task_id}` emits the same event records returned by task
+polling, for example:
 
 ```json
-{"type": "stage_started",  "stage": "generate", "ts": "..."}
-{"type": "case_done",      "stage": "generate", "case_id": "case_0001", "index": 1, "total": 100}
-{"type": "stage_passed",   "stage": "phantom_qc", "evidence": { ... }}
-{"type": "log",            "level": "info", "line": "..."}
-{"type": "paused",         "stage": "export"}
-{"type": "error",          "stage": "simind", "case_id": "case_0007", "message": "..."}
-{"type": "finished",       "finalized": true, "run_root": "..."}
+{"type":"stage_started","stage":"generate","ts":1787180000.0}
+{"type":"progress","stage":"generate","done":4,"total":10}
+{"type":"stage_passed","stage":"phantom_qc","status":"passed"}
+{"type":"paused","stage":"export"}
+{"type":"error","stage":"expectation","message":"..."}
+{"type":"finished","finalized":false,"run_root":"..."}
 ```
 
-Stage vocabulary (ordered, from `run_all`): `generate → phantom_qc → export →
-simind_plan → expectation(simulate|mock) → projection_qc → observation → package → finalize`.
+Ordered vocabulary: `generate → phantom_qc → export → simind_plan → expectation
+→ projection_qc → observation → package → finalize`. The watcher may expose a
+pipeline-internal spelling in raw diagnostics; the typed UI maps known names.
 
-## 6. Invariants carried over from the pipeline
+## 7. Lifecycle and safety invariants
 
-- Explicit confirmation gate for real SIMIND execution (UI checkbox + server flag).
-- Resume accepts artifacts only when hash + stage checks pass (server just relays).
-- A finalized manifest is immutable; `start` on a finalized run returns 409.
-- `PipelineConfig.__post_init__` validation errors surface as HTTP 422 with the
-  original message (single source of validation truth).
+- Execute mode requires both a UI acknowledgement and
+  `allow_simind_execution:true`; the server returns 403 without it.
+- Start defaults to `finalize:false`. Normal Web execution always ends in Review;
+  Seal is a separate explicit action.
+- A paused task is resumable only through `resume:true`. Running work, paused work
+  and a finalization reservation block conflicting starts/finalize with 409.
+- After opening a ledger for Finalize, the server verifies that
+  `runner.layout.root.resolve()` exactly equals the requested allowlisted root
+  before the irreversible call.
+- Resume artifact acceptance, QC gates and manifest immutability remain wholly in
+  the runner.
+- Pydantic/path/config validation maps to 403/404/409/422 while preserving the
+  original detail for diagnostics.
 
-## 7. Non-goals (v1)
+## 8. Explicit exclusions
 
-No auth (localhost only), no multi-user, no remote execution, no reconstruction,
-no experiment preparation UI (CLI keeps owning `prepare-experiment`).
+No authentication, cloud/remote execution, multi-user coordination,
+reconstruction, model workflow, hard task cancellation or `select-pilot` Web
+endpoint is included. The browser never launches real SIMIND during tests.

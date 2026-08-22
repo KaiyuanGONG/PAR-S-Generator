@@ -35,6 +35,41 @@ The interface has six sequential data-preparation areas:
 
 The validated transform for newly generated data is `raw[:, ::-1, :]`: acquisition view order is retained and the detector row is flipped. The frozen historical PAR-S_2 set keeps its separate legacy contract `raw[::-1, ::-1, :]`; PAR-S_2 itself is not modified. Actual SIMIND launch always requires explicit confirmation.
 
+## Local Web workbench
+
+The React/FastAPI workstation implements the same six-step contract as a
+Plan → Run → Review → Seal lifecycle. It is local-only and does not add a
+second pipeline: FastAPI delegates generation, QC, pause/resume, experiment
+preparation and Finalize to the existing Python implementation.
+
+For development, run the service and Vite in separate PowerShell terminals:
+
+```powershell
+conda run -n SPECT python -m uvicorn webui.server.app:app --host 127.0.0.1 --port 8765
+Set-Location webui/frontend
+npm install
+npm run dev -- --host 127.0.0.1 --port 5173
+```
+
+The workbench provides:
+
+- a versioned shared draft whose Protocol, Phantom, Simulation and observation
+  values are normalized and locked together only after preflight;
+- synchronized axial/coronal/sagittal inspection plus interactive 3D or MIP,
+  using one linked voxel cursor, measured values and real masks;
+- allowlisted file/directory browsing, SMC parsing and preparation of all five
+  validation experiments without launching SIMIND;
+- Run monitoring with explicit execute consent and pause/resume, always ending
+  in Review rather than automatic sealing;
+- real ledger, `.res`, projection/sinogram, manifest and split inspection; and
+- an independent irreversible Seal screen which calls the runner Finalize gate
+  and displays the package SHA-256.
+
+English, Simplified Chinese and French, equal light/dark themes, keyboard use
+and 1280×720 workstation layouts are covered by automated browser checks. The
+functional traceability matrix is [documented here](docs/WEB_UI_FUNCTIONAL_MATRIX.md),
+and the local API contract is [documented here](docs/WEB_API_CONTRACT_DRAFT.md).
+
 ## Command line
 
 Use the repository's `src` directory on `PYTHONPATH`:
@@ -135,6 +170,22 @@ python -m pytest -q
 ```
 
 The suite covers generator geometry and lesion placement, attenuation/export contracts, split determinism, QC, observation separation, pause/resume and corruption rejection, prepared experiments, UI boundaries and the complete two-case mock pipeline.
+
+Web checks run separately from `webui/frontend`:
+
+```powershell
+npm run lint
+npm run test:unit
+npm run build
+npm run test:e2e
+npm run test:a11y
+npm run test:visual
+```
+
+The browser lifecycle suite uses deterministic mock/fixture data and never
+launches real SIMIND. Visual baselines cover all six workspaces in three
+languages and two themes at 1440×900, plus Chinese/French light/dark coverage at
+1280×720.
 
 ## Scope boundary
 
