@@ -8,10 +8,11 @@ import { useWorkspace } from "../workspace";
 export default function NewDataset({ protocol, defaults }: { protocol: Protocol | null; defaults: Record<string, unknown> | null }) {
   const { state, dispatch } = useWorkspace();
   const { t } = useI18n();
-  const { runId, runsRoot, cases } = state.draft.identity;
+  const { runId, runsRoot, cohortMode, positiveCases, negativeCases } = state.draft.identity;
+  const cases = positiveCases + negativeCases;
   const draft = state.draft.protocol;
   const locked = state.activeRun.locked;
-  const advanced = draft.advanced_override === true;
+  const advanced = false;
   const activity = Number(draft.source_activity_mbq ?? protocol?.source_activity_mbq ?? 60);
   const exposure = Number(draft.exposure_time_s_per_projection ?? protocol?.exposure_s_per_projection ?? 28.4);
   const index25 = Number(draft.smc_index25_activity_time ?? protocol?.simind_activity_time_index25 ?? 1704);
@@ -42,7 +43,21 @@ export default function NewDataset({ protocol, defaults }: { protocol: Protocol 
     return () => { live = false; };
   }, [runsRoot]);
 
-  const ready = identityValid && rootState === "valid" && contractMatches;
+  const cohortValid = (
+    cohortMode === "positive_only" && positiveCases >= 1 && negativeCases === 0
+  ) || (
+    cohortMode === "true_negative_only" && positiveCases === 0 && negativeCases >= 1
+  ) || (
+    cohortMode === "mixed" && positiveCases >= 1 && negativeCases >= 1
+  );
+  const ready = identityValid && rootState === "valid" && contractMatches && cohortValid;
+  const estimatedGiB = (cases * 0.075).toFixed(2);
+
+  function setCohortMode(mode: typeof cohortMode) {
+    const positive = mode === "true_negative_only" ? 0 : Math.max(1, positiveCases);
+    const negative = mode === "positive_only" ? 0 : Math.max(1, negativeCases);
+    dispatch({ type: "draft/identity", patch: { cohortMode: mode, positiveCases: positive, negativeCases: negative, cases: positive + negative } });
+  }
   useEffect(() => {
     if (!locked) dispatch({ type: "plan/section", section: "protocol", status: ready ? "ready" : "incomplete" });
   }, [dispatch, locked, ready]);
@@ -76,11 +91,22 @@ export default function NewDataset({ protocol, defaults }: { protocol: Protocol 
             <span className="field-with-action"><input id="protocol-runs-root" type="text" className="mono" value={runsRoot} disabled={locked} aria-invalid={rootState === "invalid"} onChange={(event) => dispatch({ type: "draft/identity", patch: { runsRoot: event.target.value } })} /><button type="button" disabled={locked} onClick={() => setBrowserOpen(true)}>{t("action.browse")}</button></span>
             <small data-tone={rootState === "invalid" ? "danger" : undefined}>{rootState === "checking" ? t("common.loading") : rootState === "valid" ? t("protocol.rootReady") : rootDetail}</small>
           </label>
-          <label className="stacked-field" htmlFor="protocol-cases">{t("protocol.caseCount")}
-            <input id="protocol-cases" type="number" min={1} max={100000} className="mono" value={cases} disabled={locked} onChange={(event) => dispatch({ type: "draft/identity", patch: { cases: Math.max(1, Number(event.target.value)) } })} />
-            <small>{t("protocol.caseCountHelp")}</small>
+          <label className="stacked-field" htmlFor="protocol-cohort-mode">{t("protocol.cohortMode")}
+            <select id="protocol-cohort-mode" value={cohortMode} disabled={locked} onChange={(event) => setCohortMode(event.target.value as typeof cohortMode)}>
+              <option value="positive_only">{t("protocol.positiveOnly")}</option>
+              <option value="true_negative_only">{t("protocol.negativeOnly")}</option>
+              <option value="mixed">{t("protocol.mixed")}</option>
+            </select>
           </label>
+          {cohortMode !== "true_negative_only" && <label className="stacked-field" htmlFor="protocol-positive-cases">{t("protocol.positiveCases")}
+            <input id="protocol-positive-cases" type="number" min={1} className="mono" value={positiveCases} disabled={locked} onChange={(event) => { const value = Math.max(1, Math.floor(Number(event.target.value))); dispatch({ type: "draft/identity", patch: { positiveCases: value, cases: value + negativeCases } }); }} />
+          </label>}
+          {cohortMode !== "positive_only" && <label className="stacked-field" htmlFor="protocol-negative-cases">{t("protocol.negativeCases")}
+            <input id="protocol-negative-cases" type="number" min={1} className="mono" value={negativeCases} disabled={locked} onChange={(event) => { const value = Math.max(1, Math.floor(Number(event.target.value))); dispatch({ type: "draft/identity", patch: { negativeCases: value, cases: positiveCases + value } }); }} />
+          </label>
+          }
         </div>
+        <p className="parameter-note">{t("protocol.workEstimate", { count: cases, space: estimatedGiB })}</p>
       </section>
 
       <section className="protocol-contract" aria-labelledby="protocol-contract-title">
@@ -90,7 +116,7 @@ export default function NewDataset({ protocol, defaults }: { protocol: Protocol 
         </header>
         <div className="contract-intro">
           <div><strong>{String(draft.protocol_label ?? "GE 870 CZT current liver SPECT research protocol")}</strong><span className="mono">{String(draft.protocol_status ?? "stage3_protocol_promoted_pilot_pending")}</span></div>
-          <label className="check-row"><input type="checkbox" checked={advanced} disabled={locked} onChange={(event) => patchProtocol({ advanced_override: event.target.checked, protocol_status: event.target.checked ? "operator_supplied_unverified" : "stage3_protocol_promoted_pilot_pending" })} />{t("protocol.overridePreset")}</label>
+          <span className="section-state" data-state="passed">windows_v1 · hybrid_v2_limited_activity_v1</span>
         </div>
         <div className="contract-grid">
           <label className="contract-value">{t("protocol.activity")}<span><input type="number" value={activity} disabled={!advanced || locked} onChange={(event) => patchProtocol({ source_activity_mbq: Number(event.target.value) })} /><i>MBq</i></span></label>
@@ -132,7 +158,7 @@ export default function NewDataset({ protocol, defaults }: { protocol: Protocol 
         <div className="command-actions">{locked ? <button type="button" onClick={() => dispatch({ type: "run/fork", runId: `${runId}-fork` })}>{t("action.fork")}</button> : <><button type="button" onClick={resetPlan}>{t("action.resetPlan")}</button><button type="button" className="primary" disabled={!ready} onClick={() => { dispatch({ type: "plan/section", section: "protocol", status: "ready" }); dispatch({ type: "view/set", view: "phantom" }); }}>{t("action.continuePhantom")}</button></>}</div>
       </footer>
 
-      <FileBrowser open={browserOpen} title={t("protocol.chooseRunsRoot")} initialPath={runsRoot} selection="directory" onSelect={(path) => dispatch({ type: "draft/identity", patch: { runsRoot: path } })} onClose={() => setBrowserOpen(false)} />
+      <FileBrowser open={browserOpen} title={t("protocol.chooseRunsRoot")} initialPath={runsRoot} selection="directory" nativeKind="runs_root" onSelect={(path) => dispatch({ type: "draft/identity", patch: { runsRoot: path } })} onClose={() => setBrowserOpen(false)} />
     </div>
   );
 }

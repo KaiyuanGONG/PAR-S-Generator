@@ -219,6 +219,14 @@ export interface PreflightResult {
     smc_file: string;
     mode: string;
     execution_authorized: false;
+    windows_runtime: {
+      status: "validated_windows_v1" | "unverified_runtime" | "missing_runtime";
+      simind_path: string;
+      simind_sha256: string | null;
+      smc_path: string;
+      smc_sha256: string | null;
+      mismatches: string[];
+    };
   };
 }
 
@@ -254,9 +262,12 @@ export interface ArtifactSummary {
 export interface CreateRunBody {
   run_id: string;
   runs_root?: string;
-  cases?: number;
   mode?: string;
-  config_overrides?: Record<string, any>;
+  windows_v1: Record<string, any>;
+  simind_exe: string;
+  smc_file: string;
+  nn_multiplier: number;
+  max_simind_workers: number;
 }
 
 /* ── calls ──────────────────────────────────────────────────────────── */
@@ -311,6 +322,8 @@ export const api = {
     resume?: boolean;
     finalize?: boolean;
     allow_simind_execution?: boolean;
+    allow_unverified_runtime?: boolean;
+    allow_large_simind_execution?: boolean;
   }) =>
     j<{ task_id: string; run_root: string }>("/api/run/start", {
       method: "POST",
@@ -351,6 +364,11 @@ export const api = {
     j<{ path: string; kind: string; valid: boolean; detail: string }>(
       `/api/fs/validate?path=${encodeURIComponent(path)}&kind=${kind}`
     ),
+  fsPick: (kind: "simind_exe" | "smc" | "runs_root" | "export_root", initialPath = "") =>
+    j<{ cancelled: boolean; path: string | null }>("/api/fs/pick", {
+      method: "POST",
+      body: JSON.stringify({ kind, initial_path: initialPath }),
+    }),
 };
 
 /* image URLs (server-rendered PNG) */

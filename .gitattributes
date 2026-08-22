@@ -24,6 +24,10 @@ runs/stage3-simind-pilot-10-v3-20260818/figures/projection_qc_data.csv -text
 # checkout EOL keeps its SHA256 stable even on CRLF worktrees.
 manifests/legacy-v1-weighted-mc/file_inventory.sha256 text eol=lf
 
+# Vite output includes third-party shader source strings whose intentional
+# spacing must not fail repository whitespace checks.
+webui/frontend/dist/** -whitespace
+
 *.png binary
 *.jpg binary
 *.jpeg binary

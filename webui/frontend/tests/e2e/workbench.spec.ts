@@ -4,7 +4,7 @@ async function openWorkbench(page: import("@playwright/test").Page, locale = "en
   await page.addInitScript(({ locale, theme }) => {
     if (!localStorage.getItem("pars.locale")) localStorage.setItem("pars.locale", locale);
     if (!localStorage.getItem("pars.theme")) localStorage.setItem("pars.theme", theme);
-    localStorage.removeItem("pars.workspace.v3");
+    localStorage.removeItem("pars.workspace.windows-v1");
   }, { locale, theme });
   await page.goto("/");
   await expect(page.getByRole("heading", { name: locale === "zh" ? "协议" : "Protocol", exact: true })).toBeVisible();
@@ -21,14 +21,15 @@ test("protocol remains editable until the complete plan is locked", async ({ pag
   await expect(page.getByRole("button", { name: /Continue to Phantom/i })).toBeEnabled();
   await page.getByRole("button", { name: /Continue to Phantom/i }).click();
   await expect(page.getByRole("heading", { name: "Cohort parameters" })).toBeVisible();
-  await expect(page.getByLabel("Target left-lobe ratio")).toBeEnabled();
+  await expect(page.getByText(/Hybrid V2 patient \/ torso \/ liver anatomy/)).toBeVisible();
+  await expect(page.getByRole("slider", { name: "Minimum", exact: true })).toBeEnabled();
 });
 
 test("phantom has one linked cursor across orthogonal, 3D, and MIP views", async ({ page }) => {
   await openWorkbench(page);
   await page.locator("button.lifecycle-link").filter({ hasText: "Phantom" }).click();
   await page.getByRole("button", { name: /Regenerate preview/i }).click();
-  await expect(page.locator(".scan-image-frame img")).toHaveCount(3, { timeout: 30_000 });
+  await expect(page.getByRole("img", { name: /· activity/ })).toHaveCount(3, { timeout: 30_000 });
   await expect(page.locator(".surface-canvas canvas")).toBeVisible({ timeout: 30_000 });
 
   const axial = page.locator(".slice-cell").filter({ hasText: "Axial" }).getByRole("slider");

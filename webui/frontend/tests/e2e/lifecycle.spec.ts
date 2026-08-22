@@ -56,7 +56,20 @@ async function installLifecycleFixture(page: Page) {
     if (method === "GET" && path === "/api/run") return route.fulfill({ json: { effective_config: canonical } });
     if (method === "POST" && path === "/api/runs") {
       const body = request.postDataJSON() as Record<string, any>;
-      canonical = { run_id: RUN_ID, runs_root: body.runs_root, simulation_mode: body.mode, ...body.config_overrides };
+      canonical = {
+        run_id: RUN_ID,
+        runs_root: body.runs_root,
+        schema_version: "windows_v1",
+        generation_profile: "hybrid_v2_limited_activity_v1",
+        runtime_backend: "windows_native",
+        simulation_mode: body.mode,
+        windows_v1: body.windows_v1,
+        simind_exe: body.simind_exe,
+        smc_file: body.smc_file,
+        nn_multiplier: body.nn_multiplier,
+        max_simind_workers: body.max_simind_workers,
+        phantom: { n_cases: 1, volume_shape: [128, 128, 128], voxel_size_mm: 4.42 },
+      };
       return route.fulfill({ json: { config_path: CONFIG_PATH, config: canonical } });
     }
     if (method === "POST" && path === "/api/run/start") {
@@ -88,20 +101,21 @@ async function installLifecycleFixture(page: Page) {
 }
 
 test("plan, run, pause/resume, review and explicit seal form one recoverable lifecycle", async ({ page }) => {
+  test.setTimeout(180_000);
   await installLifecycleFixture(page);
   await page.addInitScript(() => {
     localStorage.setItem("pars.locale", "en");
     localStorage.setItem("pars.theme", "light");
     if (!sessionStorage.getItem("pars-e2e-initialized")) {
-      localStorage.removeItem("pars.workspace.v3");
+      localStorage.removeItem("pars.workspace.windows-v1");
       sessionStorage.setItem("pars-e2e-initialized", "1");
     }
   });
   await page.goto("/");
   await page.getByRole("textbox", { name: /^Run ID/ }).fill(RUN_ID);
-  await page.getByRole("spinbutton", { name: /^Cases/ }).fill("1");
+  await page.getByRole("spinbutton", { name: /^Positive cases/ }).fill("1");
   await page.getByRole("button", { name: "Continue to Phantom" }).click();
-  await expect(page.locator(".scan-image-frame img")).toHaveCount(3, { timeout: 30_000 });
+  await expect(page.getByRole("img", { name: /· activity/ })).toHaveCount(3, { timeout: 90_000 });
 
   await page.locator("button.lifecycle-link").nth(2).click();
   await page.getByRole("radio", { name: /Mock/ }).check();
@@ -146,10 +160,10 @@ test("a stale saved run pointer is explained and can be cleared", async ({ page 
   await page.route("**/api/tasks", (route) => route.fulfill({ json: { tasks: [] } }));
   await page.addInitScript(() => {
     localStorage.setItem("pars.locale", "en");
-    localStorage.setItem("pars.workspace.v3", JSON.stringify({
-      version: 3,
+    localStorage.setItem("pars.workspace.windows-v1", JSON.stringify({
+      version: 4,
       view: "run",
-      draft: { identity: { runId: "missing-run", runsRoot: "runs", cases: 1 } },
+      draft: { identity: { runId: "missing-run", runsRoot: "runs", cohortMode: "positive_only", positiveCases: 1, negativeCases: 0, cases: 1 }, simulation: { mode: "prepare" }, phantom: {}, protocol: {}, observation: {} },
       dirty: { identity: false, protocol: false, phantom: false, simulation: false, observation: false },
       activeRun: {
         runId: "missing-run",

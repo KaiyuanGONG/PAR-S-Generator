@@ -254,14 +254,7 @@ export default function PhantomDesign() {
   const [busy, setBusy] = useState(false);
   const [meshBusy, setMeshBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
-  const [extendedRanges, setExtendedRanges] = useState(() => {
-    const shape = Array.isArray(phantom.volume_shape) ? numeric(phantom.volume_shape[0], 128) : 128;
-    return ![96, 128, 160].includes(shape)
-      || numeric(phantom.voxel_size_mm, 4.42) < 3.54
-      || numeric(phantom.voxel_size_mm, 4.42) > 5.89;
-  });
   const autoPreviewStarted = useRef(false);
-  const presetInput = useRef<HTMLInputElement | null>(null);
 
   const patchPhantom = (patch: Partial<PhantomDraft>) => dispatch({ type: "draft/phantom", patch });
   const updateCursor = useCallback((next: VoxelCursor) => {
@@ -328,17 +321,12 @@ export default function PhantomDesign() {
   }, [cursor, previewId]);
 
   const leftRatio = numeric(phantom.target_left_ratio, 0.35);
-  const scaleJitter = numeric(phantom.scale_jitter, 0.1) * 100;
-  const rotationJitter = numeric(phantom.rot_jitter_deg, 5);
   const lesionMin = numeric(phantom.tumor_count_min, 1);
   const lesionMax = numeric(phantom.tumor_count_max, 5);
-  const margin = numeric(phantom.tumor_min_liver_margin_mm, 4.42);
-  const volumeShape = Array.isArray(phantom.volume_shape) ? numeric(phantom.volume_shape[0], 128) : 128;
   const voxelSize = summary?.voxel_size_mm ?? numeric(phantom.voxel_size_mm, 4.42);
   const volumePass = summary ? summary.liver_volume_ml >= 904 && summary.liver_volume_ml <= 1900 : undefined;
   const ratioPass = summary ? Math.abs(summary.left_ratio - leftRatio) <= 0.006 : undefined;
   const lesions = summary?.tumor_metadata ?? [];
-  const sizeBins = Array.isArray(phantom.tumor_size_bins_mm) ? phantom.tumor_size_bins_mm : [];
   const probabilities = Array.isArray(phantom.tumor_probs) ? phantom.tumor_probs : [];
   const stale = Boolean(summary && state.plan.previewConfigDigest === null);
 
@@ -352,33 +340,6 @@ export default function PhantomDesign() {
     const next = Math.max(1, caseIndex + delta);
     setCaseIndex(next);
     void generatePreview(seed, next);
-  }
-
-  function savePreset() {
-    const blob = new Blob([JSON.stringify(toPhantomConfig(state.draft), null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = `${state.draft.identity.runId || "phantom"}.phantom.json`;
-    anchor.click();
-    URL.revokeObjectURL(url);
-  }
-
-  async function loadPreset(file: File | undefined) {
-    if (!file) return;
-    try {
-      const payload: unknown = JSON.parse(await file.text());
-      if (!payload || typeof payload !== "object" || Array.isArray(payload)) throw new Error(t("phantom.presetInvalid"));
-      const { n_cases: cases, output_dir: _output, ...settings } = payload as Record<string, unknown>;
-      dispatch({ type: "draft/phantom", patch: settings as PhantomDraft });
-      if (typeof cases === "number" && Number.isFinite(cases)) {
-        dispatch({ type: "draft/identity", patch: { cases: Math.max(1, Math.floor(cases)) } });
-      }
-    } catch (caught) {
-      setError(caught);
-    } finally {
-      if (presetInput.current) presetInput.current.value = "";
-    }
   }
 
   return (
@@ -395,52 +356,36 @@ export default function PhantomDesign() {
         <fieldset className="inspector-fieldset" disabled={locked}>
           <section className="instrument-section">
             <div className="instrument-section-head"><h3>{t("phantom.liverAnchors")}</h3><span>{t("phantom.perCase")}</span></div>
-            <Param label={t("phantom.targetLeftRatio")} dist={t("phantom.cantliePlane")} value={Number(leftRatio.toFixed(3))} min={extendedRanges ? 0.15 : 0.25} max={extendedRanges ? 0.6 : 0.45} step={0.005} onChange={(value) => patchPhantom({ target_left_ratio: value })} />
-            <Param label={t("phantom.scaleJitter")} dist="U[1−j, 1+j]" value={Math.round(scaleJitter)} min={0} max={extendedRanges ? 40 : 20} unit="%" onChange={(value) => patchPhantom({ scale_jitter: value / 100 })} />
-            <Param label={t("phantom.rotationJitter")} dist="U[−r, +r]" value={rotationJitter} min={0} max={extendedRanges ? 30 : 15} unit="°" onChange={(value) => patchPhantom({ rot_jitter_deg: value })} />
+            <p className="parameter-note">Hybrid V2 patient / torso / liver anatomy · Gate A authority. Anatomy population parameters are fixed for Windows v1 production.</p>
           </section>
 
           <section className="instrument-section">
             <div className="instrument-section-head"><h3>{t("phantom.lesions")}</h3><span>{lesionMin}–{lesionMax}</span></div>
-            <Param label={t("phantom.minimum")} value={lesionMin} min={0} max={5} onChange={(value) => patchPhantom({ tumor_count_min: value, tumor_count_max: Math.max(value, lesionMax) })} />
-            <Param label={t("phantom.maximum")} value={lesionMax} min={0} max={extendedRanges ? 8 : 5} onChange={(value) => patchPhantom({ tumor_count_max: Math.max(lesionMin, value) })} />
-            <Param label={t("phantom.margin")} dist={t("phantom.marginHelp")} value={Number(margin.toFixed(2))} min={0} max={12} step={0.01} unit="mm" onChange={(value) => patchPhantom({ tumor_min_liver_margin_mm: value })} />
+            <Param label={t("phantom.minimum")} value={lesionMin} min={1} max={5} onChange={(value) => patchPhantom({ tumor_count_min: value, tumor_count_max: Math.max(value, lesionMax) })} />
+            <Param label={t("phantom.maximum")} value={lesionMax} min={1} max={5} onChange={(value) => patchPhantom({ tumor_count_max: Math.max(lesionMin, value) })} />
+            <Param label={t("phantom.tnrMinimum")} value={numeric(phantom.tumor_contrast_min, 2)} min={2} max={8} step={0.1} onChange={(value) => patchPhantom({ tumor_contrast_min: value, tumor_contrast_max: Math.max(value, numeric(phantom.tumor_contrast_max, 8)) })} />
+            <Param label={t("phantom.tnrMaximum")} value={numeric(phantom.tumor_contrast_max, 8)} min={2} max={8} step={0.1} onChange={(value) => patchPhantom({ tumor_contrast_max: Math.max(numeric(phantom.tumor_contrast_min, 2), value) })} />
+            <label className="stacked-field">Territory policy
+              <select value={String(phantom.territory_policy ?? "auto_equal_feasible")} onChange={(event) => patchPhantom({ territory_policy: event.target.value })}>
+                <option value="auto_equal_feasible">auto_equal_feasible</option>
+                <option value="whole_liver">whole_liver</option>
+                <option value="right_lobar">right_lobar</option>
+                <option value="left_lobar">left_lobar</option>
+              </select>
+            </label>
             <p className="parameter-note mono">
-              {t("phantom.sizeBins")} {sizeBins.map((bin) => Array.isArray(bin) ? `${bin[0]}–${bin[1]}` : String(bin)).join(" / ") || "—"} mm
-              <br />p {probabilities.join(" / ") || "—"}
-              <br />TNR U[{String(phantom.tumor_contrast_min ?? "—")}, {String(phantom.tumor_contrast_max ?? "—")}]
+              {t("phantom.sizeBins")} [10,20) / [20,40) / [40,60] mm
             </p>
+            <div className="form-grid">
+              {[0, 1, 2].map((index) => <label className="stacked-field" key={index}>w{index + 1}<input type="number" min={0} step={0.05} value={Number(probabilities[index] ?? [0.45, 0.40, 0.15][index])} onChange={(event) => { const next = [0, 1, 2].map((item) => Number(probabilities[item] ?? [0.45, 0.40, 0.15][item])); next[index] = Number(event.target.value); patchPhantom({ tumor_probs: next }); }} /></label>)}
+            </div>
           </section>
 
           <details className="expert-disclosure">
-            <summary>{t("phantom.advanced")}</summary>
+            <summary>Windows v1 locked scientific contract</summary>
             <div className="expert-body">
-              <label className="check-row"><input type="checkbox" checked={extendedRanges} onChange={(event) => setExtendedRanges(event.target.checked)} />{t("phantom.extendedRanges")}</label>
-              <p className="parameter-note">{t("phantom.extendedRangesHelp")}</p>
-              <label className="stacked-field">{t("phantom.matrixSize")}<select value={volumeShape} onChange={(event) => { const size = Number(event.target.value); patchPhantom({ volume_shape: [size, size, size] }); }}>{(extendedRanges ? [64, 96, 128, 192, 256] : [128]).map((size) => <option key={size} value={size}>{size} × {size} × {size}{size === 128 ? ` · ${t("phantom.matrixValidated")}` : ` · ${t("phantom.previewOnly")}`}</option>)}</select></label>
-              <Param label={t("phantom.voxelSize")} value={numeric(phantom.voxel_size_mm, 4.42)} min={extendedRanges ? 2.5 : 3.54} max={extendedRanges ? 8 : 5.89} step={0.01} unit="mm" onChange={(value) => patchPhantom({ voxel_size_mm: value })} />
-              <Param label={t("phantom.globalShift")} value={numeric(phantom.global_shift_range, 0.05)} min={0} max={extendedRanges ? 0.2 : 0.1} step={0.005} onChange={(value) => patchPhantom({ global_shift_range: value })} />
-              <Param label={t("phantom.smoothing")} value={numeric(phantom.smooth_sigma, 1.2)} min={extendedRanges ? 0 : 0.8} max={extendedRanges ? 4 : 2} step={0.1} unit="px" onChange={(value) => patchPhantom({ smooth_sigma: value })} />
-              <Param label={t("phantom.tnrMinimum")} value={numeric(phantom.tumor_contrast_min, 2)} min={extendedRanges ? 1 : 2} max={extendedRanges ? 12 : 8} step={0.1} onChange={(value) => patchPhantom({ tumor_contrast_min: value, tumor_contrast_max: Math.max(value, numeric(phantom.tumor_contrast_max, 8)) })} />
-              <Param label={t("phantom.tnrMaximum")} value={numeric(phantom.tumor_contrast_max, 8)} min={extendedRanges ? 1 : 2} max={extendedRanges ? 12 : 8} step={0.1} onChange={(value) => patchPhantom({ tumor_contrast_max: Math.max(numeric(phantom.tumor_contrast_min, 2), value) })} />
-              <Param label={t("phantom.totalCounts")} value={numeric(phantom.total_counts, 80_000)} min={extendedRanges ? 10_000 : 50_000} max={extendedRanges ? 500_000 : 200_000} step={10_000} onChange={(value) => patchPhantom({ total_counts: value })} />
-              <Param label={t("phantom.residualBackground")} value={numeric(phantom.residual_bg, 0.05)} min={0} max={extendedRanges ? 0.5 : 0.15} step={0.01} onChange={(value) => patchPhantom({ residual_bg: value })} />
-              <Param label={t("phantom.overlapGap")} value={numeric(phantom.tumor_overlap_gap_mm, 0)} min={0} max={extendedRanges ? 20 : 8} step={0.5} unit="mm" onChange={(value) => patchPhantom({ tumor_overlap_gap_mm: value })} />
-              <Param label={t("phantom.subcapsularFraction")} value={numeric(phantom.subcapsular_fraction, 0)} min={0} max={1} step={0.05} onChange={(value) => patchPhantom({ subcapsular_fraction: value })} />
-              <Param label={t("phantom.subcapsularDepth")} value={numeric(phantom.subcapsular_max_depth_mm, 5)} min={1} max={extendedRanges ? 20 : 10} step={0.5} unit="mm" onChange={(value) => patchPhantom({ subcapsular_max_depth_mm: value })} />
-              <label className="check-row"><input type="checkbox" checked={phantom.allow_capacity_subcapsular_fallback !== false} onChange={(event) => patchPhantom({ allow_capacity_subcapsular_fallback: event.target.checked })} />{t("phantom.capacityFallback")}</label>
-              <label className="stacked-field">{t("phantom.tumorMorphology")}
-                <select value={String(phantom.tumor_mode_policy ?? "random")} onChange={(event) => patchPhantom({ tumor_mode_policy: event.target.value })}>
-                  <option value="random">{t("common.random")}</option><option value="ellipsoid">{t(MORPHOLOGY_LABELS.ellipsoid)}</option><option value="spiculated">{t(MORPHOLOGY_LABELS.spiculated)}</option>
-                </select>
-              </label>
-              <label className="stacked-field">{t("phantom.perfusionPolicy")}
-                <select value={String(phantom.perfusion_mode_policy ?? "random")} onChange={(event) => patchPhantom({ perfusion_mode_policy: event.target.value })}>
-                  <option value="random">{t("common.random")}</option><option value="whole_liver">{t(PERFUSION_LABELS.whole_liver)}</option><option value="tumor_only">{t(PERFUSION_LABELS.tumor_only)}</option><option value="left_only">{t(PERFUSION_LABELS.left_only)}</option><option value="right_only">{t(PERFUSION_LABELS.right_only)}</option>
-                </select>
-              </label>
-              <label className="check-row"><input type="checkbox" checked={phantom.use_global_seed !== false} onChange={(event) => patchPhantom({ use_global_seed: event.target.checked })} />{t("phantom.useGlobalSeed")}</label>
-              <label className="stacked-field">{t("phantom.globalSeed")}<input type="number" className="mono" value={numeric(phantom.global_seed, 42)} onChange={(event) => patchPhantom({ global_seed: Number(event.target.value) })} /></label>
+              <p className="parameter-note mono">128³ · 4.42 mm · 80,000 counts · residual_bg 0.05 · gradient_gain 0.08 · physical μ-map · corrected-master lesion morphology</p>
+              <label className="stacked-field">{t("phantom.globalSeed")}<input type="number" min={0} max={Number.MAX_SAFE_INTEGER} step={1} className="mono" value={numeric(phantom.global_seed, 42)} onChange={(event) => patchPhantom({ global_seed: Number(event.target.value) })} /></label>
             </div>
           </details>
         </fieldset>
@@ -454,11 +399,6 @@ export default function PhantomDesign() {
           <div className="compact-actions">
             <button type="button" onClick={() => moveCase(-1)} disabled={busy || caseIndex <= 1}>{t("action.previousCase")}</button>
             <button type="button" onClick={() => moveCase(1)} disabled={busy}>{t("action.nextCase")}</button>
-          </div>
-          <div className="compact-actions">
-            <button type="button" onClick={savePreset}>{t("action.savePreset")}</button>
-            <button type="button" onClick={() => presetInput.current?.click()} disabled={locked}>{t("action.loadPreset")}</button>
-            <input ref={presetInput} className="sr-only" type="file" accept="application/json,.json" aria-label={t("action.loadPreset")} onChange={(event) => void loadPreset(event.target.files?.[0])} />
           </div>
         </section>
       </aside>

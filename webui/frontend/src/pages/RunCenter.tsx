@@ -86,11 +86,48 @@ export default function RunCenter({
   const [cases, setCases] = useState<CaseRecord[]>([]);
   const [progress, setProgress] = useState<{ stage: string; done: number; total: number } | null>(null);
   const [confirmed, setConfirmed] = useState(false);
+  const [unverifiedConfirmed, setUnverifiedConfirmed] = useState(false);
+  const [largeRunConfirmed, setLargeRunConfirmed] = useState(false);
+  const [runtimeStatus, setRuntimeStatus] = useState<string | null>(null);
   const [pauseRequested, setPauseRequested] = useState(false);
   const [err, setErr] = useState<unknown>(null);
   const [configCopied, setConfigCopied] = useState(false);
   const logRef = useRef<HTMLDivElement>(null);
   const requiresExecutionConsent = workspace.draft.simulation.mode === "execute";
+  const totalCases = workspace.draft.identity.positiveCases + workspace.draft.identity.negativeCases;
+  const requiresLargeRunConsent = requiresExecutionConsent && totalCases > 10;
+  const requiresUnverifiedConsent = requiresExecutionConsent && runtimeStatus === "unverified_runtime";
+  const executionConfirmed = !requiresExecutionConsent || (
+    confirmed
+    && (!requiresLargeRunConsent || largeRunConfirmed)
+    && (!requiresUnverifiedConsent || unverifiedConfirmed)
+  );
+
+  useEffect(() => {
+    if (!configPath || !requiresExecutionConsent) {
+      setRuntimeStatus(null);
+      return;
+    }
+    let current = true;
+    api.preflightRun((() => {
+      const config = workspace.activeRun.canonicalConfig ?? {};
+      return {
+        run_id: workspace.draft.identity.runId,
+        runs_root: workspace.draft.identity.runsRoot,
+        mode: workspace.draft.simulation.mode,
+        windows_v1: config.windows_v1 as Record<string, unknown>,
+        simind_exe: String(config.simind_exe ?? workspace.draft.simulation.simind_exe ?? "simind/simind.exe"),
+        smc_file: String(config.smc_file ?? workspace.draft.simulation.smc_file ?? "simind/ge870_czt.smc"),
+        nn_multiplier: Number(config.nn_multiplier ?? workspace.draft.simulation.nn_multiplier ?? 10),
+        max_simind_workers: Number(config.max_simind_workers ?? workspace.draft.simulation.max_simind_workers ?? 1),
+      };
+    })()).then((result) => {
+      if (current) setRuntimeStatus(result.provenance.windows_runtime.status);
+    }).catch((error) => {
+      if (current) setErr(error);
+    });
+    return () => { current = false; };
+  }, [configPath, requiresExecutionConsent, workspace.activeRun.canonicalConfig, workspace.draft]);
 
   useEffect(() => {
     if (!task) return;
@@ -157,6 +194,8 @@ export default function RunCenter({
         resume,
         finalize: false,
         allow_simind_execution: confirmed,
+        allow_unverified_runtime: unverifiedConfirmed,
+        allow_large_simind_execution: largeRunConfirmed,
       });
       setRunRoot(response.run_root);
       dispatch({ type: "run/started", taskId: response.task_id, runRoot: response.run_root });
@@ -394,12 +433,20 @@ export default function RunCenter({
                 <small>{t("run.computeImpact")}</small>
               </span>
             </label>}
+            {requiresUnverifiedConsent && <label className="run-execution-consent">
+              <input type="checkbox" checked={unverifiedConfirmed} onChange={(event) => setUnverifiedConfirmed(event.target.checked)} />
+              <span><strong>Unverified runtime hashes</strong><small>I reviewed the SIMIND and SMC hashes and accept that this run cannot be labelled validated_windows_v1.</small></span>
+            </label>}
+            {requiresLargeRunConsent && <label className="run-execution-consent">
+              <input type="checkbox" checked={largeRunConfirmed} onChange={(event) => setLargeRunConfirmed(event.target.checked)} />
+              <span><strong>Large real SIMIND run · {totalCases} cases</strong><small>Relative transport work: {totalCases * Number(workspace.draft.simulation.nn_multiplier ?? 10)} case×NN units.</small></span>
+            </label>}
 
             <div className="run-command-actions actions">
-              <button type="button" className="primary" onClick={() => start(false)} disabled={running || !configPath || (requiresExecutionConsent && !confirmed)}>
+              <button type="button" className="primary" onClick={() => start(false)} disabled={running || !configPath || !executionConfirmed}>
                 {t("action.start")}
               </button>
-              <button type="button" onClick={() => start(true)} disabled={running || !configPath || (requiresExecutionConsent && !confirmed)}>
+              <button type="button" onClick={() => start(true)} disabled={running || !configPath || !executionConfirmed}>
                 {t("action.resume")}
               </button>
               <button type="button" onClick={pause} disabled={!running || pauseRequested}>

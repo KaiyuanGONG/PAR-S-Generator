@@ -2,6 +2,7 @@ import { defineConfig, devices } from "@playwright/test";
 
 export default defineConfig({
   testDir: "./tests/e2e",
+  globalSetup: "./tests/global-setup.ts",
   outputDir: "../../.test-artifacts/playwright",
   fullyParallel: false,
   forbidOnly: true,
@@ -20,21 +21,5 @@ export default defineConfig({
     { name: "visual", use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } }, testMatch: /visual\.spec\.ts/ },
     { name: "a11y", use: { ...devices["Desktop Chrome"], viewport: { width: 1280, height: 720 } }, testMatch: /a11y\.spec\.ts/ },
     { name: "evidence", use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } }, testMatch: /evidence\.spec\.ts/ },
-  ],
-  webServer: [
-    {
-      command: "conda run -n SPECT python -m uvicorn webui.server.app:app --host 127.0.0.1 --port 8765",
-      cwd: "../..",
-      port: 8765,
-      reuseExistingServer: true,
-      timeout: 120_000,
-    },
-    {
-      command: "npm run dev -- --host 127.0.0.1 --port 5173",
-      cwd: ".",
-      url: "http://127.0.0.1:5173",
-      reuseExistingServer: true,
-      timeout: 120_000,
-    },
   ],
 });

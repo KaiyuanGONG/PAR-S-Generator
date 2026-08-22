@@ -320,7 +320,7 @@ function AppShell({
           )}
           {state.view === "protocol" && <NewDataset protocol={protocol} defaults={defaults} />}
           {state.view === "phantom" && <PhantomDesign />}
-          {state.view === "simulation" && <Simulation protocol={protocol} />}
+          {state.view === "simulation" && <Simulation />}
           {state.view === "run" && (
             <RunCenter
               protocol={protocol}

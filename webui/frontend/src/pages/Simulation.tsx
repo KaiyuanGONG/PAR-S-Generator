@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ApiError, api, type PreflightResult, type Protocol } from "../api";
+import { ApiError, api, type PreflightResult } from "../api";
 import ErrorNotice from "../components/ErrorNotice";
 import FileBrowser from "../components/FileBrowser";
 import { useI18n, type TranslationKey } from "../i18n";
@@ -55,41 +55,20 @@ const PREFLIGHT_LABELS: Record<string, TranslationKey> = {
   smc_parse: "simulation.check.smc_parse",
 };
 
-export default function Simulation({ protocol }: { protocol: Protocol | null }) {
+export default function Simulation() {
   const { state, dispatch } = useWorkspace();
   const { t } = useI18n();
   const locked = state.activeRun.locked;
   const simulation = state.draft.simulation;
-  const observation = state.draft.observation;
   const exe = String(simulation.simind_exe ?? "simind/simind.exe");
   const smc = String(simulation.smc_file ?? "simind/ge870_czt.smc");
   const nn = Number(simulation.nn_multiplier ?? 10);
   const workers = Number(simulation.max_simind_workers ?? 1);
-  const seedBase = Number(simulation.simind_seed_base ?? 930000);
-  const obs = observation.create_poisson_observation !== false;
-  const observationPolicy = String(observation.observation_policy ?? "fixed_scale");
-  const observationStatus = String(observation.observation_protocol_status ?? "toy");
-  const observationScale = Number(observation.observation_scale ?? 1);
-  const observationSeedOffset = Number(observation.observation_seed_offset ?? 1_000_000);
   const [browser, setBrowser] = useState<BrowserTarget>(null);
   const [preflight, setPreflight] = useState<PreflightResult | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ tone: "ok" | "err" | "warn"; text: string; error?: unknown } | null>(null);
   const [experimentDestination, setExperimentDestination] = useState("");
-
-  function setObservationEnabled(enabled: boolean) {
-    dispatch({
-      type: "draft/observation",
-      patch: observationEnabledPatch(enabled, observationStatus),
-    });
-  }
-
-  function setObservationPolicy(policy: string) {
-    dispatch({
-      type: "draft/observation",
-      patch: observationPolicyPatch(policy, observationStatus),
-    });
-  }
 
   useEffect(() => {
     if (state.plan.preflightConfigDigest === null) setPreflight(null);
@@ -172,60 +151,22 @@ export default function Simulation({ protocol }: { protocol: Protocol | null }) 
       <section className="simulation-transport" aria-labelledby="simulation-transport-title">
         <header className="workspace-section-head"><div><span className="run-eyebrow">02</span><h2 id="simulation-transport-title">{t("simulation.transport")}</h2></div><span className="mono">/NN · /RR</span></header>
         <div className="transport-controls">
-          <label className="stacked-field">{t("simulation.historyMultiplier")}<input type="number" min={1} className="mono" value={nn} disabled={locked} onChange={(event) => dispatch({ type: "draft/simulation", patch: { nn_multiplier: Math.max(1, Number(event.target.value)) } })} /><small>{t("simulation.historyHelp")}</small></label>
+          <label className="stacked-field">{t("simulation.historyMultiplier")}<input type="number" min={1} max={1000000} step={1} className="mono" value={nn} disabled={locked} onChange={(event) => dispatch({ type: "draft/simulation", patch: { nn_multiplier: Math.max(1, Math.min(1_000_000, Math.floor(Number(event.target.value)))) } })} /><small>{nn === 1 ? "Fast test" : nn === 10 ? "Recommended quality" : nn > 10 ? "Higher runtime cost" : t("simulation.historyHelp")}</small></label>
           <label className="stacked-field">{t("simulation.parallelWorkers")}<input type="number" min={1} max={32} className="mono" value={workers} disabled={locked} onChange={(event) => dispatch({ type: "draft/simulation", patch: { max_simind_workers: Math.max(1, Math.min(32, Number(event.target.value))) } })} /><small>{t("simulation.workerHelp")}</small></label>
-          <label className="stacked-field">{t("simulation.seedBase")}<input type="number" min={1} className="mono" value={seedBase} disabled={locked} onChange={(event) => dispatch({ type: "draft/simulation", patch: { simind_seed_base: Math.max(1, Number(event.target.value)) } })} /><small>{t("simulation.seedHelp")}</small></label>
+          <div className="stacked-field"><strong>/RR seed</strong><span className="mono">domain-isolated per case</span><small>Derived from the Windows v1 global seed and recorded in the manifest.</small></div>
         </div>
         <dl className="transport-facts"><div><dt>{t("simulation.energyWindow")}</dt><dd>{preflight?.smc ? `${preflight.smc.energy_kev} keV · ${preflight.smc.window_kev.join("–")} keV` : "—"}</dd></div><div><dt>{t("simulation.acquisition")}</dt><dd>{preflight?.smc ? `${preflight.smc.views} ${t("protocol.views")} · ${preflight.smc.rotation_radius_cm} cm` : "—"}</dd></div><div><dt>{t("simulation.attenuation")}</dt><dd>type −7 · μ × voxel</dd></div></dl>
       </section>
 
       <section className="simulation-observation" aria-labelledby="simulation-observation-title">
         <header className="workspace-section-head"><div><span className="run-eyebrow">03</span><h2 id="simulation-observation-title">{t("simulation.observation")}</h2></div><span>{t("simulation.separateLayers")}</span></header>
-        <div className="observation-presets" role="group" aria-label={t("simulation.observation")}><button type="button" aria-pressed={!obs} disabled={locked} onClick={() => dispatch({ type: "draft/observation", patch: EXPECTATION_ONLY_OBSERVATION })}>{t("simulation.expectationOnly")}</button><button type="button" aria-pressed={obs} disabled={locked} onClick={() => dispatch({ type: "draft/observation", patch: EMPIRICAL_OBSERVATION })}>{t("simulation.withObservation")}</button></div>
-        <p className="observation-explainer">{t("simulation.observationExplanation")}</p>
-        <dl className="transport-facts"><div><dt>{t("simulation.observationPolicy")}</dt><dd className="mono">{String(observation.observation_policy ?? "fixed_scale")}</dd></div><div><dt>{t("simulation.referenceTotals")}</dt><dd>{protocol ? `${(Math.min(...protocol.empirical_clinical_total_counts) / 1e6).toFixed(2)}–${(Math.max(...protocol.empirical_clinical_total_counts) / 1e6).toFixed(2)} M` : "—"}</dd></div><div><dt>{t("simulation.angularGate")}</dt><dd>{protocol ? protocol.empirical_clinical_angular_cv_range.map((value) => value.toFixed(3)).join("–") : "—"}</dd></div></dl>
-        <details className="expert-disclosure observation-expert">
-          <summary>{t("simulation.observationExpert")}</summary>
-          <div className="expert-body observation-expert-grid">
-            <label className="check-row">
-              <input type="checkbox" checked={obs} disabled={locked} onChange={(event) => setObservationEnabled(event.target.checked)} />
-              {t("simulation.createPoisson")}
-            </label>
-            <label className="stacked-field">
-              {t("simulation.observationPolicy")}
-              <select value={observationPolicy} disabled={locked || !obs} onChange={(event) => setObservationPolicy(event.target.value)}>
-                <option value="fixed_scale">{t("simulation.policy.fixed")}</option>
-                <option value="empirical_total_counts">{t("simulation.policy.empirical")}</option>
-              </select>
-            </label>
-            <label className="stacked-field">
-              {t("simulation.observationScale")}
-              <input type="number" min={0.000001} step={0.01} className="mono" value={observationScale} disabled={locked || !obs || observationPolicy === "empirical_total_counts"} onChange={(event) => dispatch({ type: "draft/observation", patch: { observation_scale: Math.max(0.000001, Number(event.target.value)) } })} />
-              <small>{observationPolicy === "empirical_total_counts" ? t("simulation.scaleDerived") : t("simulation.scaleFixed")}</small>
-            </label>
-            <label className="stacked-field">
-              {t("simulation.scaleStatus")}
-              <select value={observationStatus} disabled={locked || !obs || observationPolicy === "empirical_total_counts"} onChange={(event) => dispatch({ type: "draft/observation", patch: { observation_protocol_status: event.target.value } })}>
-                {observationPolicy === "empirical_total_counts" && <option value="empirical_protocol_matching">{t("simulation.status.empirical")}</option>}
-                {observationPolicy !== "empirical_total_counts" && <>
-                  <option value="toy">{t("simulation.status.toy")}</option>
-                  <option value="research">{t("simulation.status.research")}</option>
-                  <option value="verified" disabled={state.draft.protocol.protocol_status !== "verified"}>{t("simulation.status.verified")}</option>
-                </>}
-              </select>
-            </label>
-            <label className="stacked-field">
-              {t("simulation.observationSeedOffset")}
-              <input type="number" min={0} step={1} className="mono" value={observationSeedOffset} disabled={locked || !obs} onChange={(event) => dispatch({ type: "draft/observation", patch: { observation_seed_offset: Math.max(0, Math.floor(Number(event.target.value))) } })} />
-              <small>{t("simulation.observationSeedHelp")}</small>
-            </label>
-          </div>
-        </details>
+        <p className="observation-explainer">Windows v1 fixes the expectation/observation separation and empirical-count observation policy. It is recorded in the effective configuration and cannot be overridden by a production draft.</p>
       </section>
 
       <section className="simulation-preflight" aria-labelledby="simulation-preflight-title">
         <header className="workspace-section-head"><div><span className="run-eyebrow">04</span><h2 id="simulation-preflight-title">{t("simulation.preflight")}</h2></div><span className="section-state" data-state={preflight?.ready ? "passed" : "failed"}>{preflight?.ready ? t("status.ready") : t("status.pending")}</span></header>
         {preflight ? <div className="preflight-checks">{preflight.checks.map((check) => <div key={check.id} data-state={check.status}><span aria-hidden="true">{check.status === "passed" ? "✓" : check.status === "warning" ? "!" : "×"}</span><strong>{PREFLIGHT_LABELS[check.id] ? t(PREFLIGHT_LABELS[check.id]) : check.id.replaceAll("_", " ")}</strong><p>{check.detail}</p></div>)}</div> : <div className="preflight-empty"><strong>{t("simulation.preflightNotRun")}</strong><p>{t("simulation.preflightHelp")}</p></div>}
+        {preflight && <dl className="transport-facts"><div><dt>Runtime status</dt><dd className="mono">{preflight.provenance.windows_runtime.status}</dd></div><div><dt>SIMIND SHA-256</dt><dd className="mono" title={preflight.provenance.windows_runtime.simind_sha256 ?? undefined}>{preflight.provenance.windows_runtime.simind_sha256?.slice(0, 16) ?? "—"}…</dd></div><div><dt>SMC SHA-256</dt><dd className="mono" title={preflight.provenance.windows_runtime.smc_sha256 ?? undefined}>{preflight.provenance.windows_runtime.smc_sha256?.slice(0, 16) ?? "—"}…</dd></div></dl>}
         {preflight?.smc && <details className="expert-disclosure simulation-expert"><summary>{t("simulation.expert")}</summary><div className="expert-body"><table><thead><tr><th>{t("simulation.switch")}</th><th>{t("simulation.value")}</th><th>{t("common.details")}</th></tr></thead><tbody>{Object.entries(preflight.smc.raw_indices).map(([index, value]) => <tr key={index}><td className="mono">/{index}</td><td className="mono">{value}</td><td>{index === "25" ? t("simulation.activityTime") : index === "100" || index === "101" ? t("simulation.detectorRequest") : t("simulation.rawValue")}</td></tr>)}</tbody></table><p className="parameter-note mono">{t("simulation.flags")}: {preflight.smc.enabled_flags.join(", ")}</p><button type="button" onClick={() => setBrowser("experiments")} disabled={locked || busy}>{t("simulation.prepareExperiments")}</button>{experimentDestination && <p className="parameter-note mono">{experimentDestination}</p>}</div></details>}
       </section>
 
@@ -236,9 +177,9 @@ export default function Simulation({ protocol }: { protocol: Protocol | null }) 
         <div className="command-actions">{locked ? <button type="button" onClick={() => dispatch({ type: "run/fork", runId: `${state.draft.identity.runId}-fork` })}>{t("action.fork")}</button> : <><button type="button" onClick={() => void runPreflight()} disabled={busy}>{busy ? t("common.loading") : t("simulation.runPreflight")}</button><button type="button" className="primary" onClick={() => void lockPlan()} disabled={busy || !planReady}>{t("simulation.lockPlan")}</button></>}</div>
       </footer>
 
-      <FileBrowser open={browser === "exe"} title={t("simulation.chooseExecutable")} initialPath={exe} selection="file" extensions={[".exe"]} onSelect={(path) => dispatch({ type: "draft/simulation", patch: { simind_exe: path } })} onClose={() => setBrowser(null)} />
-      <FileBrowser open={browser === "smc"} title={t("simulation.chooseSmc")} initialPath={smc} selection="file" extensions={[".smc"]} onSelect={(path) => dispatch({ type: "draft/simulation", patch: { smc_file: path } })} onClose={() => setBrowser(null)} />
-      <FileBrowser open={browser === "experiments"} title={t("simulation.chooseExperimentDestination")} initialPath={state.draft.identity.runsRoot} selection="directory" onSelect={(path) => void prepareExperiments(path)} onClose={() => setBrowser(null)} />
+      <FileBrowser open={browser === "exe"} title={t("simulation.chooseExecutable")} initialPath={exe} selection="file" extensions={[".exe"]} nativeKind="simind_exe" onSelect={(path) => dispatch({ type: "draft/simulation", patch: { simind_exe: path } })} onClose={() => setBrowser(null)} />
+      <FileBrowser open={browser === "smc"} title={t("simulation.chooseSmc")} initialPath={smc} selection="file" extensions={[".smc"]} nativeKind="smc" onSelect={(path) => dispatch({ type: "draft/simulation", patch: { smc_file: path } })} onClose={() => setBrowser(null)} />
+      <FileBrowser open={browser === "experiments"} title={t("simulation.chooseExperimentDestination")} initialPath={state.draft.identity.runsRoot} selection="directory" nativeKind="export_root" onSelect={(path) => void prepareExperiments(path)} onClose={() => setBrowser(null)} />
     </div>
   );
 }

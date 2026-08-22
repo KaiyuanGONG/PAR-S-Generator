@@ -9,19 +9,15 @@ afterAll(() => {
   vi.unstubAllGlobals();
 });
 
-describe("Simulation observation mode contract", () => {
-  it("writes the runner-safe fixed-scale combination for expectation-only output", async () => {
+describe("Simulation Windows v1 creation contract", () => {
+  it("does not expose legacy observation overrides in the production request", async () => {
     const { EXPECTATION_ONLY_OBSERVATION } = await import("./Simulation");
     const state = workspaceReducer(createInitialWorkspaceState(), {
       type: "draft/observation",
       patch: EXPECTATION_ONLY_OBSERVATION,
     });
 
-    expect(toCreateRunRequest(state.draft).config_overrides).toMatchObject({
-      create_poisson_observation: false,
-      observation_policy: "fixed_scale",
-      observation_protocol_status: "toy",
-    });
+    expect(toCreateRunRequest(state.draft)).not.toHaveProperty("config_overrides");
   });
 
   it("restores the empirical policy and protocol status with observation output", async () => {
@@ -35,10 +31,9 @@ describe("Simulation observation mode contract", () => {
       patch: EMPIRICAL_OBSERVATION,
     });
 
-    expect(toCreateRunRequest(state.draft).config_overrides).toMatchObject({
-      create_poisson_observation: true,
-      observation_policy: "empirical_total_counts",
-      observation_protocol_status: "empirical_protocol_matching",
+    expect(toCreateRunRequest(state.draft).windows_v1).toMatchObject({
+      schema_version: "windows_v1",
+      generation_profile: "hybrid_v2_limited_activity_v1",
     });
   });
 

@@ -6,7 +6,6 @@ import {
   parseStoredWorkspace,
   persistWorkspace,
   toCreateRunRequest,
-  toPhantomConfig,
   WORKSPACE_STORAGE_KEY,
   workspaceReducer,
   type StorageLike,
@@ -19,7 +18,7 @@ class MemoryStorage implements StorageLike {
 }
 
 describe("RunWorkspace draft contract", () => {
-  it("uses one PhantomConfig payload for preview and run creation", () => {
+  it("maps only authoritative Windows v1 controls into run creation", () => {
     const draft = draftFromDefaults({
       run_id: "study-01",
       runs_root: "runs",
@@ -33,27 +32,46 @@ describe("RunWorkspace draft contract", () => {
       smc_index25_activity_time: 1704,
       phantom: {
         n_cases: 7,
-        target_left_ratio: 0.37,
         tumor_count_min: 2,
         tumor_count_max: 4,
+      },
+      windows_v1: {
+        cohort: { mode: "mixed", positive_cases: 5, negative_cases: 2 },
+        lesions: {
+          tumor_count_min: 2,
+          tumor_count_max: 4,
+          size_band_weights: [2, 1, 1],
+          tnr_min: 3,
+          tnr_max: 7,
+          territory_policy: "whole_liver",
+        },
+        seed: 1234,
       },
     });
     const request = toCreateRunRequest(draft);
 
-    expect(request.config_overrides.phantom).toEqual(toPhantomConfig(draft));
-    expect(request.config_overrides).toMatchObject({
-      simulation_mode: "execute",
+    expect(request.windows_v1).toMatchObject({
+      schema_version: "windows_v1",
+      generation_profile: "hybrid_v2_limited_activity_v1",
+      runtime_backend: "windows_native",
+      cohort: { mode: "mixed", positive_cases: 5, negative_cases: 2 },
+      lesions: {
+        tumor_count_min: 2,
+        tumor_count_max: 4,
+        size_band_weights: [2, 1, 1],
+        tnr_min: 3,
+        tnr_max: 7,
+        territory_policy: "whole_liver",
+      },
+      seed: 1234,
+    });
+    expect(request).toMatchObject({
+      mode: "execute",
       simind_exe: "simind/simind.exe",
       smc_file: "simind/ge870_czt.smc",
       nn_multiplier: 12,
-      create_poisson_observation: true,
-      observation_policy: "empirical_total_counts",
-      protocol_label: "GE 870 controlled research protocol",
-      source_activity_mbq: 60,
-      exposure_time_s_per_projection: 28.4,
-      smc_index25_activity_time: 1704,
     });
-    expect(request.cases).toBe(7);
+    expect(request).not.toHaveProperty("config_overrides");
   });
 
   it("locks canonical server config and requires an explicit fork before editing", () => {
@@ -107,7 +125,7 @@ describe("RunWorkspace draft contract", () => {
     expect(restored?.lifecycle).toBe("ready");
   });
 
-  it("migrates a v2 draft into v3 without trusting cached runtime evidence", () => {
+  it("does not silently migrate a legacy production draft", () => {
     const legacy = JSON.stringify({
       version: 2,
       draft: {
@@ -124,16 +142,7 @@ describe("RunWorkspace draft contract", () => {
     storage.setItem(LEGACY_WORKSPACE_STORAGE_KEY, legacy);
 
     const migrated = parseStoredWorkspace(storage.getItem(LEGACY_WORKSPACE_STORAGE_KEY));
-    expect(migrated?.version).toBe(3);
-    expect(migrated?.draft.identity).toEqual({ runId: "legacy", runsRoot: "legacy-runs", cases: 5 });
-    expect(migrated?.draft.protocol).toEqual({});
-    expect(migrated?.activeRun.taskId).toBe("stale-task");
-    expect(migrated?.stages).toEqual({});
-    expect(migrated?.plan.sections).toEqual({
-      protocol: "incomplete",
-      phantom: "incomplete",
-      simulation: "incomplete",
-    });
+    expect(migrated).toBeNull();
   });
 
   it("invalidates preview and preflight evidence when a draft section changes", () => {

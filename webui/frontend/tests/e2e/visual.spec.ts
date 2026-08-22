@@ -18,14 +18,14 @@ for (const combination of combinations) {
       await page.addInitScript(({ locale, theme }) => {
         localStorage.setItem("pars.locale", locale);
         localStorage.setItem("pars.theme", theme);
-        localStorage.removeItem("pars.workspace.v3");
+        localStorage.removeItem("pars.workspace.windows-v1");
       }, combination);
       await page.goto("/");
       if (index > 0) await page.locator("button.lifecycle-link").nth(index).click();
       await expect(page.locator(`.workspace-scroll[data-workspace="${workspace}"]`)).toBeVisible();
       await expect(page).toHaveScreenshot(`${workspace}-${combination.locale}-${combination.theme}.png`, {
         animations: "disabled",
-        mask: workspace === "phantom" ? [page.locator(".surface-canvas")] : [],
+        mask: workspace === "phantom" ? [page.locator(".surface-canvas canvas")] : [],
         maxDiffPixelRatio: 0.002,
       });
     });
@@ -41,7 +41,7 @@ for (const locale of ["zh", "fr"] as const) {
         await page.addInitScript(({ locale, theme }) => {
           localStorage.setItem("pars.locale", locale);
           localStorage.setItem("pars.theme", theme);
-          localStorage.removeItem("pars.workspace.v3");
+          localStorage.removeItem("pars.workspace.windows-v1");
         }, { locale, theme });
         await page.goto("/");
         if (index > 0) await page.locator("button.lifecycle-link").nth(index).click();
@@ -49,7 +49,7 @@ for (const locale of ["zh", "fr"] as const) {
         expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
         await expect(page).toHaveScreenshot(`1280-${workspace}-${locale}-${theme}.png`, {
           animations: "disabled",
-          mask: workspace === "phantom" ? [page.locator(".surface-canvas")] : [],
+          mask: workspace === "phantom" ? [page.locator(".surface-canvas canvas")] : [],
           maxDiffPixelRatio: 0.002,
         });
       });
@@ -62,7 +62,7 @@ test("Phantom synchronized four-view workbench", async ({ page }) => {
   await page.addInitScript(() => {
     localStorage.setItem("pars.locale", "en");
     localStorage.setItem("pars.theme", "dark");
-    localStorage.removeItem("pars.workspace.v3");
+    localStorage.removeItem("pars.workspace.windows-v1");
   });
   await page.goto("/");
   await page.locator("button.lifecycle-link").filter({ hasText: "Phantom" }).click();
@@ -70,7 +70,7 @@ test("Phantom synchronized four-view workbench", async ({ page }) => {
   await expect(page.locator(".surface-canvas canvas")).toBeVisible({ timeout: 30_000 });
   await expect(page).toHaveScreenshot("phantom-populated-en-dark.png", {
     animations: "disabled",
-    mask: [page.locator(".surface-canvas")],
+    mask: [page.locator(".surface-canvas canvas")],
     maxDiffPixelRatio: 0.005,
   });
 });

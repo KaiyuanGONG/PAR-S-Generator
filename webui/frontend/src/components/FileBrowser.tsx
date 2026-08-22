@@ -9,6 +9,7 @@ interface FileBrowserProps {
   initialPath?: string;
   selection: "file" | "directory";
   extensions?: string[];
+  nativeKind?: "simind_exe" | "smc" | "runs_root" | "export_root";
   onSelect: (path: string) => void;
   onClose: () => void;
 }
@@ -40,6 +41,7 @@ export default function FileBrowser({
   initialPath = "",
   selection,
   extensions,
+  nativeKind,
   onSelect,
   onClose,
 }: FileBrowserProps) {
@@ -105,6 +107,23 @@ export default function FileBrowser({
     if (!path) return;
     onSelect(path);
     onClose();
+  }
+
+  async function pickNative() {
+    if (!nativeKind) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const result = await api.fsPick(nativeKind, listing?.path ?? initialPath);
+      if (!result.cancelled && result.path) {
+        onSelect(result.path);
+        onClose();
+      }
+    } catch (caught) {
+      setError(caught);
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
@@ -179,6 +198,7 @@ export default function FileBrowser({
 
         <footer className="file-browser-actions">
           <span className="mono" title={selected ?? undefined}>{selection === "file" ? selected ?? t("browser.noSelection") : listing?.path}</span>
+          {nativeKind && <button type="button" onClick={() => void pickNative()} disabled={busy}>Windows · {t("action.browse")}</button>}
           <button type="button" onClick={onClose}>{t("action.cancel")}</button>
           <button type="button" className="primary" onClick={confirm} disabled={selection === "file" ? !selected : !listing}>{selection === "file" ? t("browser.chooseFile") : t("browser.chooseFolder")}</button>
         </footer>

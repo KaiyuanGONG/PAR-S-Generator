@@ -5,7 +5,7 @@ test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
     localStorage.setItem("pars.locale", "fr");
     localStorage.setItem("pars.theme", "dark");
-    localStorage.removeItem("pars.workspace.v3");
+    localStorage.removeItem("pars.workspace.windows-v1");
   });
   await page.goto("/");
 });

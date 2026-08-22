@@ -8,9 +8,9 @@ import {
   type ReactNode,
 } from "react";
 
-export const WORKSPACE_STORAGE_KEY = "pars.workspace.v3";
-export const LEGACY_WORKSPACE_STORAGE_KEY = "pars.workspace.v2";
-export const WORKSPACE_SCHEMA_VERSION = 3 as const;
+export const WORKSPACE_STORAGE_KEY = "pars.workspace.windows-v1";
+export const LEGACY_WORKSPACE_STORAGE_KEY = "pars.workspace.v3";
+export const WORKSPACE_SCHEMA_VERSION = 4 as const;
 
 export type RunMode = "prepare" | "mock" | "execute";
 
@@ -47,6 +47,9 @@ export type DraftObject = { [key: string]: JsonValue | undefined };
 export interface RunIdentityDraft {
   runId: string;
   runsRoot: string;
+  cohortMode: "positive_only" | "true_negative_only" | "mixed";
+  positiveCases: number;
+  negativeCases: number;
   cases: number;
 }
 
@@ -79,6 +82,7 @@ export interface PhantomDraft extends DraftObject {
   tumor_probs?: JsonValue;
   tumor_contrast_min?: number;
   tumor_contrast_max?: number;
+  territory_policy?: string;
   tumor_min_liver_margin_mm?: number;
   global_seed?: number;
   use_global_seed?: boolean;
@@ -213,9 +217,12 @@ export type WorkspaceAction =
 export interface CreateRunRequest {
   run_id: string;
   runs_root: string;
-  cases: number;
   mode: RunMode;
-  config_overrides: JsonObject;
+  windows_v1: JsonObject;
+  simind_exe: string;
+  smc_file: string;
+  nn_multiplier: number;
+  max_simind_workers: number;
 }
 
 export interface StorageLike {
@@ -359,7 +366,20 @@ function draftFromPipelineConfig(
 ): DraftRunConfig {
   const source = defaults ?? {};
   const phantom = jsonObject(source.phantom);
-  const cases = positiveInteger(phantom.n_cases) ?? 10;
+  const windowsV1 = jsonObject(source.windows_v1);
+  const cohort = jsonObject(windowsV1.cohort);
+  const lesions = jsonObject(windowsV1.lesions);
+  if (lesions.tumor_count_min !== undefined) phantom.tumor_count_min = lesions.tumor_count_min;
+  if (lesions.tumor_count_max !== undefined) phantom.tumor_count_max = lesions.tumor_count_max;
+  if (lesions.size_band_weights !== undefined) phantom.tumor_probs = lesions.size_band_weights;
+  if (lesions.tnr_min !== undefined) phantom.tumor_contrast_min = lesions.tnr_min;
+  if (lesions.tnr_max !== undefined) phantom.tumor_contrast_max = lesions.tnr_max;
+  if (lesions.territory_policy !== undefined) phantom.territory_policy = lesions.territory_policy;
+  if (windowsV1.seed !== undefined) phantom.global_seed = windowsV1.seed;
+  const mode = stringValue(cohort.mode, "positive_only") as RunIdentityDraft["cohortMode"];
+  const positiveCases = Number.isInteger(cohort.positive_cases) ? Number(cohort.positive_cases) : 2;
+  const negativeCases = Number.isInteger(cohort.negative_cases) ? Number(cohort.negative_cases) : 0;
+  const cases = positiveCases + negativeCases;
   const runId = stringValue(source.run_id, "liver-spect-run");
   const observation = knownPipelineFields(source, OBSERVATION_FIELDS) as ObservationDraft;
 
@@ -377,6 +397,9 @@ function draftFromPipelineConfig(
     identity: {
       runId: runId === "unnamed" ? "liver-spect-run" : runId,
       runsRoot: stringValue(source.runs_root, "runs"),
+      cohortMode: ["positive_only", "true_negative_only", "mixed"].includes(mode) ? mode : "positive_only",
+      positiveCases,
+      negativeCases,
       cases,
     },
     protocol: knownPipelineFields(source, PROTOCOL_FIELDS) as ProtocolDraft,
@@ -408,25 +431,43 @@ export function toPhantomConfig(draft: DraftRunConfig): JsonObject {
 
 /** Map all four draft sections onto the existing POST /api/runs contract. */
 export function toCreateRunRequest(draft: DraftRunConfig): CreateRunRequest {
-  const simulation = jsonObject(draft.simulation);
-  delete simulation.mode;
-  const configOverrides: JsonObject = {
-    phantom: toPhantomConfig(draft),
-    simulation_mode: draft.simulation.mode,
-    ...jsonObject({
-      ...draft.protocol,
-      advanced_override: undefined,
-    }),
-    ...simulation,
-    ...jsonObject(draft.observation),
-  };
+  const positiveCases = draft.identity.cohortMode === "true_negative_only"
+    ? 0
+    : Math.max(1, Math.floor(draft.identity.positiveCases));
+  const negativeCases = draft.identity.cohortMode === "positive_only"
+    ? 0
+    : Math.max(1, Math.floor(draft.identity.negativeCases));
+  const weights = Array.isArray(draft.phantom.tumor_probs)
+    ? draft.phantom.tumor_probs
+    : [0.45, 0.40, 0.15];
 
   return {
     run_id: draft.identity.runId.trim(),
     runs_root: draft.identity.runsRoot.trim() || "runs",
-    cases: Math.max(1, Math.floor(draft.identity.cases)),
     mode: draft.simulation.mode,
-    config_overrides: configOverrides,
+    windows_v1: {
+      schema_version: "windows_v1",
+      generation_profile: "hybrid_v2_limited_activity_v1",
+      runtime_backend: "windows_native",
+      cohort: {
+        mode: draft.identity.cohortMode,
+        positive_cases: positiveCases,
+        negative_cases: negativeCases,
+      },
+      lesions: {
+        tumor_count_min: Math.floor(Number(draft.phantom.tumor_count_min ?? 1)),
+        tumor_count_max: Math.floor(Number(draft.phantom.tumor_count_max ?? 5)),
+        size_band_weights: weights,
+        tnr_min: Number(draft.phantom.tumor_contrast_min ?? 2),
+        tnr_max: Number(draft.phantom.tumor_contrast_max ?? 8),
+        territory_policy: String(draft.phantom.territory_policy ?? "auto_equal_feasible"),
+      },
+      seed: Math.floor(Number(draft.phantom.global_seed ?? 42)),
+    },
+    simind_exe: String(draft.simulation.simind_exe ?? "simind/simind.exe"),
+    smc_file: String(draft.simulation.smc_file ?? "simind/ge870_czt.smc"),
+    nn_multiplier: Math.floor(Number(draft.simulation.nn_multiplier ?? 10)),
+    max_simind_workers: Math.floor(Number(draft.simulation.max_simind_workers ?? 1)),
   };
 }
 
@@ -435,9 +476,9 @@ function canonicalDraft(config: Record<string, unknown>, previous: DraftRunConfi
   return {
     ...canonical,
     identity: {
+      ...canonical.identity,
       runId: stringValue(config.run_id, previous.identity.runId),
       runsRoot: stringValue(config.runs_root, previous.identity.runsRoot),
-      cases: canonical.identity.cases,
     },
   };
 }
@@ -812,10 +853,18 @@ export function workspaceReducer(state: WorkspaceState, action: WorkspaceAction)
 
 function parseIdentity(value: unknown, fallback: RunIdentityDraft): RunIdentityDraft {
   if (!isRecord(value)) return fallback;
+  const mode = ["positive_only", "true_negative_only", "mixed"].includes(String(value.cohortMode))
+    ? value.cohortMode as RunIdentityDraft["cohortMode"]
+    : fallback.cohortMode;
+  const positiveCases = positiveInteger(value.positiveCases) ?? (mode === "true_negative_only" ? 0 : fallback.positiveCases);
+  const negativeCases = positiveInteger(value.negativeCases) ?? (mode === "positive_only" ? 0 : fallback.negativeCases);
   return {
     runId: stringValue(value.runId, fallback.runId),
     runsRoot: stringValue(value.runsRoot, fallback.runsRoot),
-    cases: positiveInteger(value.cases) ?? fallback.cases,
+    cohortMode: mode,
+    positiveCases,
+    negativeCases,
+    cases: positiveCases + negativeCases,
   };
 }
 
@@ -870,7 +919,7 @@ export function parseStoredWorkspace(serialized: string | null): WorkspaceState 
   if (!serialized) return null;
   try {
     const value: unknown = JSON.parse(serialized);
-    if (!isRecord(value) || (value.version !== WORKSPACE_SCHEMA_VERSION && value.version !== 2)) return null;
+    if (!isRecord(value) || value.version !== WORKSPACE_SCHEMA_VERSION) return null;
     const fallback = createInitialWorkspaceState();
     const activeRun = parseActiveRun(value.activeRun);
     return {
