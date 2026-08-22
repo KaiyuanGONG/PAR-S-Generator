@@ -1,168 +1,138 @@
 import { useEffect, useState } from "react";
 import { api, type Protocol } from "../api";
-import { Card, Field, KV } from "../ui";
+import ErrorNotice from "../components/ErrorNotice";
+import FileBrowser from "../components/FileBrowser";
+import { useI18n } from "../i18n";
+import { useWorkspace } from "../workspace";
 
-export default function NewDataset({
-  protocol,
-  runsRoot,
-  setRunsRoot,
-  onCreated,
-}: {
-  protocol: Protocol | null;
-  runsRoot: string;
-  setRunsRoot: (v: string) => void;
-  onCreated: (configPath: string, runId: string) => void;
-}) {
-  const [runId, setRunId] = useState("liver-spect-run");
-  const [cases, setCases] = useState(10);
-  const [mode, setMode] = useState("prepare");
-  const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState<{ tone: string; text: string } | null>(null);
-  const [rootOk, setRootOk] = useState<boolean | null>(null);
+export default function NewDataset({ protocol, defaults }: { protocol: Protocol | null; defaults: Record<string, unknown> | null }) {
+  const { state, dispatch } = useWorkspace();
+  const { t } = useI18n();
+  const { runId, runsRoot, cases } = state.draft.identity;
+  const draft = state.draft.protocol;
+  const locked = state.activeRun.locked;
+  const advanced = draft.advanced_override === true;
+  const activity = Number(draft.source_activity_mbq ?? protocol?.source_activity_mbq ?? 60);
+  const exposure = Number(draft.exposure_time_s_per_projection ?? protocol?.exposure_s_per_projection ?? 28.4);
+  const index25 = Number(draft.smc_index25_activity_time ?? protocol?.simind_activity_time_index25 ?? 1704);
+  const contractMatches = Number.isFinite(activity) && Number.isFinite(exposure) && Number.isFinite(index25)
+    && Math.abs(activity * exposure - index25) <= Math.max(0.001, Math.abs(index25) * 1e-6);
+  const identityValid = /^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$/.test(runId);
+  const [rootState, setRootState] = useState<"checking" | "valid" | "invalid">("checking");
+  const [rootDetail, setRootDetail] = useState("");
+  const [rootError, setRootError] = useState<unknown>(null);
+  const [browserOpen, setBrowserOpen] = useState(false);
 
   useEffect(() => {
     let live = true;
-    api
-      .fsValidate(runsRoot, "runs_root")
-      .then((r) => live && setRootOk(r.valid))
-      .catch(() => live && setRootOk(null));
-    return () => {
-      live = false;
-    };
+    setRootState("checking");
+    api.fsValidate(runsRoot, "runs_root")
+      .then((result) => {
+        if (!live) return;
+        setRootState(result.valid ? "valid" : "invalid");
+        setRootDetail(result.detail);
+        setRootError(null);
+      })
+      .catch((caught) => {
+        if (!live) return;
+        setRootState("invalid");
+        setRootDetail("");
+        setRootError(caught);
+      });
+    return () => { live = false; };
   }, [runsRoot]);
 
-  async function create() {
-    setBusy(true);
-    setMsg(null);
-    try {
-      const r = await api.createRun({ run_id: runId, runs_root: runsRoot, cases, mode });
-      setMsg({ tone: "ok", text: `Configuration written to ${r.config_path}. Nothing has executed yet.` });
-      onCreated(r.config_path, runId);
-    } catch (e: any) {
-      setMsg({ tone: "err", text: String(e.message ?? e) });
-    } finally {
-      setBusy(false);
+  const ready = identityValid && rootState === "valid" && contractMatches;
+  useEffect(() => {
+    if (!locked) dispatch({ type: "plan/section", section: "protocol", status: ready ? "ready" : "incomplete" });
+  }, [dispatch, locked, ready]);
+
+  const patchProtocol = (patch: Record<string, string | number | boolean | undefined>) => {
+    dispatch({ type: "draft/protocol", patch });
+  };
+
+  function resetPlan() {
+    if (window.confirm(t("protocol.resetConfirm"))) {
+      dispatch({ type: "workspace/reset", defaults: defaults ?? undefined });
     }
   }
 
   return (
-    <>
-      {msg && <div className={"banner " + msg.tone}>{msg.text}</div>}
+    <div className="protocol-workspace">
+      {locked && <div className="banner ok" role="status">{t("protocol.locked")}</div>}
+      {rootError != null && <ErrorNotice error={rootError} />}
 
-      <div className="split">
-        <div>
-          <Card title="Run identity" note={`${cases} case${cases === 1 ? "" : "s"}`}>
-            <Field label="Run ID">
-              <input
-                type="text"
-                className="mono"
-                value={runId}
-                onChange={(e) => setRunId(e.target.value)}
-              />
-            </Field>
-            <Field
-              label="Runs root"
-              hint={
-                rootOk === false ? (
-                  <span style={{ color: "var(--err)" }}>not writable or not creatable</span>
-                ) : rootOk ? (
-                  "writable"
-                ) : null
-              }
-            >
-              <input
-                type="text"
-                className="mono"
-                value={runsRoot}
-                onChange={(e) => setRunsRoot(e.target.value)}
-              />
-            </Field>
-            <Field label="Cases">
-              <input
-                type="number"
-                min={1}
-                className="mono"
-                style={{ width: 110 }}
-                value={cases}
-                onChange={(e) => setCases(Math.max(1, Number(e.target.value)))}
-              />
-            </Field>
-            <Field
-              label="Mode"
-              hint={
-                mode === "execute"
-                  ? "Real SIMIND execution — still requires an explicit confirmation in Run center."
-                  : mode === "mock"
-                  ? "Software smoke test. Projection physics are explicitly fake."
-                  : "Writes exact SIMIND jobs without executing them."
-              }
-            >
-              <select value={mode} onChange={(e) => setMode(e.target.value)} style={{ width: 300 }}>
-                <option value="prepare">prepare — write SIMIND jobs, do not execute</option>
-                <option value="mock">mock — software smoke test, fake physics</option>
-                <option value="execute">execute — run SIMIND</option>
-              </select>
-            </Field>
-          </Card>
+      <section className="protocol-identity" aria-labelledby="protocol-identity-title">
+        <header className="workspace-section-head">
+          <div><span className="run-eyebrow">01</span><h2 id="protocol-identity-title">{t("protocol.identity")}</h2></div>
+          <span className="section-state" data-state={identityValid && rootState === "valid" ? "passed" : "failed"}>{identityValid && rootState === "valid" ? t("status.ready") : t("status.incomplete")}</span>
+        </header>
+        <div className="form-grid">
+          <label className="stacked-field" htmlFor="protocol-run-id">{t("protocol.runId")}
+            <input id="protocol-run-id" type="text" className="mono" value={runId} disabled={locked} aria-invalid={!identityValid} onChange={(event) => dispatch({ type: "draft/identity", patch: { runId: event.target.value } })} />
+            <small>{identityValid ? t("protocol.runIdHelp") : t("protocol.runIdInvalid")}</small>
+          </label>
+          <label className="stacked-field" htmlFor="protocol-runs-root">{t("protocol.runsRoot")}
+            <span className="field-with-action"><input id="protocol-runs-root" type="text" className="mono" value={runsRoot} disabled={locked} aria-invalid={rootState === "invalid"} onChange={(event) => dispatch({ type: "draft/identity", patch: { runsRoot: event.target.value } })} /><button type="button" disabled={locked} onClick={() => setBrowserOpen(true)}>{t("action.browse")}</button></span>
+            <small data-tone={rootState === "invalid" ? "danger" : undefined}>{rootState === "checking" ? t("common.loading") : rootState === "valid" ? t("protocol.rootReady") : rootDetail}</small>
+          </label>
+          <label className="stacked-field" htmlFor="protocol-cases">{t("protocol.caseCount")}
+            <input id="protocol-cases" type="number" min={1} max={100000} className="mono" value={cases} disabled={locked} onChange={(event) => dispatch({ type: "draft/identity", patch: { cases: Math.max(1, Number(event.target.value)) } })} />
+            <small>{t("protocol.caseCountHelp")}</small>
+          </label>
+        </div>
+      </section>
 
-          <Card title="Directory to be created" note="run-isolated; never globbed across runs">
-            <pre className="tree mono">{`${runsRoot.replace(/[\\/]+$/, "")}/${runId}/
+      <section className="protocol-contract" aria-labelledby="protocol-contract-title">
+        <header className="workspace-section-head">
+          <div><span className="run-eyebrow">02</span><h2 id="protocol-contract-title">{t("protocol.contract")}</h2></div>
+          <span className="section-state" data-state={contractMatches ? "passed" : "failed"}>{contractMatches ? t("protocol.validatedPreset") : t("status.failed")}</span>
+        </header>
+        <div className="contract-intro">
+          <div><strong>{String(draft.protocol_label ?? "GE 870 CZT current liver SPECT research protocol")}</strong><span className="mono">{String(draft.protocol_status ?? "stage3_protocol_promoted_pilot_pending")}</span></div>
+          <label className="check-row"><input type="checkbox" checked={advanced} disabled={locked} onChange={(event) => patchProtocol({ advanced_override: event.target.checked, protocol_status: event.target.checked ? "operator_supplied_unverified" : "stage3_protocol_promoted_pilot_pending" })} />{t("protocol.overridePreset")}</label>
+        </div>
+        <div className="contract-grid">
+          <label className="contract-value">{t("protocol.activity")}<span><input type="number" value={activity} disabled={!advanced || locked} onChange={(event) => patchProtocol({ source_activity_mbq: Number(event.target.value) })} /><i>MBq</i></span></label>
+          <span className="contract-operator" aria-hidden="true">×</span>
+          <label className="contract-value">{t("protocol.exposure")}<span><input type="number" value={exposure} disabled={!advanced || locked} onChange={(event) => patchProtocol({ exposure_time_s_per_projection: Number(event.target.value) })} /><i>s/view</i></span></label>
+          <span className="contract-operator" aria-hidden="true">=</span>
+          <label className="contract-value">SMC Index-25<span><input type="number" value={index25} disabled={!advanced || locked} onChange={(event) => patchProtocol({ smc_index25_activity_time: Number(event.target.value) })} /><i>MBq·s</i></span></label>
+        </div>
+        <div className="contract-check" data-state={contractMatches ? "passed" : "failed"}>
+          <strong>{contractMatches ? t("protocol.productMatches") : t("protocol.productMismatch")}</strong>
+          <span className="mono">{activity} × {exposure} = {(activity * exposure).toFixed(3)} · {t("protocol.expected")} {index25.toFixed(3)}</span>
+        </div>
+        <dl className="contract-facts">
+          <div><dt>{t("protocol.isotopeEnergy")}</dt><dd>Tc-99m · 140.5 keV</dd></div>
+          <div><dt>{t("protocol.views")}</dt><dd>60 · 360°</dd></div>
+          <div><dt>{t("protocol.projectionMatrix")}</dt><dd>128 × 128 · 4.42 mm</dd></div>
+          <div><dt>{t("protocol.detectorMatrix")}</dt><dd>{protocol ? `${protocol.detector_matrix[0]} × ${protocol.detector_matrix[1]}` : "—"}</dd></div>
+          <div><dt>{t("protocol.split")}</dt><dd>80 / 10 / 10 · seed 42</dd></div>
+          <div><dt>{t("common.status")}</dt><dd className="mono">{String(draft.activity_time_contract_status ?? protocol?.activity_time_contract_status ?? "—")}</dd></div>
+        </dl>
+      </section>
+
+      <section className="protocol-output" aria-labelledby="protocol-output-title">
+        <header className="workspace-section-head"><div><span className="run-eyebrow">03</span><h2 id="protocol-output-title">{t("protocol.outputLayout")}</h2></div><span>{t("protocol.runIsolated")}</span></header>
+        <pre className="tree mono">{`${runsRoot.replace(/[\\/]+$/, "")}/${runId}/
 ├── run.json              effective config + stage evidence
 ├── cases.jsonl           per-case provenance and QC
 ├── splits.json           fixed phantom-level partition
-├── dataset_manifest.json sha-256 inventory (immutable once final)
+├── dataset_manifest.json sha-256 inventory
 ├── phantom/  simind_input/  expectation/
-├── observation/  qc/  logs/  figures/`}</pre>
-          </Card>
-        </div>
+└── observation/  qc/  logs/  figures/`}</pre>
+        <ul className="plain-evidence-list"><li>{t("protocol.seedEvidence")}</li><li>{t("protocol.inputHashes")}</li><li>{t("protocol.resumeEvidence")}</li><li>{t("protocol.immutableAfterSeal")}</li></ul>
+      </section>
 
-        <div>
-          <Card title="Protocol contract" note="locked into run.json on create">
-            <div className="bignums" style={{ margin: "-13px -14px 12px", borderTop: 0 }}>
-              <div>
-                <b>{protocol?.source_activity_mbq ?? "—"}</b>
-                <span>MBq source activity</span>
-              </div>
-              <div>
-                <b>{protocol?.exposure_s_per_projection ?? "—"}</b>
-                <span>s per projection</span>
-              </div>
-              <div>
-                <b>{cases}</b>
-                <span>cases</span>
-              </div>
-            </div>
-            <KV k="Isotope · energy" v="Tc-99m · 140.5 keV" />
-            <KV k="Views" v="60 over 360°" />
-            <KV k="Projection matrix" v="128 × 128 · 4.42 mm" />
-            <KV
-              k="Detector matrix"
-              v={protocol ? `${protocol.detector_matrix[0]} × ${protocol.detector_matrix[1]}` : "—"}
-            />
-            <KV k="SMC Index-25" v={protocol?.simind_activity_time_index25 ?? "—"} />
-            <KV k="Split" v="80 / 10 / 10 · seed 42" />
-          </Card>
+      <footer className="page-command-shelf protocol-command-shelf">
+        <span className="command-signal" data-tone={ready ? "success" : "danger"} />
+        <div className="command-copy"><strong>{ready ? t("protocol.planReady") : t("protocol.planIncomplete")}</strong><span>{locked ? t("shell.configLocked") : t("protocol.continueHelp")}</span></div>
+        <span className="command-meta mono">{t("common.casesShort", { count: cases })} · {runsRoot}</span>
+        <div className="command-actions">{locked ? <button type="button" onClick={() => dispatch({ type: "run/fork", runId: `${runId}-fork` })}>{t("action.fork")}</button> : <><button type="button" onClick={resetPlan}>{t("action.resetPlan")}</button><button type="button" className="primary" disabled={!ready} onClick={() => { dispatch({ type: "plan/section", section: "protocol", status: "ready" }); dispatch({ type: "view/set", view: "phantom" }); }}>{t("action.continuePhantom")}</button></>}</div>
+      </footer>
 
-          <Card title="Reproducibility">
-            <ul style={{ paddingLeft: 16, color: "var(--tx-2)", fontSize: 12.5, lineHeight: 1.7 }}>
-              <li>Per-case seeds derive from the run seed and are recorded in <code>cases.jsonl</code>.</li>
-              <li>SIMIND binary and SMC file are checksummed at plan time.</li>
-              <li>Resume accepts an artifact only when its hash and stage checks pass.</li>
-              <li>A finalized manifest is immutable.</li>
-            </ul>
-            <div className="muted" style={{ marginTop: 10 }}>
-              Contract status: {protocol?.activity_time_contract_status ?? "—"}
-            </div>
-          </Card>
-        </div>
-      </div>
-
-      <div className="actions">
-        <button className="primary" onClick={create} disabled={busy || !runId}>
-          {busy ? "Creating…" : "Create dataset"}
-        </button>
-        <span className="muted">Writes an editable run configuration — no simulation starts.</span>
-      </div>
-    </>
+      <FileBrowser open={browserOpen} title={t("protocol.chooseRunsRoot")} initialPath={runsRoot} selection="directory" onSelect={(path) => dispatch({ type: "draft/identity", patch: { runsRoot: path } })} onClose={() => setBrowserOpen(false)} />
+    </div>
   );
 }

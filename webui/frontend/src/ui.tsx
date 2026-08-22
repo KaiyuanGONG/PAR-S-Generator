@@ -1,58 +1,5 @@
-/** Shared presentational primitives. No pipeline logic lives here. */
-import React from "react";
-
-export function Card({
-  title,
-  note,
-  children,
-  flush,
-}: {
-  title?: string;
-  note?: React.ReactNode;
-  children: React.ReactNode;
-  flush?: boolean;
-}) {
-  return (
-    <section className="card">
-      {title && (
-        <header>
-          <h2>{title}</h2>
-          {note && <span className="note">{note}</span>}
-        </header>
-      )}
-      <div className={"inner" + (flush ? " flush" : "")}>{children}</div>
-    </section>
-  );
-}
-
-export function Field({
-  label,
-  hint,
-  children,
-}: {
-  label: string;
-  hint?: React.ReactNode;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="field">
-      <label>{label}</label>
-      <div>
-        {children}
-        {hint && <div className="hint">{hint}</div>}
-      </div>
-    </div>
-  );
-}
-
-export function KV({ k, v }: { k: React.ReactNode; v: React.ReactNode }) {
-  return (
-    <div className="kv">
-      <span>{k}</span>
-      <b>{v}</b>
-    </div>
-  );
-}
+/** Shared semantic primitives. No pipeline logic lives here. */
+import React, { useId } from "react";
 
 const TONE: Record<string, string> = {
   passed: "ok",
@@ -72,12 +19,12 @@ const TONE: Record<string, string> = {
   error: "err",
 };
 
-export function Status({ s }: { s?: string }) {
+export function Status({ s, label }: { s?: string; label?: string }) {
   const tone = TONE[(s ?? "").toLowerCase()] ?? "";
   return (
-    <span className={"pill " + tone}>
+    <span className={"status-mark " + tone} data-status={(s ?? "pending").toLowerCase()}>
       <i className="dot" />
-      {s ?? "—"}
+      {label ?? s ?? "—"}
     </span>
   );
 }
@@ -86,33 +33,32 @@ export function Status({ s }: { s?: string }) {
 export function StageRail({
   order,
   states,
+  label = (name) => name.replace(/_/g, " "),
+  statusLabel = (status) => status,
+  ariaLabel = "Pipeline stages",
 }: {
   order: string[];
   states: Record<string, string | undefined>;
+  label?: (name: string) => string;
+  statusLabel?: (status: string) => string;
+  ariaLabel?: string;
 }) {
   return (
-    <div className="rail-stages">
+    <div className="rail-stages" role="list" aria-label={ariaLabel}>
       {order.map((name, i) => {
         const s = states[name];
         const done = s === "passed" || s === "prepared";
         return (
           <React.Fragment key={name}>
-            {i > 0 && <span className="link" data-done={done ? "true" : "false"} />}
-            <div className="stage" data-s={s ?? "pending"}>
-              <span className="b" />
-              <small>{name.replace(/_/g, " ")}</small>
+            {i > 0 && <span className="link" data-done={done ? "true" : "false"} aria-hidden="true" />}
+            <div className="stage" data-s={s ?? "pending"} role="listitem">
+              <span className="b" aria-hidden="true" />
+              <small>{label(name)}</small>
+              <span className="sr-only"> — {statusLabel(s ?? "pending")}</span>
             </div>
           </React.Fragment>
         );
       })}
-    </div>
-  );
-}
-
-export function Bar({ value }: { value: number }) {
-  return (
-    <div className="bar">
-      <i style={{ width: `${Math.max(0, Math.min(100, value * 100))}%` }} />
     </div>
   );
 }
@@ -128,6 +74,7 @@ export function Param({
   step = 1,
   unit,
   onChange,
+  disabled = false,
 }: {
   label: string;
   dist?: string;
@@ -137,30 +84,34 @@ export function Param({
   step?: number;
   unit?: string;
   onChange?: (v: number) => void;
+  disabled?: boolean;
 }) {
+  const id = useId();
   return (
-    <div style={{ marginBottom: 11 }}>
-      <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-        <label style={{ fontSize: 12.5, color: "var(--tx-2)" }}>{label}</label>
+    <div className="param">
+      <div className="param-head">
+        <label htmlFor={id}>{label}</label>
         <span className="sp" />
-        <b className="mono" style={{ fontWeight: 500 }}>
+        <output className="mono" htmlFor={id}>
           {value}
           {unit ? <span className="muted"> {unit}</span> : null}
-        </b>
+        </output>
       </div>
       <input
+        id={id}
         type="range"
         min={min}
         max={max}
         step={step}
         value={value}
+        disabled={disabled}
         onChange={(e) => onChange?.(Number(e.target.value))}
       />
-      {dist && <div className="muted mono">{dist}</div>}
+      {dist && <div className="param-dist mono">{dist}</div>}
     </div>
   );
 }
 
 export function Empty({ children }: { children: React.ReactNode }) {
-  return <div style={{ padding: "26px 14px", color: "var(--tx-3)", fontSize: 12.5 }}>{children}</div>;
+  return <div className="empty-state">{children}</div>;
 }
