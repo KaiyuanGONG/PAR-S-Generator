@@ -1,10 +1,55 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
+from types import SimpleNamespace
 
 from fastapi.testclient import TestClient
 
 from webui.server import app as server_app
+
+
+def test_native_dialog_uses_a_gui_main_thread_helper(monkeypatch, tmp_path: Path) -> None:
+    selected = tmp_path / "含 空格" / "simind.exe"
+    calls = []
+
+    def fake_run(command, **kwargs):
+        calls.append((command, kwargs))
+        return SimpleNamespace(
+            returncode=0,
+            stdout=json.dumps({"path": str(selected)}, ensure_ascii=True),
+            stderr="",
+        )
+
+    monkeypatch.setattr(server_app.fsapi.subprocess, "run", fake_run)
+
+    result = server_app.fsapi._native_dialog("simind_exe", str(tmp_path))
+
+    assert result == str(selected)
+    command, kwargs = calls[0]
+    assert command[0] == server_app.fsapi.sys.executable
+    assert Path(command[1]).name == "native_picker.py"
+    assert command[2:] == ["simind_exe", str(tmp_path)]
+    assert kwargs["check"] is False
+    assert kwargs["capture_output"] is True
+    assert kwargs["encoding"] == "utf-8"
+
+
+def test_native_dialog_failure_is_a_typed_api_error(monkeypatch) -> None:
+    monkeypatch.setattr(
+        server_app.fsapi,
+        "_native_dialog",
+        lambda kind, initial: (_ for _ in ()).throw(RuntimeError("picker failed")),
+    )
+
+    with TestClient(server_app.app) as client:
+        response = client.post(
+            "/api/fs/pick",
+            json={"kind": "runs_root", "initial_path": "runs"},
+        )
+
+    assert response.status_code == 422
+    assert response.json()["detail"]["error"] == "native_dialog_failed"
 
 
 def test_native_picker_authorizes_only_the_selected_parent_for_this_session(

@@ -7,7 +7,10 @@ delimited). Anything outside resolves to 403.
 
 from __future__ import annotations
 
+import json
 import os
+import subprocess
+import sys
 import threading
 from pathlib import Path
 
@@ -31,24 +34,49 @@ def allowed_roots(repo_root: Path) -> list[Path]:
 
 
 def _native_dialog(kind: str, initial_path: str) -> str:
-    """Open one native dialog; kept injectable so API tests never show UI."""
-    from PyQt6.QtWidgets import QApplication, QFileDialog
+    """Open one native dialog in a GUI-main-thread helper process.
 
-    application = QApplication.instance() or QApplication([])
-    if kind in {"runs_root", "export_root"}:
-        return QFileDialog.getExistingDirectory(None, "Select folder", initial_path)
-    file_filter = "SIMIND executable (*.exe)" if kind == "simind_exe" else "SIMIND change file (*.smc)"
-    selected, _ = QFileDialog.getOpenFileName(None, "Select file", initial_path, file_filter)
-    # Keep the application referenced until the modal dialog has returned.
-    _ = application
-    return selected
+    FastAPI executes synchronous request handlers in worker threads. Creating a
+    QApplication there can leave a modal QFileDialog invisible and the request
+    permanently blocked. The helper owns Qt on its process main thread while
+    the server remains headless and receives only a JSON path result.
+    """
+    helper = Path(__file__).with_name("native_picker.py")
+    environment = os.environ.copy()
+    environment.pop("QT_QPA_PLATFORM", None)
+    environment["PYTHONIOENCODING"] = "utf-8"
+    completed = subprocess.run(
+        [sys.executable, str(helper), kind, initial_path],
+        cwd=str(Path(__file__).resolve().parents[2]),
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        env=environment,
+        check=False,
+        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+    )
+    if completed.returncode != 0:
+        detail = completed.stderr.strip() or f"native picker exited with code {completed.returncode}"
+        raise RuntimeError(detail)
+    try:
+        payload = json.loads(completed.stdout.strip())
+    except json.JSONDecodeError as exc:
+        raise RuntimeError("native picker returned invalid JSON") from exc
+    selected = payload.get("path")
+    if selected is not None and not isinstance(selected, str):
+        raise RuntimeError("native picker returned a non-string path")
+    return selected or ""
 
 
 def pick_native_path(kind: str, initial_path: str, repo_root: Path) -> dict:
     if kind not in {"simind_exe", "smc", "runs_root", "export_root"}:
         return {"error": "unsupported_kind", "kind": kind}
     initial = initial_path or str(repo_root)
-    selected = _native_dialog(kind, initial)
+    try:
+        selected = _native_dialog(kind, initial)
+    except (OSError, RuntimeError) as exc:
+        return {"error": "native_dialog_failed", "detail": str(exc), "kind": kind}
     if not selected:
         return {"cancelled": True, "path": None}
     try:
