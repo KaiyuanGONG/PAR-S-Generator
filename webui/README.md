@@ -64,5 +64,7 @@ The repository-level command is:
 
 Frontend-only checks from `webui/frontend` are `npm run lint`,
 `npm run test:unit`, `npm run build`, `npm run test:e2e`, `npm run test:a11y`
-and `npm run test:visual`. The complete native-path, corruption/resume and real
+and `npm run test:visual`. The build is a prerequisite: browser acceptance serves
+the prebuilt `dist` through the production preview server, without development
+HMR. The complete native-path, corruption/resume and real
 SIMIND procedure is `../docs/WINDOWS_V1_ACCEPTANCE.md`.

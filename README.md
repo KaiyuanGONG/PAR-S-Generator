@@ -228,10 +228,11 @@ npm run test:a11y
 npm run test:visual
 ```
 
-The browser lifecycle suite uses deterministic mock/fixture data and never
-launches real SIMIND. Visual baselines cover all six workspaces in three
-languages and two themes at 1440×900, plus Chinese/French light/dark coverage at
-1280×720.
+The browser suites require the preceding build and serve the prebuilt `dist`
+through Vite's production preview; they do not use the development HMR server.
+They use deterministic mock/fixture data and never launch real SIMIND. Visual
+baselines cover all six workspaces in three languages and two themes at
+1440×900, plus Chinese/French light/dark coverage at 1280×720.
 
 ## Scope boundary
 

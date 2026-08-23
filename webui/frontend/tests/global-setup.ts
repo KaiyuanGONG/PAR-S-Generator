@@ -73,9 +73,21 @@ export default async function globalSetup() {
       await waitUntilReady("http://127.0.0.1:8765/api/health", apiProcess);
     }
     if (!(await isReady("http://127.0.0.1:5173"))) {
+      const builtIndex = join(frontendRoot, "dist", "index.html");
+      if (!existsSync(builtIndex)) {
+        throw new Error("Built Web assets are missing. Run npm run build before browser acceptance tests.");
+      }
       viteProcess = spawn(
         process.execPath,
-        [join(frontendRoot, "node_modules", "vite", "bin", "vite.js"), "--host", "127.0.0.1", "--port", "5173"],
+        [
+          join(frontendRoot, "node_modules", "vite", "bin", "vite.js"),
+          "preview",
+          "--host",
+          "127.0.0.1",
+          "--port",
+          "5173",
+          "--strictPort",
+        ],
         { cwd: frontendRoot, stdio: "inherit", windowsHide: true },
       );
       await waitUntilReady("http://127.0.0.1:5173", viteProcess);

@@ -16,14 +16,14 @@ jobs:
       PARS_TEST_PYTHON: ${{ github.workspace }}\.venv\Scripts\python.exe
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
           cache: pip
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: "24.15.0"
           cache: npm
@@ -92,7 +92,7 @@ jobs:
 
       - name: Upload failure evidence
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: windows-v1-failure-evidence
           include-hidden-files: true

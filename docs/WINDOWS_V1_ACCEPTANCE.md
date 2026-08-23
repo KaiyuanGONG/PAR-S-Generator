@@ -177,6 +177,10 @@ GitHub 已发布。
 - Windows CI 的每个多命令步骤启用 PowerShell 原生命令 fail-fast；任何
   pytest/npm/CLI 非零退出不能再被同一步的后续成功命令覆盖。失败证据上传
   显式包含 `.test-artifacts` 与 `.test_tmp` 隐藏目录。
+- 浏览器验收只服务已构建的 `dist` 生产预览，不启动开发 HMR；本地完整
+  E2E 6/6、a11y 6/6、visual 61/61 通过，额外 a11y 压力测试 60/60 通过。
+- GitHub 官方 checkout/setup-python/setup-node/upload-artifact 均使用 Node 24
+  runtime 的 v6 主版本，不依赖已弃用的 action Node 20 runtime。
 - `git archive` 隔离验证确认 `ge870_czt.smc` 仍为 2501 字节且 SHA-256
   为权威值 `4d10eab246a7a6690663230d2f33aeb3c32f67c598af36b56d1575f0e3551d10`；
   `.gitattributes` 回归测试锁定该字节契约。

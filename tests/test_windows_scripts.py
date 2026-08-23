@@ -24,6 +24,14 @@ def test_windows_ci_fails_fast_and_preserves_release_bytes_and_failure_evidence(
     assert workflow.count('$PSNativeCommandUseErrorActionPreference = $true') == 6
     assert 'node-version: "24.15.0"' in workflow
     assert "include-hidden-files: true" in workflow
+    for action in ("checkout", "setup-python", "setup-node", "upload-artifact"):
+        assert f"actions/{action}@v6" in workflow
+    browser_setup = (ROOT / "webui" / "frontend" / "tests" / "global-setup.ts").read_text(
+        encoding="utf-8"
+    )
+    assert 'join(frontendRoot, "dist", "index.html")' in browser_setup
+    assert '"preview"' in browser_setup
+    assert '"--strictPort"' in browser_setup
     attributes = (ROOT / ".gitattributes").read_text(encoding="utf-8").splitlines()
     assert "simind/ge870_czt.smc -text -eol -whitespace" in attributes
 
