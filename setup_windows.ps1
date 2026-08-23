@@ -56,10 +56,10 @@ if ($LASTEXITCODE -ne 0) { throw "Failed to install the locked pip version." }
 if ($LASTEXITCODE -ne 0) { throw "Failed to install Python dependencies." }
 
 if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
-    throw "Node.js is required to build the Web workbench. Install Node.js 22.19 or newer."
+    throw "Node.js is required to build the Web workbench. Install a supported release: 22.22.2+, 24.15+, or 26+."
 }
-& node -e "const [major, minor] = process.versions.node.split('.').map(Number); if (major < 22 || (major === 22 && minor < 19)) process.exit(1)"
-if ($LASTEXITCODE -ne 0) { throw "Node.js 22.19 or newer is required." }
+& node -e "const [major, minor, patch] = process.versions.node.split('.').map(Number); const atLeast = (m, n, p) => major === m && (minor > n || (minor === n && patch >= p)); const supported = atLeast(22, 22, 2) || atLeast(24, 15, 0) || major >= 26; process.exit(supported ? 0 : 1)"
+if ($LASTEXITCODE -ne 0) { throw "Unsupported Node.js version. Use 22.22.2+, 24.15+, or 26+." }
 
 Push-Location $FrontendRoot
 try {

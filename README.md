@@ -44,7 +44,7 @@ absolute cps/MBq or model-performance claims. See [decision gates](docs/DECISION
 
 ## Desktop application
 
-Requirements are Windows 10/11, 64-bit Python 3.11, Node.js 22.19+ for the one-time build, and a licensed user-provided SIMIND executable.
+Requirements are Windows 10/11, 64-bit Python 3.11, a dependency-supported Node.js release (22.22.2+, 24.15+, or 26+) for the one-time build, and a licensed user-provided SIMIND executable.
 
 ```powershell
 Set-ExecutionPolicy -Scope Process Bypass
