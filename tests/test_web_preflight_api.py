@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
+from core.windows_runtime import VERIFIED_SMC_SHA256, assess_windows_runtime
 from webui.server import app as server_app
 from pipeline import experiments
 
@@ -43,7 +44,12 @@ def test_preflight_parses_real_smc_without_creating_or_running_a_run(tmp_path: P
     assert payload["smc"]["views"] == 60
     assert payload["smc"]["raw_indices"]["25"] == 1704.0
     assert payload["provenance"]["execution_authorized"] is False
-    assert payload["provenance"]["windows_runtime"]["status"] == "validated_windows_v1"
+    expected_runtime = assess_windows_runtime(
+        server_app.REPO_ROOT / "simind" / "simind.exe",
+        server_app.REPO_ROOT / "simind" / "ge870_czt.smc",
+    )
+    assert payload["provenance"]["windows_runtime"] == expected_runtime.to_dict()
+    assert payload["provenance"]["windows_runtime"]["smc_sha256"] == VERIFIED_SMC_SHA256
     assert not (tmp_path / "preflight-run.config.json").exists()
     assert not (tmp_path / "preflight-run").exists()
 

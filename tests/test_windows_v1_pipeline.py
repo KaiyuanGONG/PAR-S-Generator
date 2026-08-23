@@ -2,6 +2,7 @@ import json
 
 import pytest
 
+from core.windows_runtime import assess_windows_runtime
 from core.windows_v1 import GENERATION_PROFILE, WindowsV1Config, WindowsV1ConfigError
 from core.seeds import SeedBundle
 from pipeline.runner import PipelineConfig, PipelineRunner
@@ -145,7 +146,8 @@ def test_windows_v1_package_manifest_contains_full_runtime_and_config_contract(t
     assert manifest["runtime_backend"] == "windows_native"
     assert len(manifest["effective_config_sha256"]) == 64
     assert manifest["windows_v1"] == controls.to_dict()
-    assert manifest["windows_runtime"]["status"] == "validated_windows_v1"
+    expected_runtime = assess_windows_runtime(config.simind_exe, config.smc_file)
+    assert manifest["windows_runtime"] == expected_runtime.to_dict()
     assert manifest["windows_platform"]["system"] == "Windows"
     assert manifest["case_roles"] == {"case_0001": "positive"}
     assert manifest["simind_jobs"][0]["command"][0].lower().endswith("simind.exe")

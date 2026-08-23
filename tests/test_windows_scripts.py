@@ -14,6 +14,16 @@ def test_setup_script_locks_python_and_builds_the_frontend() -> None:
     assert "conda info --envs --json" in script
     assert "22.22.2+" in script
     assert "24.15+" in script
+    assert "import fastapi, numpy, scipy, PyQt6, uvicorn, websockets" in script
+    lock = (ROOT / "requirements-windows-v1.lock.txt").read_text(encoding="utf-8")
+    assert "websockets==17.0.1" in lock
+
+
+def test_windows_ci_fails_fast_and_preserves_hidden_failure_evidence() -> None:
+    workflow = (ROOT / ".github" / "workflows" / "windows-v1.yml").read_text(encoding="utf-8")
+    assert workflow.count('$PSNativeCommandUseErrorActionPreference = $true') == 6
+    assert 'node-version: "24.15.0"' in workflow
+    assert "include-hidden-files: true" in workflow
 
 
 def test_start_script_uses_the_managed_environment_and_web_entrypoint() -> None:

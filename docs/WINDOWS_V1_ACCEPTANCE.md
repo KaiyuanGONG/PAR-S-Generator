@@ -163,7 +163,7 @@
 本节记录已经实际执行的候选门槛；尚未合并或打标签时，不得把它写成
 GitHub 已发布。
 
-- Python：279/279 通过，包含 Gate A 100 例数值/manifest 回归、
+- Python：280/280 通过，包含 Gate A 100 例数值/manifest 回归、
   LimitedActivity v1 与原生 picker helper/API；仅保留 14 个第三方弃用
   warning。
 - 活跃 Python 路径 Ruff：通过。
@@ -172,6 +172,11 @@ GitHub 已发布。
 - `verify_windows_v1.ps1 -SkipBrowserTests -SkipRealSimind`：验证运行时
   哈希、上述 Python/Ruff/unit/build、loopback launcher、阳性 prepare 和
   真阴性 mock，最终退出码 0。浏览器门槛在同一提交上单独完整执行。
+- 原生 WebSocket 运行依赖锁定为 `websockets==17.0.1`；真实 Uvicorn
+  E2E 6/6，未再出现缺少 WebSocket 实现或 unsupported upgrade 警告。
+- Windows CI 的每个多命令步骤启用 PowerShell 原生命令 fail-fast；任何
+  pytest/npm/CLI 非零退出不能再被同一步的后续成功命令覆盖。失败证据上传
+  显式包含 `.test-artifacts` 与 `.test_tmp` 隐藏目录。
 - 重构前真实证据：
   `docs/evidence/windows_v1_pre_refactor_real_20260823.json`，source commit
   `3ac54662aa220abb030f19548b39dd9c23ab66a6`。

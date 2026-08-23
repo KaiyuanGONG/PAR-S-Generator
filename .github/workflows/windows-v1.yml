@@ -32,6 +32,8 @@ jobs:
       - name: Install Python dependencies
         shell: pwsh
         run: |
+          $ErrorActionPreference = "Stop"
+          $PSNativeCommandUseErrorActionPreference = $true
           python -m venv .venv
           .\.venv\Scripts\python.exe -m pip install --upgrade "pip==26.0.1"
           .\.venv\Scripts\python.exe -m pip install -r requirements-windows-v1.lock.txt
@@ -41,12 +43,16 @@ jobs:
         working-directory: webui/frontend
         shell: pwsh
         run: |
+          $ErrorActionPreference = "Stop"
+          $PSNativeCommandUseErrorActionPreference = $true
           npm.cmd ci
           npx.cmd playwright install chromium
 
       - name: Python tests
         shell: pwsh
         run: |
+          $ErrorActionPreference = "Stop"
+          $PSNativeCommandUseErrorActionPreference = $true
           .\.venv\Scripts\python.exe -m pytest -q
           .\.venv\Scripts\python.exe -m ruff check main.py src\cli.py src\windows_launcher.py src\core\windows_v1.py src\core\limited_activity.py src\core\phantom_generator.py src\core\hybrid_v2_adapter.py src\core\interfile_writer.py src\core\windows_runtime.py src\pipeline\provenance.py src\pipeline\runner.py src\pipeline\qc.py src\pipeline\simind.py scripts\freeze_windows_v1_run.py scripts\compare_windows_v1_runs.py webui\server\app.py webui\server\fsapi.py
 
@@ -54,6 +60,8 @@ jobs:
         working-directory: webui/frontend
         shell: pwsh
         run: |
+          $ErrorActionPreference = "Stop"
+          $PSNativeCommandUseErrorActionPreference = $true
           npm.cmd run lint
           npm.cmd run test:unit
           npm.cmd run build
@@ -62,6 +70,8 @@ jobs:
         working-directory: webui/frontend
         shell: pwsh
         run: |
+          $ErrorActionPreference = "Stop"
+          $PSNativeCommandUseErrorActionPreference = $true
           npm.cmd run test:e2e
           npm.cmd run test:a11y
           npm.cmd run test:visual
@@ -69,6 +79,8 @@ jobs:
       - name: Prepare and mock Windows state machines
         shell: pwsh
         run: |
+          $ErrorActionPreference = "Stop"
+          $PSNativeCommandUseErrorActionPreference = $true
           $Root = Join-Path $env:RUNNER_TEMP "pars-windows-v1"
           New-Item -ItemType Directory -Path $Root -Force | Out-Null
           $Prepare = Join-Path $Root "prepare.json"

@@ -72,7 +72,7 @@ finally {
     Pop-Location
 }
 
-& $EnvironmentPython -c "import fastapi, numpy, scipy, PyQt6, uvicorn; print('Windows v1 Python environment OK')"
+& $EnvironmentPython -c "import fastapi, numpy, scipy, PyQt6, uvicorn, websockets; print('Windows v1 Python environment OK')"
 if ($LASTEXITCODE -ne 0) { throw "Python environment smoke check failed." }
 
 Write-Host "Setup complete. Start with .\start_windows.ps1" -ForegroundColor Green

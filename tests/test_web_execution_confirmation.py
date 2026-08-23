@@ -79,6 +79,7 @@ def test_execute_over_ten_cases_requires_separate_cost_confirmation(tmp_path: Pa
             json={
                 "config_path": str(config_path),
                 "allow_simind_execution": True,
+                "allow_unverified_runtime": True,
             },
         )
 
