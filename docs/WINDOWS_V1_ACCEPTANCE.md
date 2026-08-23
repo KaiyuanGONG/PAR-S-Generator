@@ -4,7 +4,7 @@
 
 ## 1. 前提与权威合同
 
-- 系统：Windows 10/11，64 位；Python 3.11；Node.js 22.19 或更新版本。
+- 系统：Windows 10/11，64 位；Python 3.11；Node.js 22.22.2+、24.15+ 或 26+。
 - 唯一入口：`python main.py` 或 `start_windows.ps1`。`legacy_pyqt.py` 仅供查看历史界面。
 - 唯一生产 profile：`hybrid_v2_limited_activity_v1`。
 - 唯一后端：`runtime_backend=windows_native`。界面中不得出现 Linux/WSL/服务器选项。
@@ -177,6 +177,9 @@ GitHub 已发布。
 - Windows CI 的每个多命令步骤启用 PowerShell 原生命令 fail-fast；任何
   pytest/npm/CLI 非零退出不能再被同一步的后续成功命令覆盖。失败证据上传
   显式包含 `.test-artifacts` 与 `.test_tmp` 隐藏目录。
+- `git archive` 隔离验证确认 `ge870_czt.smc` 仍为 2501 字节且 SHA-256
+  为权威值 `4d10eab246a7a6690663230d2f33aeb3c32f67c598af36b56d1575f0e3551d10`；
+  `.gitattributes` 回归测试锁定该字节契约。
 - 重构前真实证据：
   `docs/evidence/windows_v1_pre_refactor_real_20260823.json`，source commit
   `3ac54662aa220abb030f19548b39dd9c23ab66a6`。
