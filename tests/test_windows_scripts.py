@@ -19,11 +19,13 @@ def test_setup_script_locks_python_and_builds_the_frontend() -> None:
     assert "websockets==17.0.1" in lock
 
 
-def test_windows_ci_fails_fast_and_preserves_hidden_failure_evidence() -> None:
+def test_windows_ci_fails_fast_and_preserves_release_bytes_and_failure_evidence() -> None:
     workflow = (ROOT / ".github" / "workflows" / "windows-v1.yml").read_text(encoding="utf-8")
     assert workflow.count('$PSNativeCommandUseErrorActionPreference = $true') == 6
     assert 'node-version: "24.15.0"' in workflow
     assert "include-hidden-files: true" in workflow
+    attributes = (ROOT / ".gitattributes").read_text(encoding="utf-8").splitlines()
+    assert "simind/ge870_czt.smc -text -eol -whitespace" in attributes
 
 
 def test_start_script_uses_the_managed_environment_and_web_entrypoint() -> None:
