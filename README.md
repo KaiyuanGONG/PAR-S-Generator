@@ -1,266 +1,239 @@
 # PAR-S Generator
 
-PAR-S Generator is a Windows desktop application for generating synthetic liver SPECT phantom datasets and preparing them for Monte Carlo simulation with SIMIND.
+PAR-S Generator prepares reproducible synthetic liver SPECT datasets for the current GE NM/CT 870 CZT research protocol. Its endpoint is a QC-checked, checksum-inventoried dataset package. It does **not** reconstruct images or run, train, manage or evaluate a model.
 
-![Phantom Preview](docs/phantom_preview.png)
+## Windows v1.0.0 canonical workflow
 
-## Overview
+There is one production path shared by the desktop UI and CLI:
 
-The workflow is split into two main workspaces:
-
-| Workspace | Purpose |
-|-----------|---------|
-| **Generate** | Author phantoms interactively, run batch generation, monitor progress |
-| **Simulate** | Convert phantom data to SIMIND-ready binaries, run simulation, inspect output |
-
-Settings and About are accessible from the bottom of the left sidebar.
-
-## Requirements
-
-- Windows 10/11 (64-bit)
-- Python 3.10 or later (3.11 recommended)
-- `simind.exe` — user must provide; place in `simind/`
-
-Install Python dependencies:
-
-```bash
-pip install -r requirements.txt
+```text
+Web / FastAPI / CLI → Hybrid V2 anatomy → corrected-master lesions
+  → LimitedActivity v1 → physical μ-map → ACT / ATN → Phantom QC
+  → native Windows SIMIND → Projection QC → Package / Finalize
 ```
 
-Run the application:
+The only profile allowed to create or resume production is
+`schema_version=windows_v1`,
+`generation_profile=hybrid_v2_limited_activity_v1`,
+`runtime_backend=windows_native`. Legacy/master, Task12 full V2, Gate B Linux
+and the old PyQt workflow remain inspectable historical evidence, never
+alternative production modes. The scientific provenance and boundaries are
+defined in [Windows v1 scientific authority](docs/WINDOWS_V1_SCIENTIFIC_AUTHORITY.md).
 
-```bash
-python main.py
-```
+The editable Windows v1 surface is deliberately narrow: positive,
+true-negative or mixed queues; 1–5 lesions for positive cases; fixed physical
+size bands `[10,20)`, `[20,40)`, `[40,60] mm`; non-negative size weights; TNR
+within 2–8; feasible whole/right/left/automatic territory selection; a
+JavaScript-safe integer seed; NN 1–1,000,000; and 1–32 workers. True-negative
+cases always contain zero lesions and are marked `independent_test_control`.
+Matrix 128³, 4.42-mm voxels, 80,000 activity counts, physical μ-map, array
+order and acquisition/FOV constants are locked rather than silently migrated
+from older profiles.
 
-## Generate
+Every invocation uses `runs/<run_id>/`; files from different runs are never globbed into one batch. `run.json` stores the strict effective configuration and stage evidence, `cases.jsonl` stores roles and case-level provenance/QC, `splits.json` fixes the phantom-level partition, and `dataset_manifest.json` inventories packaged files by relative path, byte size and SHA-256 checksum. Resume rechecks the configuration fingerprint, input/runtime hashes and stage evidence. A finalized manifest is immutable.
 
-### Preview tab
+Current scientific limitations are visible states, not hidden defaults.
+Array/orientation, the scoped type−7 attenuation contract, native 160×208
+detector FOV, the scoped 300-mm point/line response control and repeated
+`/RR`–`/NN` sampling controls passed. Local evidence supports the nominal
+60 MBq × 28.4 s activity–time contract (SIMIND Index-25 = 1704). Historical
+Gate B/C work also evaluated an empirical observation policy, but Windows v1
+does not create that layer. The 100-case population QC and ten-case corrected
+SIMIND pilot permit production within their scoped protocol; they are not
+absolute cps/MBq or model-performance claims. See [decision gates](docs/DECISION_GATES.md).
 
-Use the Preview tab to tune a single phantom interactively before committing to a batch run.
+## Desktop application
 
-**Parameter groups (left panel):**
-
-- `Volume` — matrix size and voxel spacing
-- `Liver Geometry` — liver size, shape, left/right lobe ratio
-- `Tumors` — count, diameter range, morphology, contrast
-- `Activity` — perfusion mode, background activity
-
-Each group has a default (slider-limited) mode and an `Advanced` mode that unlocks the full parameter range up to hard safety bounds. All parameters have tooltips.
-
-**Volume presets:**
-
-| Matrix | Voxel size |
-|--------|-----------|
-| 96 | 5.89 mm |
-| 128 | 4.42 mm |
-| 160 | 3.54 mm |
-
-These preserve comparable anatomic coverage at different sampling densities.
-
-**Tumor options:**
-
-- Morphology: `Ellipsoid`, `Spiculated`, `Random`
-- Perfusion mode: `Whole Liver`, `Tumor Only`, `Left Only`, `Right Only`, `Random`
-- Tumor diameter is always defined in physical mm
-
-**Behavior notes:**
-
-- Preview always uses `case_id = 0` and does not consume the batch sequence
-- Preview forces an exact tumor count; batch uses min/max range
-- Changing matrix or voxel size does not automatically rescale tumor diameter metadata
-
-### Batch settings (below preview)
-
-| Control | Purpose |
-|---------|---------|
-| Number of cases | Total phantoms to generate |
-| Use fixed seed | Enable reproducible output |
-| Global seed | Base seed; each case uses `global_seed + case_id` |
-| Output directory | Where `.npz` files and metadata are written |
-| Start Batch | Launch background generation |
-
-### Batch Monitor tab
-
-Live monitoring of an active or completed batch:
-
-- Progress bar, ETA, elapsed time
-- Summary cards and charts
-- Per-case table
-- Log panel
-- Load an existing `batch_summary.json` to review past runs
-
-## Simulate
-
-### Step 1 — Raw Binary Export
-
-Select the source directory containing `case_*.npz` files and an output directory. Each case is exported as:
-
-- `case_XXXX_act_av.bin` — activity map
-- `case_XXXX_atn_av.bin` — attenuation map
-
-### Step 2 — SIMIND Configuration
-
-Configure the paths to `simind.exe` and the `.smc` configuration file, and set the SIMIND output directory.
-
-### Step 3 — Run
-
-- Generate a `.bat` script for manual or scheduled execution, or
-- Launch SIMIND directly from the UI
-
-### Step 4 — Visual Check
-
-The `SPECT Preview` panel on the right loads the first `.a00` file automatically after a successful run.
-
-## Batch Parallel Production (CLI)
-
-For large-scale production runs (hundreds of cases), use `run_batch.ps1` instead of the UI:
+Requirements are Windows 10/11, 64-bit Python 3.11, a dependency-supported Node.js release (22.22.2+, 24.15+, or 26+) for the one-time build, and a licensed user-provided SIMIND executable.
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File run_batch.ps1
+Set-ExecutionPolicy -Scope Process Bypass
+.\setup_windows.ps1
+.\start_windows.ps1
 ```
 
-Edit the configuration block at the top of the script before running:
+`python main.py` starts the same loopback-only FastAPI/Web application and opens the browser. It handles a busy preferred port, prevents a second local instance and cleans up on exit. No EXE/installer is distributed. The historical PyQt application is available only through `python legacy_pyqt.py`.
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `$MAX_PARALLEL` | 16 | Concurrent SIMIND processes |
-| `$NN` | 5 | Photon history multiplier |
-| `$SMC` | `simind\ge870_czt` | SMC file path (no extension) |
-| `$INPUT_DIR` | `output\trans_noNoise` | Directory with `.bin` files |
-| `$OUTPUT_DIR` | `output\SPECT_60Mbq20s` | SIMIND output directory |
-| `$CASE_START` / `$CASE_END` | 1 / 500 | Case range |
+The interface has six sequential data-preparation areas:
 
-The script skips already-completed cases and writes a `batch_log.txt` to the output directory.
+1. **Project / Protocol** — run identity, protocol and unresolved decisions.
+2. **Phantom** — one-case visual preview using the same effective values as the run.
+3. **Simulation** — native Windows SIMIND/SMC provenance, expectation output and experiment preparation.
+4. **Run** — the only create/resume/pause/execute entry point.
+5. **QC / Dataset** — stage evidence, case records and canonical projection view.
+6. **Finalize** — completeness checks and immutable manifest.
 
-## Validation
+Native pickers select SIMIND `.exe`, SMC `.smc`, the runs root and experiment export root. Only local drives are accepted; session authorization is not persisted. The validated transform for newly generated data is `raw[:, ::-1, :]`: acquisition view order is retained and the detector row is flipped. ACT/ATN are C-order ZYX little-endian `<f4`; ATN is `mu_map × 0.442`. Actual SIMIND launch always requires explicit confirmation. An unknown executable or SMC hash requires a separate confirmation and is permanently labeled `unverified_runtime` in that run.
 
-The UI blocks operations and shows warnings before preview, batch, export, or SIMIND launch.
+## Local Web workbench
 
-**Blocked:**
+The React/FastAPI workstation implements the same six-step contract as a
+Plan → Run → Review → Seal lifecycle. It is local-only and does not add a
+second pipeline: FastAPI delegates generation, QC, pause/resume, experiment
+preparation and Finalize to the existing Python implementation.
 
-- `Min tumors > Max tumors`
-- `Contrast min > Contrast max`
-- Empty output directory
-- Invalid `simind.exe` or `.smc` path
-- Missing `case_*.npz` files
-- Non-cubic volume
-- Bundled `ge870_czt.smc` used with an incompatible geometry
+For development, run the service and Vite in separate PowerShell terminals after `npm ci`:
 
-**Warned:**
-
-- Parameters outside recommended range but within hard safety bounds
-- Custom matrix/voxel settings that no longer match the bundled SMC file
-
-## Output Structure
-
-### Phantom output
-
-```
-output/syn3d/
-├── case_0001.npz
-├── case_0001_meta.json
-├── case_0002.npz
-└── batch_summary.json
+```powershell
+$env:PYTHONPATH = 'src'
+python -m uvicorn webui.server.app:app --host 127.0.0.1 --port 8765
+Set-Location webui/frontend
+npm run dev -- --host 127.0.0.1 --port 5173
 ```
 
-### Raw binary export
+The workbench provides:
 
-```
-output/interfile/
-├── case_0001_act_av.bin
-├── case_0001_atn_av.bin
-└── ...
-```
+- a versioned strict Windows v1 draft; old drafts are read-only and are never
+  silently migrated into production;
+- synchronized axial/coronal/sagittal inspection plus interactive 3D or MIP,
+  using one linked voxel cursor, measured values and real masks;
+- allowlisted file/directory browsing, SMC parsing and preparation of all five
+  validation experiments without launching SIMIND;
+- Run monitoring with explicit execute consent and pause/resume, always ending
+  in Review rather than automatic sealing;
+- real ledger, `.res`, projection/sinogram, manifest and split inspection; and
+- an independent irreversible Seal screen which calls the runner Finalize gate
+  and displays the package SHA-256.
 
-### SIMIND output
+English, Simplified Chinese and French, equal light/dark themes, keyboard use
+and 1280×720 workstation layouts are covered by automated browser checks. The
+functional traceability matrix is [documented here](docs/WEB_UI_FUNCTIONAL_MATRIX.md),
+and the local API contract is [documented here](docs/WEB_API_CONTRACT_DRAFT.md).
 
-```
-output/simind/
-├── case_0001.a00
-├── case_0001.h00
-├── case_0001.res
-└── ...
-```
+## Command line
 
-## SIMIND Configuration
+Use the repository's `src` directory on `PYTHONPATH`. Positive, true-negative and mixed queues have explicit counts:
 
-The bundled `simind/ge870_czt.smc` targets the GE NM/CT 870 CZT scanner and assumes:
-
-- Matrix: `128 × 128 × 128`
-- Voxel size: `4.42 mm`
-
-If you change the matrix or voxel size, you must supply a compatible `.smc` file. Photon histories are controlled by the `.smc` file, not by the UI.
-
-## Settings
-
-Settings are stored as JSON (not `QSettings`).
-
-Default location: `%APPDATA%\PAR-S Generator\settings.json`
-
-Stored items:
-
-- Default `simind.exe` path
-- Default `.smc` path
-- Default phantom output directory
-- Theme (`dark` / `light`)
-- Language (`English` / `中文` / `Français`)
-- Auto-save batch config on start
-
-When auto-save is enabled, the app writes `last_batch_config.json` into the selected batch output folder.
-
-## Tests
-
-```bash
-python -m pytest tests/test_phantom_anatomy.py tests/test_validation.py tests/test_workflow_state.py tests/test_ui_smoke.py -q
+```powershell
+$env:PYTHONPATH = 'src'
+python -m cli init --run-id pilot-001 --cohort-mode mixed --positive-cases 1 --negative-cases 1 --mode prepare --output pilot-001.json
+python -m cli run --config pilot-001.json
+python -m cli inspect --run runs/pilot-001
 ```
 
-## Project Structure
+Modes are:
 
-```
-PAR-S-Generator/
-├── main.py                     # Application entry point
-├── requirements.txt
-├── build_windows.spec          # PyInstaller configuration
-├── run_batch.ps1               # CLI parallel batch production script
-├── src/
-│   ├── core/
-│   │   ├── phantom_generator.py    # 3D liver phantom algorithm
-│   │   ├── batch_runner.py         # Background batch worker (QThread)
-│   │   ├── batch_stats.py          # Batch statistics tracking
-│   │   ├── interfile_writer.py     # NPZ → binary export
-│   │   ├── parameter_specs.py      # Parameter definitions & bounds
-│   │   └── validation.py           # Pre-run validation rules
-│   └── ui/
-│       ├── main_window.py          # Main window & navigation
-│       ├── app_state.py            # Global application state
-│       ├── settings_store.py       # JSON settings persistence
-│       ├── i18n.py                 # Internationalization (EN/中文/FR)
-│       ├── pages/
-│       │   ├── phantom_page.py     # Generate workspace
-│       │   ├── simulation_page.py  # Simulate workspace
-│       │   ├── results_page.py     # Results viewer
-│       │   └── settings_page.py    # Settings dialog
-│       └── widgets/
-│           ├── param_widgets.py    # Parameter input controls
-│           ├── slice_viewer.py     # 3D slice & surface viewer
-│           └── simind_viewer.py    # .a00 projection viewer
-├── resources/styles/
-│   ├── dark_theme.qss
-│   └── light_theme.qss
-├── simind/
-│   ├── ge870_czt.smc           # GE NM/CT 870 CZT configuration
-│   └── simind.exe              # SIMIND binary (user-provided)
-├── tests/
-│   ├── test_phantom_anatomy.py
-│   ├── test_validation.py
-│   ├── test_workflow_state.py
-│   └── test_ui_smoke.py
-├── docs/                       # Technical documentation (Chinese)
-└── notebook/
-    └── pipeline_overview.ipynb # End-to-end pipeline walkthrough
+- `prepare`: generate/QC/export and write exact SIMIND jobs, but do not execute or finalize a dataset;
+- `mock`: software smoke testing only; projection physics are explicitly fake;
+- `execute`: run SIMIND, requiring `--allow-simind-execution`.
+
+Resume the same effective configuration with:
+
+```powershell
+python -m cli run --config pilot-001.json --resume
 ```
 
-## License
+For `execute`, add `--allow-simind-execution`. More than ten real cases need
+`--allow-large-simind-execution`; an unknown runtime hash independently needs
+`--allow-unverified-runtime`. `run_batch.ps1` remains only a compatibility
+wrapper around the same CLI and requires an explicit Windows v1 config:
 
-MIT License. See [LICENSE](LICENSE).
+```powershell
+.\run_batch.ps1 -Config pilot-001.json -Resume
+```
+
+It owns no paths, case range, `/NN`, completion or resume defaults. Exported audit BAT files and the old notebook are not production entry points; `PipelineRunner` is authoritative.
+
+## Run layout
+
+```text
+runs/<run_id>/
+├── run.json
+├── cases.jsonl
+├── splits.json
+├── dataset_manifest.json
+├── phantom/
+├── simind_input/
+├── expectation/
+├── observation/     # historical-ledger compatibility; empty in Windows v1
+├── qc/
+├── logs/
+└── figures/
+```
+
+Activity and attenuation are exported atomically as C-order ZYX little-endian `<f4`, immediately read back, size-checked and checksummed. Windows v1 finalizes the SIMIND expectation after projection QC and does not create a seeded offline Poisson observation. The historical observation implementation remains available only for read-only evidence from earlier profiles.
+
+## Physics-validation packages
+
+The following controls can be prepared without launching SIMIND:
+
+```powershell
+python -m cli prepare-experiment --name all --destination experiments/validation-v1
+```
+
+The packages cover:
+
+- Flag-15 `.ict` attenuation readback;
+- asymmetric-fiducial axis/orientation validation;
+- legacy 128×128 versus GE-native 160×208 detector aperture and axis controls;
+- point/line response and sensitivity;
+- repeated `/RR` and `/NN` Monte Carlo behavior.
+
+Each folder contains deterministic inputs, copied SMC variants, command JSON/BAT, a result template and an analyzer. Preparation never executes SIMIND. After an authorized run, analyze one package with:
+
+```powershell
+python -m cli analyze-experiment --experiment experiments/validation-v10/attenuation_ict
+```
+
+SIMIND V8 is invoked with a validated safe basename in its working directory. After a zero exit code, the shared executor collision-checks and relocates the generated artifacts to the run-isolated output directory before QC. This avoids silent parsing of hyphens in absolute paths as SIMIND switches.
+
+## Existing evidence
+
+`WINDOWS_V1_SCIENTIFIC_AUTHORITY.md`, `WINDOWS_V1_ACCEPTANCE.md` and this README define the active software contract. Earlier tutorials, Gate documents, configuration notes and audits are retained as historical evidence; their commands and profile claims are not production instructions.
+
+- [Implementation report](docs/IMPLEMENTATION_REPORT_2026-08-17.md)
+- [Methods draft](docs/METHODS_SYNTHETIC_DATA.md)
+- [Scientific decision gates](docs/DECISION_GATES.md)
+- [Validation results](docs/VALIDATION_RESULTS_2026-08-17.md)
+- [Local protocol evidence](docs/LOCAL_PROTOCOL_EVIDENCE_2026-08-17.md)
+- [Stage 3 protocol promotion and pilot](docs/STAGE3_PROTOCOL_PROMOTION_2026-08-18.md)
+- [Windows v1 scientific authority](docs/WINDOWS_V1_SCIENTIFIC_AUTHORITY.md)
+- [Windows v1 complete acceptance procedure](docs/WINDOWS_V1_ACCEPTANCE.md)
+- [Repository governance](docs/REPOSITORY_GOVERNANCE.md)
+- `docs/evidence/windows_v1_pre_refactor_real_20260823.json` — frozen native
+  Windows mixed two-case baseline at commit `3ac5466`.
+- `docs/evidence/windows_v1_post_refactor_real_20260823.json` and
+  `windows_v1_refactor_equivalence_20260823.json` — native Windows NN=10
+  post-refactor evidence and 42/42 behavior-equivalence checks.
+- `manifests/legacy-v1-weighted-mc/` — read-only checksum freeze of the 500 historical cases.
+- `runs/qa-smoke-20260817/` — finalized two-case deterministic software smoke, explicitly not scientific data.
+- `runs/stage3-phantom-100-v3-20260818/` — accepted 100-case generated-population QC evidence.
+- `runs/stage3-simind-pilot-10-v3-20260818/` — finalized corrected ten-case SIMIND/observation pilot.
+- `docs/evidence/stage3_pilot_summary_2026-08-18.json` — compact machine-readable Stage-3 verdict and per-case metrics.
+- `docs/evidence/` — UI screenshots and machine-readable Windows acceptance
+  evidence.
+
+## Verification
+
+```powershell
+.\scripts\verify_windows_v1.ps1 -SkipRealSimind
+```
+
+The script checks the exact local runtime hashes, Python suite, controlled Ruff
+rules for the active path, frontend lint/unit/build/E2E/a11y/visual, loopback
+launcher, prepare and mock state machines. Without `-SkipRealSimind`, it asks
+for the exact phrase `RUN SIMIND` before the required
+one-positive/one-true-negative NN=10, worker=1 native acceptance. See the
+[complete manual procedure](docs/WINDOWS_V1_ACCEPTANCE.md) for path-picker and
+corruption/resume cases.
+
+Web checks run separately from `webui/frontend`:
+
+```powershell
+npm run lint
+npm run test:unit
+npm run build
+npm run test:e2e
+npm run test:a11y
+npm run test:visual
+```
+
+The browser suites require the preceding build and serve the prebuilt `dist`
+through Vite's production preview; they do not use the development HMR server.
+They use deterministic mock/fixture data and never launch real SIMIND. Visual
+baselines cover all six workspaces in three languages and two themes at
+1440×900, plus Chinese/French light/dark coverage at 1280×720.
+
+## Scope boundary
+
+The software and documentation are limited to synthetic liver SPECT data preparation under the current protocol. Nothing here establishes general validity for every cancer, organ, scanner, collimator or acquisition protocol. Scanner-specific physical claims remain conditional on controlled experiments and correctly matched measurements.

@@ -1,0 +1,14 @@
+{
+  "completed_utc": null,
+  "experiment": "asymmetric_fiducial",
+  "notes": "",
+  "observations": [],
+  "operator": null,
+  "pass_fail": {
+    "axis_order_unique": "not_evaluated",
+    "loader_transform": "not_evaluated"
+  },
+  "simind_version": null,
+  "started_utc": null,
+  "status": "not_run"
+}

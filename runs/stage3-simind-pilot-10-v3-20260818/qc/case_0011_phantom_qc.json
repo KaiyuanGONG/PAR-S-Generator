@@ -1,0 +1,115 @@
+{
+  "attenuation_contract": {
+    "reference_energy_kev": 140.5,
+    "status": "verified_type7_mu_times_voxel_v10_current_h2o_protocol",
+    "unit": "cm^-1"
+  },
+  "cantlie": {
+    "abs_error": 2.3554747964227296e-05,
+    "converged": true,
+    "iterations": 5,
+    "offset": 0.12187499999999998,
+    "search": {
+      "expanded_beyond_initial_range": true,
+      "expanded_offset_range": [
+        -0.05,
+        0.16999999999999998
+      ],
+      "expansions": 1,
+      "hit_expansion_limit": false,
+      "initial_offset_range": [
+        -0.05,
+        0.12
+      ],
+      "solution_on_search_boundary": false,
+      "target_bracketed": true
+    },
+    "target_left_ratio": 0.35,
+    "tilt_deg": 4.712052849205419
+  },
+  "failures": [],
+  "meta": "D:\\PFE-U\\PAR-S-Generator\\runs\\stage3-simind-pilot-10-v3-20260818\\phantom\\case_0011_meta.json",
+  "metrics": {
+    "activity_dtype": "float32",
+    "activity_sum": 80000.00846552849,
+    "left_ratio": 0.3500235547479642,
+    "liver_volume_ml": 1283.087844792,
+    "mu_dtype": "float32",
+    "mu_max": 0.30040082335472107,
+    "mu_min": 0.0,
+    "n_tumors": 3,
+    "shape": [
+      128,
+      128,
+      128
+    ],
+    "tumors": [
+      {
+        "effective_diameter_mm": 34.59239534741099,
+        "index": 0,
+        "mode": "ellipsoid",
+        "nominal_diameter_mm": 34.862915507317,
+        "outside_liver_vox": 0,
+        "overlap_previous_vox": 0,
+        "perfusion_region": "low_perfusion",
+        "placement_stratum": "central",
+        "sampled_size_bin_mm": [
+          20.0,
+          40.0
+        ],
+        "surface_margin_mm": 13.26,
+        "target_contrast": 4.238460330700704,
+        "tnr_from_saved_activity": 0.510717746121881,
+        "tnr_local_from_saved_activity": 4.222775880547044,
+        "volume_vox": 251
+      },
+      {
+        "effective_diameter_mm": 26.51238980267902,
+        "index": 1,
+        "mode": "ellipsoid",
+        "nominal_diameter_mm": 29.522811544231438,
+        "outside_liver_vox": 0,
+        "overlap_previous_vox": 0,
+        "perfusion_region": "high_perfusion",
+        "placement_stratum": "central",
+        "sampled_size_bin_mm": [
+          20.0,
+          40.0
+        ],
+        "surface_margin_mm": 15.936536637550832,
+        "target_contrast": 3.873395234076587,
+        "tnr_from_saved_activity": 5.659357007281083,
+        "tnr_local_from_saved_activity": 3.8848277204384507,
+        "volume_vox": 113
+      },
+      {
+        "effective_diameter_mm": 14.633243370680612,
+        "index": 2,
+        "mode": "ellipsoid",
+        "nominal_diameter_mm": 15.473155044585969,
+        "outside_liver_vox": 0,
+        "overlap_previous_vox": 0,
+        "perfusion_region": "high_perfusion",
+        "placement_stratum": "central",
+        "sampled_size_bin_mm": [
+          10.0,
+          20.0
+        ],
+        "surface_margin_mm": 8.84,
+        "target_contrast": 2.0645734273605987,
+        "tnr_from_saved_activity": 3.0110020636849453,
+        "tnr_local_from_saved_activity": 2.0668822038000987,
+        "volume_vox": 19
+      }
+    ]
+  },
+  "npz": "D:\\PFE-U\\PAR-S-Generator\\runs\\stage3-simind-pilot-10-v3-20260818\\phantom\\case_0011.npz",
+  "sha256": {
+    "meta": "98022e2aaf29f81e4238c54d788fdc9bb7c909378a57da9d1baa09c61cc96a99",
+    "npz": "411a48e851e8a2def4966b70c2309acdd2ee842e25b031695468e056a2768b52"
+  },
+  "status": "passed",
+  "warnings": [
+    "cantlie_search_range_expanded"
+  ]
+}

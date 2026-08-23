@@ -1,0 +1,297 @@
+{
+  "completed_utc": "2026-08-17T23:00:03+00:00",
+  "experiment": "point_line_source",
+  "jobs": [
+    {
+      "artifacts": [
+        {
+          "bytes": 3932160,
+          "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\point_line_source\\output\\point_center.a00",
+          "sha256": "9b3c657d88784c2707d6f926504507211bcb28c79b81472ef0c9e1066708a193"
+        },
+        {
+          "bytes": 276,
+          "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\point_line_source\\output\\point_center.mhd",
+          "sha256": "e0d775b9c1a7383e87b0f3968d1c36e585b323da99c12cb3b8a027bf436da0e1"
+        },
+        {
+          "bytes": 6009,
+          "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\point_line_source\\output\\point_center.res",
+          "sha256": "fd8570321c5789f01aa65829621c4c4b2b68bf441ac5d2389ac4c8ae073ba51a"
+        },
+        {
+          "bytes": 16896,
+          "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\point_line_source\\output\\point_center.spe",
+          "sha256": "e19fe16b8b7514c8da6ebfc16a353573f4f2e70d04c36237c1c7d1cab0c15030"
+        }
+      ],
+      "case_id": "point_center",
+      "command": [
+        "D:\\PFE-U\\PAR-S-Generator\\simind\\simind.exe",
+        "point_line_source",
+        "point_center",
+        "/FS:point_center",
+        "/FD:point_center",
+        "/NN:10"
+      ],
+      "log": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\point_line_source\\logs\\point_center.log",
+      "qc": {
+        "a00": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\point_line_source\\output\\point_center.a00",
+        "canonical_transform": "raw[:,::-1,:]",
+        "exit_code": 0,
+        "failures": [],
+        "metrics": {
+          "dtype": "float32",
+          "max": 72137.8125,
+          "mean": 5.047854295869668,
+          "noninteger_positive_fraction": 1.0,
+          "nonzero_fraction": 0.0001800537109375,
+          "shape": [
+            60,
+            128,
+            128
+          ],
+          "sum": 4962242.687011719,
+          "support_cols": [
+            59,
+            60,
+            61,
+            62,
+            63,
+            64,
+            65,
+            66,
+            67,
+            68
+          ],
+          "support_rows": [
+            61,
+            62,
+            63,
+            64,
+            65,
+            66,
+            67,
+            68
+          ]
+        },
+        "mhd": {
+          "dim_size": [
+            128,
+            128,
+            60
+          ],
+          "element_data_file": "point_center.a00",
+          "element_type": "MET_FLOAT",
+          "exists": true
+        },
+        "res": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\point_line_source\\output\\point_center.res",
+        "res_command_tokens_matched": true,
+        "res_completion_marker": true,
+        "res_effective": {
+          "activity_time_value": 1704.0,
+          "command": "point_line_source point_center /FS:point_center /FD:point_center /NN:10",
+          "detector_matrix_i": 128,
+          "detector_matrix_j": 128,
+          "detector_pitch_cm": 0.246,
+          "input_pixel_size_i_cm": 0.442,
+          "input_pixel_size_j_cm": 0.442,
+          "lower_energy_window_kev": 126.0,
+          "nn_scaling_factor": 10.0,
+          "photon_energy_kev": 140.0,
+          "photons_per_projection": 10,
+          "projection_count": 60,
+          "rotation_step_deg": 6.0,
+          "sensitivity_cps_per_mbq": 48.5352,
+          "source": "SIMIND .res",
+          "upper_energy_window_kev": 154.0
+        },
+        "res_expected_command_tokens": [
+          "/FS:point_center",
+          "/FD:point_center",
+          "/NN:10"
+        ],
+        "sha256": {
+          "a00": "9b3c657d88784c2707d6f926504507211bcb28c79b81472ef0c9e1066708a193",
+          "mhd": "e0d775b9c1a7383e87b0f3968d1c36e585b323da99c12cb3b8a027bf436da0e1",
+          "res": "fd8570321c5789f01aa65829621c4c4b2b68bf441ac5d2389ac4c8ae073ba51a"
+        },
+        "status": "passed"
+      },
+      "status": "passed",
+      "working_dir": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\point_line_source\\input"
+    },
+    {
+      "artifacts": [
+        {
+          "bytes": 3932160,
+          "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\point_line_source\\output\\line_z.a00",
+          "sha256": "6cae2e0be380249a10b8f9b798cba6be2738333b70c5ecdfb6ff6e69b2a99419"
+        },
+        {
+          "bytes": 270,
+          "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\point_line_source\\output\\line_z.mhd",
+          "sha256": "147df3b1a8763b32879bf9fdaed0b5387ac8a088f323dbfe54f99e48c7b17324"
+        },
+        {
+          "bytes": 5991,
+          "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\point_line_source\\output\\line_z.res",
+          "sha256": "4aaa428df82424adc9facc9537a7347c63511dcb3b3fb209f930beb633de8697"
+        },
+        {
+          "bytes": 16896,
+          "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\point_line_source\\output\\line_z.spe",
+          "sha256": "0bc55c42d105883c543c4872d0edf635058c34475f0512d46cb2e20de4d242b5"
+        }
+      ],
+      "case_id": "line_z",
+      "command": [
+        "D:\\PFE-U\\PAR-S-Generator\\simind\\simind.exe",
+        "point_line_source",
+        "line_z",
+        "/FS:line_z",
+        "/FD:line_z",
+        "/NN:10"
+      ],
+      "log": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\point_line_source\\logs\\line_z.log",
+      "qc": {
+        "a00": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\point_line_source\\output\\line_z.a00",
+        "canonical_transform": "raw[:,::-1,:]",
+        "exit_code": 0,
+        "failures": [],
+        "metrics": {
+          "dtype": "float32",
+          "max": 3738.34423828125,
+          "mean": 5.434337985722717,
+          "noninteger_positive_fraction": 1.0,
+          "nonzero_fraction": 0.0079345703125,
+          "shape": [
+            60,
+            128,
+            128
+          ],
+          "sum": 5342171.6134848595,
+          "support_cols": [
+            59,
+            60,
+            61,
+            62,
+            63,
+            64,
+            65,
+            66,
+            67,
+            68
+          ],
+          "support_rows": [
+            36,
+            37,
+            38,
+            39,
+            40,
+            41,
+            42,
+            43,
+            44,
+            45,
+            46,
+            47,
+            48,
+            49,
+            50,
+            51,
+            52,
+            53,
+            54,
+            55,
+            56,
+            57,
+            58,
+            59,
+            60,
+            61,
+            62,
+            63,
+            64,
+            65,
+            66,
+            67,
+            68,
+            69,
+            70,
+            71,
+            72,
+            73,
+            74,
+            75,
+            76,
+            77,
+            78,
+            79,
+            80,
+            81,
+            82,
+            83,
+            84,
+            85,
+            86,
+            87,
+            88,
+            89,
+            90,
+            91,
+            92,
+            93
+          ]
+        },
+        "mhd": {
+          "dim_size": [
+            128,
+            128,
+            60
+          ],
+          "element_data_file": "line_z.a00",
+          "element_type": "MET_FLOAT",
+          "exists": true
+        },
+        "res": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\point_line_source\\output\\line_z.res",
+        "res_command_tokens_matched": true,
+        "res_completion_marker": true,
+        "res_effective": {
+          "activity_time_value": 1704.0,
+          "command": "point_line_source line_z /FS:line_z /FD:line_z /NN:10",
+          "detector_matrix_i": 128,
+          "detector_matrix_j": 128,
+          "detector_pitch_cm": 0.246,
+          "input_pixel_size_i_cm": 0.442,
+          "input_pixel_size_j_cm": 0.442,
+          "lower_energy_window_kev": 126.0,
+          "nn_scaling_factor": 10.0,
+          "photon_energy_kev": 140.0,
+          "photons_per_projection": 510,
+          "projection_count": 60,
+          "rotation_step_deg": 6.0,
+          "sensitivity_cps_per_mbq": 52.2513,
+          "source": "SIMIND .res",
+          "upper_energy_window_kev": 154.0
+        },
+        "res_expected_command_tokens": [
+          "/FS:line_z",
+          "/FD:line_z",
+          "/NN:10"
+        ],
+        "sha256": {
+          "a00": "6cae2e0be380249a10b8f9b798cba6be2738333b70c5ecdfb6ff6e69b2a99419",
+          "mhd": "147df3b1a8763b32879bf9fdaed0b5387ac8a088f323dbfe54f99e48c7b17324",
+          "res": "4aaa428df82424adc9facc9537a7347c63511dcb3b3fb209f930beb633de8697"
+        },
+        "status": "passed"
+      },
+      "status": "passed",
+      "working_dir": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\point_line_source\\input"
+    }
+  ],
+  "resume": false,
+  "started_utc": "2026-08-17T23:00:01+00:00",
+  "status": "completed"
+}

@@ -1,0 +1,50 @@
+{
+  "base_smc": "D:\\PFE-U\\PAR-S-Generator\\simind\\ge870_czt.smc",
+  "base_smc_sha256": "4d10eab246a7a6690663230d2f33aeb3c32f67c598af36b56d1575f0e3551d10",
+  "blocking_decision": "Use measured PSF/line-spread evidence before physics-accuracy claims.",
+  "controls": [
+    "central one-voxel point",
+    "central Z line",
+    "zero attenuation",
+    "same protocol",
+    "/NN:1000"
+  ],
+  "criteria": [
+    {
+      "id": "centering",
+      "rule": "Point centroid agrees with expected detector center under tested orientation."
+    },
+    {
+      "id": "fwhm",
+      "rule": "FWHM/FWTM are finite, reported in pixels and mm, and compared to protocol expectation."
+    },
+    {
+      "id": "sensitivity",
+      "rule": "Projection totals and .res sensitivity (cps/MBq) are reported under the exact tested geometry."
+    },
+    {
+      "id": "symmetry",
+      "rule": "Horizontal/vertical response asymmetry is quantified."
+    }
+  ],
+  "execution_status": "prepared_not_run",
+  "name": "point_line_source",
+  "prepared_utc": "2026-08-17T23:02:33+00:00",
+  "purpose": "Measure spatial response, symmetry, centering and collimator/detector behavior.",
+  "resolution_reference": {
+    "geometric_expected_system_fwhm_mm": 17.500427931275787,
+    "hole_length_mm": 45.0,
+    "hole_opening_mm": 2.26,
+    "intrinsic_resolution_mm": 2.46,
+    "manufacturer_source": "DOC2109131 NM/CT 870 CZT product data sheet, page 10",
+    "manufacturer_system_fwhm_at_100mm_mm": 7.6,
+    "maximum_center_offset_px": 1.0,
+    "maximum_point_axis_asymmetry": 0.25,
+    "maximum_relative_error": 0.2,
+    "tested_point_to_collimator_distance_mm": 300.0
+  },
+  "scope": "GE 870 CZT current liver SPECT research protocol",
+  "simind_executable": "D:\\PFE-U\\PAR-S-Generator\\simind\\simind.exe",
+  "simind_executable_sha256": "f984b8753f54b9f671f9fc1bcb2b45461e7cae8d027376b446dd1ed55a9a8319",
+  "voxel_size_mm": 4.42
+}

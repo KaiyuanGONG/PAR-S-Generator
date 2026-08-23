@@ -1,0 +1,446 @@
+{
+  "nn_multiplier": 3000,
+  "observable": "same-run Scattwin primary_w1 sum divided by air_w1 sum",
+  "path_length_vox": 20,
+  "purpose": "Diagnose the type-7 stored-value response without absolute cps/MBq claims.",
+  "results": [
+    {
+      "components": {
+        "air": {
+          "nonzero": 3993,
+          "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v9\\attenuation_ict\\diagnostics\\type7_ladder\\ladder_0p0000_air_w1.a00",
+          "sha256": "829d7e7371a31eaf2eba89e2b47e085c2217fcfefb6443f3ee0199194a229b04",
+          "sum": 5285714.913063049
+        },
+        "pri": {
+          "nonzero": 3993,
+          "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v9\\attenuation_ict\\diagnostics\\type7_ladder\\ladder_0p0000_pri_w1.a00",
+          "sha256": "829d7e7371a31eaf2eba89e2b47e085c2217fcfefb6443f3ee0199194a229b04",
+          "sum": 5285714.913063049
+        },
+        "sca": {
+          "nonzero": 0,
+          "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v9\\attenuation_ict\\diagnostics\\type7_ladder\\ladder_0p0000_sca_w1.a00",
+          "sha256": "9af8275830f1496e82873fd2944a1619944f6fec9a380e7ad8fe3dd039010340",
+          "sum": 0.0
+        },
+        "tot": {
+          "nonzero": 3993,
+          "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v9\\attenuation_ict\\diagnostics\\type7_ladder\\ladder_0p0000_tot_w1.a00",
+          "sha256": "829d7e7371a31eaf2eba89e2b47e085c2217fcfefb6443f3ee0199194a229b04",
+          "sum": 5285714.913063049
+        }
+      },
+      "expected_if_mu_times_voxel": 1.0,
+      "input_attenuation_sha256": "2daeb1f36095b44b318410b3f4e8b5d989dcc7bb023d1426c492dab0a3053e74",
+      "input_source_sha256": "50828448dddbb3c9b4fe19ae654822c34c9c9f8478eedc09f272fb8ca6a3ef5f",
+      "mode3_readback_mu_cm_inverse": 0.0,
+      "primary_air_ratio": 1.0,
+      "res": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v9\\attenuation_ict\\diagnostics\\type7_ladder\\ladder_0p0000.res",
+      "res_sha256": "05ac8435a6091ae3c43abffc8093b68d733cf1b525e43d76d61789c818962ef6",
+      "stored_value": 0.0
+    },
+    {
+      "components": {
+        "air": {
+          "nonzero": 4015,
+          "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v9\\attenuation_ict\\diagnostics\\type7_ladder\\ladder_0p0400_air_w1.a00",
+          "sha256": "7b62a11848e037421d2d0ea3cecb9c8ae8534701351191bea9f15b6d6b8d019b",
+          "sum": 5308855.839069366
+        },
+        "pri": {
+          "nonzero": 4015,
+          "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v9\\attenuation_ict\\diagnostics\\type7_ladder\\ladder_0p0400_pri_w1.a00",
+          "sha256": "7b62a11848e037421d2d0ea3cecb9c8ae8534701351191bea9f15b6d6b8d019b",
+          "sum": 5308855.839069366
+        },
+        "sca": {
+          "nonzero": 6040,
+          "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v9\\attenuation_ict\\diagnostics\\type7_ladder\\ladder_0p0400_sca_w1.a00",
+          "sha256": "b4cc744308c69c58ab888c5bc3b44ca5bda68fb480e9df94cc4007198c0478a6",
+          "sum": 1021106.6976420693
+        },
+        "tot": {
+          "nonzero": 7967,
+          "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v9\\attenuation_ict\\diagnostics\\type7_ladder\\ladder_0p0400_tot_w1.a00",
+          "sha256": "4b85af0e684a6aefb3b03566dcc503740010c980d0eb68f0fd6ef37cd6ee4352",
+          "sum": 6329962.535037251
+        }
+      },
+      "expected_if_mu_times_voxel": 0.44932896411722156,
+      "input_attenuation_sha256": "047997217e25d5957bd4350ea863e04a6bc2cfa1fc551441025351f03234dfd3",
+      "input_source_sha256": "50828448dddbb3c9b4fe19ae654822c34c9c9f8478eedc09f272fb8ca6a3ef5f",
+      "mode3_readback_mu_cm_inverse": 0.09044820070266724,
+      "primary_air_ratio": 1.0,
+      "res": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v9\\attenuation_ict\\diagnostics\\type7_ladder\\ladder_0p0400.res",
+      "res_sha256": "86fe796767eb59ae76d6700fb5b64079eee268e5a28f1aed8270066d7e724939",
+      "stored_value": 0.04
+    },
+    {
+      "components": {
+        "air": {
+          "nonzero": 3986,
+          "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v9\\attenuation_ict\\diagnostics\\type7_ladder\\ladder_0p0500_air_w1.a00",
+          "sha256": "b6e479e4b9087b0fa0d211622d0d8913adf79162865865fefa820bdd3bff7e18",
+          "sum": 5281772.331977844
+        },
+        "pri": {
+          "nonzero": 3986,
+          "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v9\\attenuation_ict\\diagnostics\\type7_ladder\\ladder_0p0500_pri_w1.a00",
+          "sha256": "b6e479e4b9087b0fa0d211622d0d8913adf79162865865fefa820bdd3bff7e18",
+          "sum": 5281772.331977844
+        },
+        "sca": {
+          "nonzero": 6632,
+          "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v9\\attenuation_ict\\diagnostics\\type7_ladder\\ladder_0p0500_sca_w1.a00",
+          "sha256": "5db0f35467ab4c5620fe5020fe765f058e328c16a5632dd6cc58e7170f2ec79c",
+          "sum": 1153371.5171781273
+        },
+        "tot": {
+          "nonzero": 8247,
+          "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v9\\attenuation_ict\\diagnostics\\type7_ladder\\ladder_0p0500_tot_w1.a00",
+          "sha256": "5dbce5567de12d8ac869d92dfa027d0bff8d83b49288b3f2ecb690d5be808cd5",
+          "sum": 6435143.859312066
+        }
+      },
+      "expected_if_mu_times_voxel": 0.36787944117144233,
+      "input_attenuation_sha256": "6b4c109601f9c7e0e5dbffaf605321eaebf5cc48a3c7bcb460993698793052f5",
+      "input_source_sha256": "50828448dddbb3c9b4fe19ae654822c34c9c9f8478eedc09f272fb8ca6a3ef5f",
+      "mode3_readback_mu_cm_inverse": 0.11321406811475754,
+      "primary_air_ratio": 1.0,
+      "res": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v9\\attenuation_ict\\diagnostics\\type7_ladder\\ladder_0p0500.res",
+      "res_sha256": "a60dc2d2e2ea1c9bdbb8f5205eb6822b364ddbd01a1a6d68b41e6e67fb2b368a",
+      "stored_value": 0.05
+    },
+    {
+      "components": {
+        "air": {
+          "nonzero": 4024,
+          "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v9\\attenuation_ict\\diagnostics\\type7_ladder\\ladder_0p0600_air_w1.a00",
+          "sha256": "07995b77a8ad9cbb14238555e28f4b6c794228346fa3bf0c6c69933d4fe0952c",
+          "sum": 5270865.326173782
+        },
+        "pri": {
+          "nonzero": 4024,
+          "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v9\\attenuation_ict\\diagnostics\\type7_ladder\\ladder_0p0600_pri_w1.a00",
+          "sha256": "07995b77a8ad9cbb14238555e28f4b6c794228346fa3bf0c6c69933d4fe0952c",
+          "sum": 5270865.326173782
+        },
+        "sca": {
+          "nonzero": 7052,
+          "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v9\\attenuation_ict\\diagnostics\\type7_ladder\\ladder_0p0600_sca_w1.a00",
+          "sha256": "ce377a5dcb2ac73f966da2a0d7b4f7fb91fb880bc1eae7b3b10ba32b46e555b8",
+          "sum": 1292035.551806399
+        },
+        "tot": {
+          "nonzero": 8515,
+          "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v9\\attenuation_ict\\diagnostics\\type7_ladder\\ladder_0p0600_tot_w1.a00",
+          "sha256": "2d1deea3d8a7162cbc09e4a0b459ea78e29be65b0f2b8fe0b1f439504adb6f17",
+          "sum": 6562900.885747131
+        }
+      },
+      "expected_if_mu_times_voxel": 0.30119421191220214,
+      "input_attenuation_sha256": "96ca29a06703b1d3c9259f2639f951fbfb54fc550241cb4337ee430aad256d0b",
+      "input_source_sha256": "50828448dddbb3c9b4fe19ae654822c34c9c9f8478eedc09f272fb8ca6a3ef5f",
+      "mode3_readback_mu_cm_inverse": 0.13582612574100494,
+      "primary_air_ratio": 1.0,
+      "res": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v9\\attenuation_ict\\diagnostics\\type7_ladder\\ladder_0p0600.res",
+      "res_sha256": "c6fc758219313ed88b06ebb095c15ac0340869f765ea75d534f7e240fc606fa8",
+      "stored_value": 0.06
+    },
+    {
+      "components": {
+        "air": {
+          "nonzero": 4024,
+          "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v9\\attenuation_ict\\diagnostics\\type7_ladder\\ladder_0p0663_air_w1.a00",
+          "sha256": "11d503930634add9341578394198c6d025960bd789e6207c70c69967d44c958e",
+          "sum": 5315465.896167755
+        },
+        "pri": {
+          "nonzero": 4024,
+          "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v9\\attenuation_ict\\diagnostics\\type7_ladder\\ladder_0p0663_pri_w1.a00",
+          "sha256": "11d503930634add9341578394198c6d025960bd789e6207c70c69967d44c958e",
+          "sum": 5315465.896167755
+        },
+        "sca": {
+          "nonzero": 7317,
+          "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v9\\attenuation_ict\\diagnostics\\type7_ladder\\ladder_0p0663_sca_w1.a00",
+          "sha256": "6477bca28cb48419ab975d9133d92485439d124fb7851d978fd0b6e99db54645",
+          "sum": 1346135.7031500526
+        },
+        "tot": {
+          "nonzero": 8699,
+          "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v9\\attenuation_ict\\diagnostics\\type7_ladder\\ladder_0p0663_tot_w1.a00",
+          "sha256": "aaf7c553f64f61c7a5efd6fcc1a11c564a3827df95a2260a38d08c54fc25e19b",
+          "sum": 6661601.602686168
+        }
+      },
+      "expected_if_mu_times_voxel": 0.2655372889870278,
+      "input_attenuation_sha256": "c985dc217f8b846bff1df4dbb802b8ccdec80d60d0c67691ec9a76839860332e",
+      "input_source_sha256": "50828448dddbb3c9b4fe19ae654822c34c9c9f8478eedc09f272fb8ca6a3ef5f",
+      "mode3_readback_mu_cm_inverse": 0.1499778777360916,
+      "primary_air_ratio": 1.0,
+      "res": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v9\\attenuation_ict\\diagnostics\\type7_ladder\\ladder_0p0663.res",
+      "res_sha256": "ba20c8dbdeab370d08a47259900fa70ae488d057c3bd8569c04dd8d83d8eabb7",
+      "stored_value": 0.0663
+    },
+    {
+      "components": {
+        "air": {
+          "nonzero": 3988,
+          "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v9\\attenuation_ict\\diagnostics\\type7_ladder\\ladder_0p0680_air_w1.a00",
+          "sha256": "5e8e07db593963c6093034f3a730dbf70233fbe08ab38dd8085e0fbb249e9b82",
+          "sum": 5305985.761177063
+        },
+        "pri": {
+          "nonzero": 3988,
+          "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v9\\attenuation_ict\\diagnostics\\type7_ladder\\ladder_0p0680_pri_w1.a00",
+          "sha256": "5e8e07db593963c6093034f3a730dbf70233fbe08ab38dd8085e0fbb249e9b82",
+          "sum": 5305985.761177063
+        },
+        "sca": {
+          "nonzero": 7338,
+          "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v9\\attenuation_ict\\diagnostics\\type7_ladder\\ladder_0p0680_sca_w1.a00",
+          "sha256": "5dedd3af301f78856ba27bef5313835a6e4ac57bf7574230286f1fd5f1b43a7b",
+          "sum": 1367082.6920413806
+        },
+        "tot": {
+          "nonzero": 8690,
+          "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v9\\attenuation_ict\\diagnostics\\type7_ladder\\ladder_0p0680_tot_w1.a00",
+          "sha256": "a2b98e5aab211804f0d40c0fd76cfe56edec482379a7177cb23ed1e5ac8451f5",
+          "sum": 6673068.461619096
+        }
+      },
+      "expected_if_mu_times_voxel": 0.2566607769535559,
+      "input_attenuation_sha256": "30fdefea8b8818a2f1c6750da1fe43ac92d882d1e20f6df805e7d2e5b57c924c",
+      "input_source_sha256": "50828448dddbb3c9b4fe19ae654822c34c9c9f8478eedc09f272fb8ca6a3ef5f",
+      "mode3_readback_mu_cm_inverse": 0.15382346510887146,
+      "primary_air_ratio": 1.0,
+      "res": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v9\\attenuation_ict\\diagnostics\\type7_ladder\\ladder_0p0680.res",
+      "res_sha256": "62da2e2d4b1a915cfdd2165f3eb02b9488b19d1f7de72b4053a777ba60b33760",
+      "stored_value": 0.068
+    },
+    {
+      "components": {
+        "air": {
+          "nonzero": 3976,
+          "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v9\\attenuation_ict\\diagnostics\\type7_ladder\\ladder_0p0750_air_w1.a00",
+          "sha256": "f21c904dcb635ad10013f7744a52f37a405032db4080aebf83336fb0322c0a92",
+          "sum": 5298510.199993134
+        },
+        "pri": {
+          "nonzero": 3976,
+          "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v9\\attenuation_ict\\diagnostics\\type7_ladder\\ladder_0p0750_pri_w1.a00",
+          "sha256": "f21c904dcb635ad10013f7744a52f37a405032db4080aebf83336fb0322c0a92",
+          "sum": 5298510.199993134
+        },
+        "sca": {
+          "nonzero": 7558,
+          "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v9\\attenuation_ict\\diagnostics\\type7_ladder\\ladder_0p0750_sca_w1.a00",
+          "sha256": "4008af5111bb552d77b7801691d1f8de23fb5949119b5a1e95b459634f01398c",
+          "sum": 1485854.619111501
+        },
+        "tot": {
+          "nonzero": 8756,
+          "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v9\\attenuation_ict\\diagnostics\\type7_ladder\\ladder_0p0750_tot_w1.a00",
+          "sha256": "f01f92cf1f20664cf35dbfbf38e0c585ab9413ebe4ef7daebf038f18dc7e631e",
+          "sum": 6784364.804992253
+        }
+      },
+      "expected_if_mu_times_voxel": 0.22313016014842982,
+      "input_attenuation_sha256": "d03b3f2babca88c9e3f775da999b3b19f2f860bd791ec13110c057f4c4f00605",
+      "input_source_sha256": "50828448dddbb3c9b4fe19ae654822c34c9c9f8478eedc09f272fb8ca6a3ef5f",
+      "mode3_readback_mu_cm_inverse": 0.1696672886610031,
+      "primary_air_ratio": 1.0,
+      "res": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v9\\attenuation_ict\\diagnostics\\type7_ladder\\ladder_0p0750.res",
+      "res_sha256": "ca58f1f1ba4f04b9cfcf5604bfedb9c808b3df00d81a0fe5a5ba38ef5b2fede4",
+      "stored_value": 0.075
+    },
+    {
+      "components": {
+        "air": {
+          "nonzero": 3986,
+          "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v9\\attenuation_ict\\diagnostics\\type7_ladder\\ladder_0p0795_air_w1.a00",
+          "sha256": "5cb7876f451c42b1d886caced1ac13a2c62f10db74f1e63032ef81cc81b46b7a",
+          "sum": 5319694.741865158
+        },
+        "pri": {
+          "nonzero": 3986,
+          "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v9\\attenuation_ict\\diagnostics\\type7_ladder\\ladder_0p0795_pri_w1.a00",
+          "sha256": "5cb7876f451c42b1d886caced1ac13a2c62f10db74f1e63032ef81cc81b46b7a",
+          "sum": 5319694.741865158
+        },
+        "sca": {
+          "nonzero": 7596,
+          "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v9\\attenuation_ict\\diagnostics\\type7_ladder\\ladder_0p0795_sca_w1.a00",
+          "sha256": "9fc8d14468b3852763ea04f33ce6010cc0809698905e57c9afc64a0c8a409b0b",
+          "sum": 1464091.3352609612
+        },
+        "tot": {
+          "nonzero": 8781,
+          "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v9\\attenuation_ict\\diagnostics\\type7_ladder\\ladder_0p0795_tot_w1.a00",
+          "sha256": "75e14040676c9a8dc1140b91d6de728b165d73ed162fd0dc19a39ffc744c0dc0",
+          "sum": 6783786.082596506
+        }
+      },
+      "expected_if_mu_times_voxel": 0.20392561173421342,
+      "input_attenuation_sha256": "922f47e31d81a786c205259bd622a8b14dbd8e303be0d817cfba528cbc8286ed",
+      "input_source_sha256": "50828448dddbb3c9b4fe19ae654822c34c9c9f8478eedc09f272fb8ca6a3ef5f",
+      "mode3_readback_mu_cm_inverse": 0.17981962859630585,
+      "primary_air_ratio": 1.0,
+      "res": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v9\\attenuation_ict\\diagnostics\\type7_ladder\\ladder_0p0795.res",
+      "res_sha256": "c5ed2b85017fae5cabed99acbd9a4073f3c97e0a97d5ebeaab379e2ea23a8e45",
+      "stored_value": 0.0795
+    },
+    {
+      "components": {
+        "air": {
+          "nonzero": 3995,
+          "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v9\\attenuation_ict\\diagnostics\\type7_ladder\\ladder_0p0800_air_w1.a00",
+          "sha256": "b0591fadef51769db1cae9844d448596f5b3f8244329ecff3920fbaab48d0ca1",
+          "sum": 5323428.25639534
+        },
+        "pri": {
+          "nonzero": 3995,
+          "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v9\\attenuation_ict\\diagnostics\\type7_ladder\\ladder_0p0800_pri_w1.a00",
+          "sha256": "b2d710bc9da4b3df39ab1dfc7f736cbc3c9cc6b5e5fe90a69b2bc340877576df",
+          "sum": 1079473.430999279
+        },
+        "sca": {
+          "nonzero": 7530,
+          "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v9\\attenuation_ict\\diagnostics\\type7_ladder\\ladder_0p0800_sca_w1.a00",
+          "sha256": "d25c7242fac573157e2a5d4fcf2beda26ff4984e82202017ba288b9699385af1",
+          "sum": 579729.8135018887
+        },
+        "tot": {
+          "nonzero": 8783,
+          "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v9\\attenuation_ict\\diagnostics\\type7_ladder\\ladder_0p0800_tot_w1.a00",
+          "sha256": "21268ff6cad1ba98611abd56ffac9929c50664307a5e11cd92e4928a0554d5f8",
+          "sum": 1659203.244544989
+        }
+      },
+      "expected_if_mu_times_voxel": 0.20189651799465538,
+      "input_attenuation_sha256": "52437ece9b98a959e290843350ad3cfd187fa2d87963b4995afc7d4dceb62f4a",
+      "input_source_sha256": "50828448dddbb3c9b4fe19ae654822c34c9c9f8478eedc09f272fb8ca6a3ef5f",
+      "mode3_readback_mu_cm_inverse": 0.18105022609233856,
+      "primary_air_ratio": 0.2027778677588912,
+      "res": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v9\\attenuation_ict\\diagnostics\\type7_ladder\\ladder_0p0800.res",
+      "res_sha256": "e132db1faa771662f93f6250100a87ee702a78e79c9d95f0bc720e034b3c2726",
+      "stored_value": 0.08
+    },
+    {
+      "components": {
+        "air": {
+          "nonzero": 4026,
+          "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v9\\attenuation_ict\\diagnostics\\type7_ladder\\ladder_0p1000_air_w1.a00",
+          "sha256": "9b19fa6dbbdc574e1d9b1f90a227e1c119c3f573666469c8e0c1d190800d0fdf",
+          "sum": 5281744.88520813
+        },
+        "pri": {
+          "nonzero": 4026,
+          "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v9\\attenuation_ict\\diagnostics\\type7_ladder\\ladder_0p1000_pri_w1.a00",
+          "sha256": "1c7b4857c57df9db037687c312ea411b88995cb4fe8b3262d14ca483d4e256be",
+          "sum": 718586.1665110588
+        },
+        "sca": {
+          "nonzero": 7773,
+          "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v9\\attenuation_ict\\diagnostics\\type7_ladder\\ladder_0p1000_sca_w1.a00",
+          "sha256": "bc345ae6722633b5a633a71f3398af7dded0b052c66c17a7dc1da3bd787499f5",
+          "sum": 502752.28990539256
+        },
+        "tot": {
+          "nonzero": 8810,
+          "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v9\\attenuation_ict\\diagnostics\\type7_ladder\\ladder_0p1000_tot_w1.a00",
+          "sha256": "6fef2a71658f7891c43240cf48a7ef172dbb255c4750eb51264a0bab545da897",
+          "sum": 1221338.458278596
+        }
+      },
+      "expected_if_mu_times_voxel": 0.1353352832366127,
+      "input_attenuation_sha256": "f30933994a2e739f2893b814c229b835110b18e55defe074866b7a6e7aed6cb9",
+      "input_source_sha256": "50828448dddbb3c9b4fe19ae654822c34c9c9f8478eedc09f272fb8ca6a3ef5f",
+      "mode3_readback_mu_cm_inverse": 0.22627432644367218,
+      "primary_air_ratio": 0.13605090403429104,
+      "res": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v9\\attenuation_ict\\diagnostics\\type7_ladder\\ladder_0p1000.res",
+      "res_sha256": "ecde60f1882fc50e19d5e893a8a25703917a9305c16d0ee4c84340ebd6a8ddc3",
+      "stored_value": 0.1
+    },
+    {
+      "components": {
+        "air": {
+          "nonzero": 3993,
+          "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v9\\attenuation_ict\\diagnostics\\type7_ladder\\ladder_0p1200_air_w1.a00",
+          "sha256": "352846556bac720726c2f1f6a38bf6006e9ad50c1b29574689dd29b8609ba80a",
+          "sum": 5281028.913629532
+        },
+        "pri": {
+          "nonzero": 3993,
+          "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v9\\attenuation_ict\\diagnostics\\type7_ladder\\ladder_0p1200_pri_w1.a00",
+          "sha256": "61839dbead9f23848e4de41f763a40f5ce5ca314adf69b7b108cda900725cf7c",
+          "sum": 482728.0419638157
+        },
+        "sca": {
+          "nonzero": 7749,
+          "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v9\\attenuation_ict\\diagnostics\\type7_ladder\\ladder_0p1200_sca_w1.a00",
+          "sha256": "2f8f4bbce4deb643faae24caaf79fa2e7947b976ae09ae39ca86587b9c5720cd",
+          "sum": 400172.8863391029
+        },
+        "tot": {
+          "nonzero": 8628,
+          "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v9\\attenuation_ict\\diagnostics\\type7_ladder\\ladder_0p1200_tot_w1.a00",
+          "sha256": "acd7b4c3d6f6764847b08d65a76d358156631639f34b94f5e8b3ab559173f9ca",
+          "sum": 882900.9283614937
+        }
+      },
+      "expected_if_mu_times_voxel": 0.09071795328941251,
+      "input_attenuation_sha256": "463e2a042d7cfa652f0c73cc9b3b0c158a578e0942871b4b3b111ab9b1493b3a",
+      "input_source_sha256": "50828448dddbb3c9b4fe19ae654822c34c9c9f8478eedc09f272fb8ca6a3ef5f",
+      "mode3_readback_mu_cm_inverse": 0.2714984118938446,
+      "primary_air_ratio": 0.0914079528551658,
+      "res": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v9\\attenuation_ict\\diagnostics\\type7_ladder\\ladder_0p1200.res",
+      "res_sha256": "cb3f78610ecc4c1bc3bdfcae7f942062ecf1d8550bc9dab4afc5226a7530deea",
+      "stored_value": 0.12
+    },
+    {
+      "components": {
+        "air": {
+          "nonzero": 4025,
+          "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v9\\attenuation_ict\\diagnostics\\type7_ladder\\ladder_0p1500_air_w1.a00",
+          "sha256": "70ffb1000605d95d1402308f0de3cdb2700593a68c3fd3515f729f740d024049",
+          "sum": 5275935.576534271
+        },
+        "pri": {
+          "nonzero": 4025,
+          "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v9\\attenuation_ict\\diagnostics\\type7_ladder\\ladder_0p1500_pri_w1.a00",
+          "sha256": "566b55783bd9aa0cfc9347b3d7ac94a0d6284bf3d06b44a1bc3f721940ebd546",
+          "sum": 265064.4486094713
+        },
+        "sca": {
+          "nonzero": 7352,
+          "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v9\\attenuation_ict\\diagnostics\\type7_ladder\\ladder_0p1500_sca_w1.a00",
+          "sha256": "f55c4f26772e07461f87c6b7695c0626f44ff5279611b74afe323944a2710dce",
+          "sum": 273778.89469944563
+        },
+        "tot": {
+          "nonzero": 8156,
+          "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v9\\attenuation_ict\\diagnostics\\type7_ladder\\ladder_0p1500_tot_w1.a00",
+          "sha256": "efe359b392e2dbde26e4ffe2062a6047d2830b382ab5703bef03c4cfd5fcd3d5",
+          "sum": 538843.343359553
+        }
+      },
+      "expected_if_mu_times_voxel": 0.049787068367863944,
+      "input_attenuation_sha256": "be125f9ef12d0c2060bc12ed9e6b0d0cac60702dbf1ef63ca6b612ab5c8c4c27",
+      "input_source_sha256": "50828448dddbb3c9b4fe19ae654822c34c9c9f8478eedc09f272fb8ca6a3ef5f",
+      "mode3_readback_mu_cm_inverse": 0.3394883871078491,
+      "primary_air_ratio": 0.05024027393139446,
+      "res": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v9\\attenuation_ict\\diagnostics\\type7_ladder\\ladder_0p1500.res",
+      "res_sha256": "458903b9ebe614fcca43a7a397a81dd17c26d9e4017dc7ecabe5b568311b3fb3",
+      "stored_value": 0.15
+    }
+  ],
+  "rr_seed": 9630,
+  "shape": [
+    128,
+    128,
+    128
+  ]
+}

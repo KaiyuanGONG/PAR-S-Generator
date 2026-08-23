@@ -1,0 +1,11 @@
+{
+  "artifacts": [
+    "D:\\PFE-U\\PAR-S-Generator\\runs\\stage3-phantom-100-v3-20260818\\figures\\data_flow.svg",
+    "D:\\PFE-U\\PAR-S-Generator\\runs\\stage3-phantom-100-v3-20260818\\figures\\phantom_distributions.png",
+    "D:\\PFE-U\\PAR-S-Generator\\runs\\stage3-phantom-100-v3-20260818\\figures\\phantom_distributions.svg"
+  ],
+  "note": "Figures are automated QC evidence, not a claim of clinical or physics validation.",
+  "phantom_rows": 312,
+  "projection_rows": 0,
+  "scope": "synthetic_liver_spect_data_preparation_only"
+}

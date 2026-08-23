@@ -1,0 +1,70 @@
+{
+  "attenuation_contract": {
+    "reference_energy_kev": 140.5,
+    "status": "verified_type7_mu_times_voxel_v10_current_h2o_protocol",
+    "unit": "cm^-1"
+  },
+  "cantlie": {
+    "abs_error": 0.003528241236797791,
+    "converged": true,
+    "iterations": 6,
+    "offset": 0.13218749999999999,
+    "search": {
+      "expanded_beyond_initial_range": true,
+      "expanded_offset_range": [
+        -0.05,
+        0.16999999999999998
+      ],
+      "expansions": 1,
+      "hit_expansion_limit": false,
+      "initial_offset_range": [
+        -0.05,
+        0.12
+      ],
+      "solution_on_search_boundary": false,
+      "target_bracketed": true
+    },
+    "target_left_ratio": 0.35,
+    "tilt_deg": 3.836570694835199
+  },
+  "failures": [],
+  "meta": "D:\\PFE-U\\PAR-S-Generator\\runs\\stage3-phantom-100-20260818\\phantom\\case_0055_meta.json",
+  "metrics": {
+    "activity_dtype": "float32",
+    "activity_sum": 79999.99023723602,
+    "left_ratio": 0.3464717587632022,
+    "liver_volume_ml": 1128.260702608,
+    "mu_dtype": "float32",
+    "mu_max": 0.30043745040893555,
+    "mu_min": 0.0,
+    "n_tumors": 1,
+    "shape": [
+      128,
+      128,
+      128
+    ],
+    "tumors": [
+      {
+        "effective_diameter_mm": 10.490320136880253,
+        "index": 0,
+        "mode": "ellipsoid",
+        "nominal_diameter_mm": 12.200247805481972,
+        "outside_liver_vox": 0,
+        "overlap_previous_vox": 0,
+        "placement_stratum": "central",
+        "surface_margin_mm": 15.936536637550832,
+        "tnr_from_saved_activity": 17.34571346396163,
+        "volume_vox": 7
+      }
+    ]
+  },
+  "npz": "D:\\PFE-U\\PAR-S-Generator\\runs\\stage3-phantom-100-20260818\\phantom\\case_0055.npz",
+  "sha256": {
+    "meta": "ca1801404db2175b9ecaf2168e7310cb6cc9a832d6dc6ea7fc60538eec7c36e8",
+    "npz": "4627cba01d0553c43a2070036f3c427fdc53cbc0b77fe819e6f48b0b82b0e4d3"
+  },
+  "status": "passed",
+  "warnings": [
+    "cantlie_search_range_expanded"
+  ]
+}

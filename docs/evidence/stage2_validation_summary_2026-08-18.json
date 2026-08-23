@@ -1,0 +1,94 @@
+{
+  "schema_version": 2,
+  "created_utc": "2026-08-18T08:13:43Z",
+  "scope": "GE NM/CT 870 CZT synthetic liver SPECT under the current research protocol only",
+  "overall_stage2_verdict": "passed_for_stage3_protocol_promotion_with_empirical_count_policy",
+  "stage3_protocol_promotion_eligible": true,
+  "stage3_entered": false,
+  "stage4_entered": false,
+  "formal_production_authorized": false,
+  "absolute_cps_per_mbq_claim": false,
+  "gates": {
+    "activity_time": {
+      "verdict": "supported_nominal_contract",
+      "value": "60 MBq x 28.4 s per projection; SIMIND Index-25=1704",
+      "claim_limit": "The activity is a synthetic design value, not measured administered activity.",
+      "evidence": "docs/LOCAL_PROTOCOL_EVIDENCE_2026-08-17.md"
+    },
+    "orientation": {
+      "verdict": "passed",
+      "new_data_transform": "raw[:,::-1,:]",
+      "legacy_par_s2_transform": "raw[::-1,::-1,:]",
+      "evidence": "experiments/validation-v1/asymmetric_fiducial/analysis.json"
+    },
+    "attenuation": {
+      "verdict": "passed_scoped_type7_contract",
+      "input_mode": "generic_xcat_type_minus_7",
+      "stored_value_formula": "mu_cm_inverse * density_voxel_size_cm",
+      "voxel_size_cm": 0.442,
+      "target_mu_cm_inverse": 0.15,
+      "target_stored_value": 0.0663,
+      "runtime_density_threshold_times_1000": 100,
+      "phantom_cross_sections": ["h2o", "h2o"],
+      "path_length_cm": 8.84,
+      "expected_primary_air_ratio": 0.26553728898702783,
+      "observed_primary_air_ratio": 0.26659139975002216,
+      "ratio_relative_error": 0.003969727818701302,
+      "ict_median_mu_cm_inverse": 0.1499778777360916,
+      "ict_absolute_error_cm_inverse": 0.00002212226390838068,
+      "inferred_mu_cm_inverse": 0.14955182474660964,
+      "inferred_mu_absolute_error_cm_inverse": 0.00044817525339035935,
+      "zero_reference_primary_air_ratio": 1.0,
+      "evidence": "experiments/validation-v10/attenuation_ict/analysis.json",
+      "diagnostic_evidence": "experiments/validation-v9/attenuation_ict/diagnostics/type7_ladder/analysis.json",
+      "interpretation_limit": "Pass applies to the tested SIMIND build, type-7 representation, current h2o tables and water-column geometry; it is not a universal material or scanner claim."
+    },
+    "detector_fov": {
+      "verdict": "passed",
+      "recommended_index_100_101": [160, 208],
+      "native_fov_cm": [39.36, 51.168],
+      "output_matrix": [128, 128],
+      "output_pixel_size_mm": 4.42,
+      "native_to_legacy_sensitivity_ratio": 1.9788627832945314,
+      "evidence": "experiments/validation-v1/fov_matrix/analysis.json"
+    },
+    "point_line_response": {
+      "verdict": "passed_scoped_control",
+      "distance_mm": 300.0,
+      "point_fwhm_mm": [17.68, 17.68],
+      "line_transverse_fwhm_mm": 17.68,
+      "geometry_prediction_mm": 17.500427931275787,
+      "point_center_offset_px": 0.7530389586584306,
+      "scope_limit": "Zero-attenuation raw response only; not reconstructed or patient resolution.",
+      "evidence": "experiments/validation-v2/point_line_source/analysis.json"
+    },
+    "rr_nn_sampling": {
+      "verdict": "passed",
+      "interpretation": "weighted_mc_expectation_estimator",
+      "integrated_cv_by_nn": {
+        "1": 0.07634425745268655,
+        "5": 0.03523307039538093,
+        "10": 0.01633597116080971
+      },
+      "integrated_variance_loglog_slope": -1.3160735603359293,
+      "fixed_support_variance_loglog_slope": -1.1193917385076597,
+      "clinical_poisson_observation_noise_present": false,
+      "evidence": "experiments/validation-v1/rr_nn_ladder/analysis.json"
+    },
+    "clinical_observation_distribution": {
+      "verdict": "empirical_distribution_selected",
+      "accepted_case_count": 8,
+      "shape": [60, 128, 128],
+      "total_counts_min": 2042094,
+      "total_counts_median": 2653222.5,
+      "total_counts_max": 4112706,
+      "angular_cv_min": 0.33360226698745143,
+      "angular_cv_median": 0.47061161525362694,
+      "angular_cv_max": 0.6201742992846553,
+      "policy": "Match synthetic observation totals and angular-profile variability while retaining the SIMIND transport as an expectation and recording every scale/noise seed.",
+      "claim_limit": "Not an activity, administered-dose, scanner-sensitivity or absolute cps/MBq calibration.",
+      "evidence": "docs/evidence/clinical_empirical_count_summary_2026-08-18.json"
+    }
+  },
+  "decision": "Enter Stage 3 to promote the tested type-7 mu-times-voxel export, runtime threshold 100, current h2o tables, 160/208 detector FOV and empirical observation policy into the single production path; then verify a small isolated pilot before formal production."
+}

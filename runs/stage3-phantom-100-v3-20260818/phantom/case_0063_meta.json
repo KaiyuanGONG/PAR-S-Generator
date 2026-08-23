@@ -1,0 +1,202 @@
+{
+  "case_id": 63,
+  "seed": 105,
+  "perfusion_mode": "Whole Liver",
+  "total_counts_actual": 80000.0,
+  "liver_volume_ml": 1194.578184592,
+  "left_ratio": 0.3470435159751337,
+  "n_tumors": 5,
+  "tumor_diameters_mm": [
+    41.678386909449934,
+    27.27246746893202,
+    31.35955784860322,
+    28.941997843616637,
+    14.633243370680612
+  ],
+  "tumor_nominal_diameters_mm": [
+    40.00512026745046,
+    27.01589238525124,
+    33.21314351017947,
+    29.060157060978906,
+    13.1951796727044
+  ],
+  "tumor_modes": [
+    "ellipsoid",
+    "spiculated",
+    "ellipsoid",
+    "ellipsoid",
+    "spiculated"
+  ],
+  "tumors": [
+    {
+      "id": 1,
+      "center_vox": [
+        56,
+        76,
+        78
+      ],
+      "mode": "ellipsoid",
+      "elongation": 1.1160961802649354,
+      "nominal_diameter_mm": 40.00512026745046,
+      "sampled_size_bin_mm": [
+        40.0,
+        60.0
+      ],
+      "placement_stratum": "central",
+      "perfusion_region": "high_perfusion",
+      "target_contrast": 2.728443662133739,
+      "lobe": "right",
+      "voxel_count": 439,
+      "volume_ml": 37.908039832,
+      "effective_diameter_mm": 41.678386909449934,
+      "surface_margin_mm": 6.406744663101646,
+      "boundary_contact_fraction": 0.0,
+      "tnr_local": 2.7353183006860378,
+      "tnr_global": 2.7311623500998516,
+      "overlaps": []
+    },
+    {
+      "id": 4,
+      "center_vox": [
+        62,
+        71,
+        66
+      ],
+      "mode": "spiculated",
+      "elongation": 1.0,
+      "nominal_diameter_mm": 27.01589238525124,
+      "sampled_size_bin_mm": [
+        20.0,
+        40.0
+      ],
+      "placement_stratum": "central",
+      "perfusion_region": "high_perfusion",
+      "target_contrast": 7.600930807057361,
+      "lobe": "left",
+      "voxel_count": 123,
+      "volume_ml": 10.621159224,
+      "effective_diameter_mm": 27.27246746893202,
+      "surface_margin_mm": 8.08164789137816,
+      "boundary_contact_fraction": 0.0,
+      "tnr_local": 7.614429599592185,
+      "tnr_global": 7.6362816950950405,
+      "overlaps": []
+    },
+    {
+      "id": 3,
+      "center_vox": [
+        61,
+        78,
+        66
+      ],
+      "mode": "ellipsoid",
+      "elongation": 0.8831081680350709,
+      "nominal_diameter_mm": 33.21314351017947,
+      "sampled_size_bin_mm": [
+        20.0,
+        40.0
+      ],
+      "placement_stratum": "central",
+      "perfusion_region": "high_perfusion",
+      "target_contrast": 5.233927177728748,
+      "lobe": "left",
+      "voxel_count": 187,
+      "volume_ml": 16.147616056,
+      "effective_diameter_mm": 31.35955784860322,
+      "surface_margin_mm": 13.80412686523006,
+      "boundary_contact_fraction": 0.0,
+      "tnr_local": 5.240043580391642,
+      "tnr_global": 5.2550815988354636,
+      "overlaps": []
+    },
+    {
+      "id": 2,
+      "center_vox": [
+        51,
+        66,
+        81
+      ],
+      "mode": "ellipsoid",
+      "elongation": 0.9970967924491241,
+      "nominal_diameter_mm": 29.060157060978906,
+      "sampled_size_bin_mm": [
+        20.0,
+        40.0
+      ],
+      "placement_stratum": "central",
+      "perfusion_region": "high_perfusion",
+      "target_contrast": 2.397811744520161,
+      "lobe": "right",
+      "voxel_count": 147,
+      "volume_ml": 12.693580536,
+      "effective_diameter_mm": 28.941997843616637,
+      "surface_margin_mm": 5.463420460549071,
+      "boundary_contact_fraction": 0.0,
+      "tnr_local": 2.3965406661434185,
+      "tnr_global": 2.392899442895733,
+      "overlaps": []
+    },
+    {
+      "id": 0,
+      "center_vox": [
+        57,
+        78,
+        60
+      ],
+      "mode": "spiculated",
+      "elongation": 1.0,
+      "nominal_diameter_mm": 13.1951796727044,
+      "sampled_size_bin_mm": [
+        10.0,
+        20.0
+      ],
+      "placement_stratum": "central",
+      "perfusion_region": "high_perfusion",
+      "target_contrast": 3.8948539262352804,
+      "lobe": "left",
+      "voxel_count": 19,
+      "volume_ml": 1.640666872,
+      "effective_diameter_mm": 14.633243370680612,
+      "surface_margin_mm": 19.382428447534505,
+      "boundary_contact_fraction": 0.0,
+      "tnr_local": 3.889944342324309,
+      "tnr_global": 3.901107809548934,
+      "overlaps": []
+    }
+  ],
+  "cantlie": {
+    "offset": 0.08281250000000001,
+    "tilt_deg": -1.8332194361298697,
+    "target_left_ratio": 0.35,
+    "converged": true,
+    "iterations": 5,
+    "abs_error": 0.002956484024866257,
+    "search": {
+      "initial_offset_range": [
+        -0.05,
+        0.12
+      ],
+      "expanded_offset_range": [
+        -0.05,
+        0.12
+      ],
+      "expansions": 0,
+      "expanded_beyond_initial_range": false,
+      "target_bracketed": true,
+      "hit_expansion_limit": false,
+      "solution_on_search_boundary": false
+    }
+  },
+  "attenuation_contract": {
+    "unit": "cm^-1",
+    "reference_energy_kev": 140.5,
+    "status": "verified_type7_mu_times_voxel_v10_current_h2o_protocol"
+  },
+  "voxel_size_mm": 4.42,
+  "volume_shape": [
+    128,
+    128,
+    128
+  ],
+  "generation_time_s": 1.2720298767089844
+}

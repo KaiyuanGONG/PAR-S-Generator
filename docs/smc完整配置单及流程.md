@@ -1,5 +1,8 @@
 # smc完整配置单及流程
 
+> [!WARNING]
+> **历史文档，非现役执行规范。** 本文保留用于追溯早期设计与审计，包含已被替代的 UI、命令、路径或物理假设。请勿直接执行其中的 SIMIND 命令或据此启动数据生产。当前入口见仓库根目录 `README.md`；唯一科学合同见 `docs/WINDOWS_V1_SCIENTIFIC_AUTHORITY.md`，完整验收见 `docs/WINDOWS_V1_ACCEPTANCE.md`。`docs/DECISION_GATES.md` 与旧验证报告仅作为历史证据。
+
 ### 纯净版 `ge870_czt.smc` 配置清单
 
 打开终端，输入 `change`，按以下参数设置：

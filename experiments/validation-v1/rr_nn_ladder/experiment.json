@@ -1,0 +1,32 @@
+{
+  "base_smc": "D:\\PFE-U\\PAR-S-Generator\\simind\\ge870_czt.smc",
+  "base_smc_sha256": "4d10eab246a7a6690663230d2f33aeb3c32f67c598af36b56d1575f0e3551d10",
+  "blocking_decision": "Determine whether weighted SIMIND output is an expectation estimator and how observation noise must be added.",
+  "controls": [
+    "5 independent /RR seeds per /NN",
+    "/NN values 1/5/10",
+    "same spherical source and attenuation"
+  ],
+  "criteria": [
+    {
+      "id": "repeat_variance",
+      "rule": "Variance is computed voxelwise across /RR repeats, never from spatial neighbors."
+    },
+    {
+      "id": "nn_scaling",
+      "rule": "Relative MC variance trend across /NN is reported with confidence intervals."
+    },
+    {
+      "id": "noise_contract",
+      "rule": "Expectation and observation stages receive distinct, evidence-backed labels."
+    }
+  ],
+  "execution_status": "prepared_not_run",
+  "name": "rr_nn_ladder",
+  "prepared_utc": "2026-08-17T19:38:03+00:00",
+  "purpose": "Separate repeated-run Monte Carlo variability from spatial heterogeneity and test /NN scaling.",
+  "scope": "GE 870 CZT current liver SPECT research protocol",
+  "simind_executable": "D:\\PFE-U\\PAR-S-Generator\\simind\\simind.exe",
+  "simind_executable_sha256": "f984b8753f54b9f671f9fc1bcb2b45461e7cae8d027376b446dd1ed55a9a8319",
+  "voxel_size_mm": 4.42
+}

@@ -1,5 +1,8 @@
 # PAR-S 合成数据生成链路：深度分析与优化建议
 
+> [!WARNING]
+> **历史文档，非现役执行规范。** 本文保留用于追溯早期设计与审计，包含已被替代的 UI、命令、路径或物理假设。请勿直接执行其中的 SIMIND 命令或据此启动数据生产。当前入口见仓库根目录 `README.md`；唯一科学合同见 `docs/WINDOWS_V1_SCIENTIFIC_AUTHORITY.md`，完整验收见 `docs/WINDOWS_V1_ACCEPTANCE.md`。`docs/DECISION_GATES.md` 与旧验证报告仅作为历史证据。
+
 > **报告范围**：本报告基于对 PAR-S 仓库代码（`DataCreation_SYN.ipynb`、`DataPreparation.ipynb`、`CORRECTED_RUN_SYN.bat`）、reference 文件（`GATE生成投影流程+末尾宏文件测试.md`、`czt_ge.smc`、`DOC2109131-NMCT-870-CZT-PDS.pdf`、`simind_manual.pdf`）以及您的 DVF-Generator 论文的综合分析，结合相关文献，提供针对肝脏体模构建、仿真软件选型和参数配置的优化建议。
 
 ---

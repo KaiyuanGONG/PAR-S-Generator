@@ -1,0 +1,15 @@
+{
+  "completed_utc": null,
+  "experiment": "attenuation_ict",
+  "notes": "",
+  "observations": [],
+  "operator": null,
+  "pass_fail": {
+    "analytic_attenuation": "not_evaluated",
+    "ict_exists": "not_evaluated",
+    "mapping_identified": "not_evaluated"
+  },
+  "simind_version": null,
+  "started_utc": null,
+  "status": "not_run"
+}

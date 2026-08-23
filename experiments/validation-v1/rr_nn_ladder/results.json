@@ -1,0 +1,34 @@
+{
+  "experiment": "rr_nn_ladder",
+  "status": "passed",
+  "reviewed_utc": "2026-08-17T23:32:33.7487929Z",
+  "scope": "Current SIMIND configuration; Monte Carlo effort and repeated-stream behavior only",
+  "execution": {
+    "status": "completed",
+    "job_count": 15,
+    "all_job_qc_passed": true
+  },
+  "pass_fail": {
+    "repeat_variance": "passed",
+    "nn_scaling": "passed",
+    "noise_contract": "passed"
+  },
+  "direct_results": {
+    "integrated_sum_cv_by_nn": {
+      "1": 0.07634425745268655,
+      "5": 0.03523307039538093,
+      "10": 0.01633597116080971
+    },
+    "integrated_variance_loglog_slope": -1.3160735603359293,
+    "fixed_union_support_variance_loglog_slope": -1.1193917385076597,
+    "expectation_mean_relative_range": 0.06116511283566792,
+    "minimum_noninteger_positive_fraction": 1.0
+  },
+  "decision": "Classify .a00 as a weighted Monte Carlo expectation estimator; clinical Poisson observation noise is absent and must remain a separate calibrated layer.",
+  "evidence_sha256": {
+    "experiment.json": "87c84220a97adb198bb0665708926d79ed898f11f0b817a4d0800d6aa33db334",
+    "commands.json": "e05031743b396736534018cce89eb704b142fec6ce38c6c06c7d45e4d78fb9d2",
+    "execution.json": "33cac1bb5185a30cac724007443b8185017ab7e8f317dcc283bb2118282a8a00",
+    "analysis.json": "8bfc8e8bb3bae4be7e1929f36bed1584a394d0389abe7a67e8deeeb0bbdfe7dc"
+  }
+}

@@ -1,0 +1,302 @@
+[
+  {
+    "args": [
+      "rr_nn_ladder",
+      "rrnn_nn1_rr1101",
+      "/FS:rrnn_source",
+      "/FD:rrnn_source",
+      "/NN:1",
+      "/RR:1101"
+    ],
+    "case_id": "rrnn_nn1_rr1101",
+    "executable": "D:\\PFE-U\\PAR-S-Generator\\simind\\simind.exe",
+    "executable_sha256": "f984b8753f54b9f671f9fc1bcb2b45461e7cae8d027376b446dd1ed55a9a8319",
+    "output_stem": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\rr_nn_ladder\\output\\rrnn_nn1_rr1101",
+    "prepared_utc": "2026-08-17T21:38:03+02:00",
+    "smc": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\rr_nn_ladder\\input\\rr_nn_ladder.smc",
+    "smc_sha256": "e2d242d25181b6ad5ce7136456dce231889ba295ecd25593ecde073eb18e9676",
+    "working_dir": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\rr_nn_ladder\\input",
+    "output_argument": "rrnn_nn1_rr1101",
+    "staging_output_stem": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\rr_nn_ladder\\input\\rrnn_nn1_rr1101"
+  },
+  {
+    "args": [
+      "rr_nn_ladder",
+      "rrnn_nn1_rr1102",
+      "/FS:rrnn_source",
+      "/FD:rrnn_source",
+      "/NN:1",
+      "/RR:1102"
+    ],
+    "case_id": "rrnn_nn1_rr1102",
+    "executable": "D:\\PFE-U\\PAR-S-Generator\\simind\\simind.exe",
+    "executable_sha256": "f984b8753f54b9f671f9fc1bcb2b45461e7cae8d027376b446dd1ed55a9a8319",
+    "output_stem": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\rr_nn_ladder\\output\\rrnn_nn1_rr1102",
+    "prepared_utc": "2026-08-17T21:38:03+02:00",
+    "smc": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\rr_nn_ladder\\input\\rr_nn_ladder.smc",
+    "smc_sha256": "e2d242d25181b6ad5ce7136456dce231889ba295ecd25593ecde073eb18e9676",
+    "working_dir": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\rr_nn_ladder\\input",
+    "output_argument": "rrnn_nn1_rr1102",
+    "staging_output_stem": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\rr_nn_ladder\\input\\rrnn_nn1_rr1102"
+  },
+  {
+    "args": [
+      "rr_nn_ladder",
+      "rrnn_nn1_rr1103",
+      "/FS:rrnn_source",
+      "/FD:rrnn_source",
+      "/NN:1",
+      "/RR:1103"
+    ],
+    "case_id": "rrnn_nn1_rr1103",
+    "executable": "D:\\PFE-U\\PAR-S-Generator\\simind\\simind.exe",
+    "executable_sha256": "f984b8753f54b9f671f9fc1bcb2b45461e7cae8d027376b446dd1ed55a9a8319",
+    "output_stem": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\rr_nn_ladder\\output\\rrnn_nn1_rr1103",
+    "prepared_utc": "2026-08-17T21:38:03+02:00",
+    "smc": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\rr_nn_ladder\\input\\rr_nn_ladder.smc",
+    "smc_sha256": "e2d242d25181b6ad5ce7136456dce231889ba295ecd25593ecde073eb18e9676",
+    "working_dir": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\rr_nn_ladder\\input",
+    "output_argument": "rrnn_nn1_rr1103",
+    "staging_output_stem": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\rr_nn_ladder\\input\\rrnn_nn1_rr1103"
+  },
+  {
+    "args": [
+      "rr_nn_ladder",
+      "rrnn_nn1_rr1104",
+      "/FS:rrnn_source",
+      "/FD:rrnn_source",
+      "/NN:1",
+      "/RR:1104"
+    ],
+    "case_id": "rrnn_nn1_rr1104",
+    "executable": "D:\\PFE-U\\PAR-S-Generator\\simind\\simind.exe",
+    "executable_sha256": "f984b8753f54b9f671f9fc1bcb2b45461e7cae8d027376b446dd1ed55a9a8319",
+    "output_stem": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\rr_nn_ladder\\output\\rrnn_nn1_rr1104",
+    "prepared_utc": "2026-08-17T21:38:03+02:00",
+    "smc": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\rr_nn_ladder\\input\\rr_nn_ladder.smc",
+    "smc_sha256": "e2d242d25181b6ad5ce7136456dce231889ba295ecd25593ecde073eb18e9676",
+    "working_dir": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\rr_nn_ladder\\input",
+    "output_argument": "rrnn_nn1_rr1104",
+    "staging_output_stem": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\rr_nn_ladder\\input\\rrnn_nn1_rr1104"
+  },
+  {
+    "args": [
+      "rr_nn_ladder",
+      "rrnn_nn1_rr1105",
+      "/FS:rrnn_source",
+      "/FD:rrnn_source",
+      "/NN:1",
+      "/RR:1105"
+    ],
+    "case_id": "rrnn_nn1_rr1105",
+    "executable": "D:\\PFE-U\\PAR-S-Generator\\simind\\simind.exe",
+    "executable_sha256": "f984b8753f54b9f671f9fc1bcb2b45461e7cae8d027376b446dd1ed55a9a8319",
+    "output_stem": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\rr_nn_ladder\\output\\rrnn_nn1_rr1105",
+    "prepared_utc": "2026-08-17T21:38:03+02:00",
+    "smc": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\rr_nn_ladder\\input\\rr_nn_ladder.smc",
+    "smc_sha256": "e2d242d25181b6ad5ce7136456dce231889ba295ecd25593ecde073eb18e9676",
+    "working_dir": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\rr_nn_ladder\\input",
+    "output_argument": "rrnn_nn1_rr1105",
+    "staging_output_stem": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\rr_nn_ladder\\input\\rrnn_nn1_rr1105"
+  },
+  {
+    "args": [
+      "rr_nn_ladder",
+      "rrnn_nn5_rr1101",
+      "/FS:rrnn_source",
+      "/FD:rrnn_source",
+      "/NN:5",
+      "/RR:1101"
+    ],
+    "case_id": "rrnn_nn5_rr1101",
+    "executable": "D:\\PFE-U\\PAR-S-Generator\\simind\\simind.exe",
+    "executable_sha256": "f984b8753f54b9f671f9fc1bcb2b45461e7cae8d027376b446dd1ed55a9a8319",
+    "output_stem": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\rr_nn_ladder\\output\\rrnn_nn5_rr1101",
+    "prepared_utc": "2026-08-17T21:38:03+02:00",
+    "smc": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\rr_nn_ladder\\input\\rr_nn_ladder.smc",
+    "smc_sha256": "e2d242d25181b6ad5ce7136456dce231889ba295ecd25593ecde073eb18e9676",
+    "working_dir": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\rr_nn_ladder\\input",
+    "output_argument": "rrnn_nn5_rr1101",
+    "staging_output_stem": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\rr_nn_ladder\\input\\rrnn_nn5_rr1101"
+  },
+  {
+    "args": [
+      "rr_nn_ladder",
+      "rrnn_nn5_rr1102",
+      "/FS:rrnn_source",
+      "/FD:rrnn_source",
+      "/NN:5",
+      "/RR:1102"
+    ],
+    "case_id": "rrnn_nn5_rr1102",
+    "executable": "D:\\PFE-U\\PAR-S-Generator\\simind\\simind.exe",
+    "executable_sha256": "f984b8753f54b9f671f9fc1bcb2b45461e7cae8d027376b446dd1ed55a9a8319",
+    "output_stem": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\rr_nn_ladder\\output\\rrnn_nn5_rr1102",
+    "prepared_utc": "2026-08-17T21:38:03+02:00",
+    "smc": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\rr_nn_ladder\\input\\rr_nn_ladder.smc",
+    "smc_sha256": "e2d242d25181b6ad5ce7136456dce231889ba295ecd25593ecde073eb18e9676",
+    "working_dir": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\rr_nn_ladder\\input",
+    "output_argument": "rrnn_nn5_rr1102",
+    "staging_output_stem": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\rr_nn_ladder\\input\\rrnn_nn5_rr1102"
+  },
+  {
+    "args": [
+      "rr_nn_ladder",
+      "rrnn_nn5_rr1103",
+      "/FS:rrnn_source",
+      "/FD:rrnn_source",
+      "/NN:5",
+      "/RR:1103"
+    ],
+    "case_id": "rrnn_nn5_rr1103",
+    "executable": "D:\\PFE-U\\PAR-S-Generator\\simind\\simind.exe",
+    "executable_sha256": "f984b8753f54b9f671f9fc1bcb2b45461e7cae8d027376b446dd1ed55a9a8319",
+    "output_stem": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\rr_nn_ladder\\output\\rrnn_nn5_rr1103",
+    "prepared_utc": "2026-08-17T21:38:03+02:00",
+    "smc": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\rr_nn_ladder\\input\\rr_nn_ladder.smc",
+    "smc_sha256": "e2d242d25181b6ad5ce7136456dce231889ba295ecd25593ecde073eb18e9676",
+    "working_dir": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\rr_nn_ladder\\input",
+    "output_argument": "rrnn_nn5_rr1103",
+    "staging_output_stem": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\rr_nn_ladder\\input\\rrnn_nn5_rr1103"
+  },
+  {
+    "args": [
+      "rr_nn_ladder",
+      "rrnn_nn5_rr1104",
+      "/FS:rrnn_source",
+      "/FD:rrnn_source",
+      "/NN:5",
+      "/RR:1104"
+    ],
+    "case_id": "rrnn_nn5_rr1104",
+    "executable": "D:\\PFE-U\\PAR-S-Generator\\simind\\simind.exe",
+    "executable_sha256": "f984b8753f54b9f671f9fc1bcb2b45461e7cae8d027376b446dd1ed55a9a8319",
+    "output_stem": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\rr_nn_ladder\\output\\rrnn_nn5_rr1104",
+    "prepared_utc": "2026-08-17T21:38:03+02:00",
+    "smc": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\rr_nn_ladder\\input\\rr_nn_ladder.smc",
+    "smc_sha256": "e2d242d25181b6ad5ce7136456dce231889ba295ecd25593ecde073eb18e9676",
+    "working_dir": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\rr_nn_ladder\\input",
+    "output_argument": "rrnn_nn5_rr1104",
+    "staging_output_stem": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\rr_nn_ladder\\input\\rrnn_nn5_rr1104"
+  },
+  {
+    "args": [
+      "rr_nn_ladder",
+      "rrnn_nn5_rr1105",
+      "/FS:rrnn_source",
+      "/FD:rrnn_source",
+      "/NN:5",
+      "/RR:1105"
+    ],
+    "case_id": "rrnn_nn5_rr1105",
+    "executable": "D:\\PFE-U\\PAR-S-Generator\\simind\\simind.exe",
+    "executable_sha256": "f984b8753f54b9f671f9fc1bcb2b45461e7cae8d027376b446dd1ed55a9a8319",
+    "output_stem": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\rr_nn_ladder\\output\\rrnn_nn5_rr1105",
+    "prepared_utc": "2026-08-17T21:38:03+02:00",
+    "smc": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\rr_nn_ladder\\input\\rr_nn_ladder.smc",
+    "smc_sha256": "e2d242d25181b6ad5ce7136456dce231889ba295ecd25593ecde073eb18e9676",
+    "working_dir": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\rr_nn_ladder\\input",
+    "output_argument": "rrnn_nn5_rr1105",
+    "staging_output_stem": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\rr_nn_ladder\\input\\rrnn_nn5_rr1105"
+  },
+  {
+    "args": [
+      "rr_nn_ladder",
+      "rrnn_nn10_rr1101",
+      "/FS:rrnn_source",
+      "/FD:rrnn_source",
+      "/NN:10",
+      "/RR:1101"
+    ],
+    "case_id": "rrnn_nn10_rr1101",
+    "executable": "D:\\PFE-U\\PAR-S-Generator\\simind\\simind.exe",
+    "executable_sha256": "f984b8753f54b9f671f9fc1bcb2b45461e7cae8d027376b446dd1ed55a9a8319",
+    "output_stem": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\rr_nn_ladder\\output\\rrnn_nn10_rr1101",
+    "prepared_utc": "2026-08-17T21:38:03+02:00",
+    "smc": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\rr_nn_ladder\\input\\rr_nn_ladder.smc",
+    "smc_sha256": "e2d242d25181b6ad5ce7136456dce231889ba295ecd25593ecde073eb18e9676",
+    "working_dir": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\rr_nn_ladder\\input",
+    "output_argument": "rrnn_nn10_rr1101",
+    "staging_output_stem": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\rr_nn_ladder\\input\\rrnn_nn10_rr1101"
+  },
+  {
+    "args": [
+      "rr_nn_ladder",
+      "rrnn_nn10_rr1102",
+      "/FS:rrnn_source",
+      "/FD:rrnn_source",
+      "/NN:10",
+      "/RR:1102"
+    ],
+    "case_id": "rrnn_nn10_rr1102",
+    "executable": "D:\\PFE-U\\PAR-S-Generator\\simind\\simind.exe",
+    "executable_sha256": "f984b8753f54b9f671f9fc1bcb2b45461e7cae8d027376b446dd1ed55a9a8319",
+    "output_stem": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\rr_nn_ladder\\output\\rrnn_nn10_rr1102",
+    "prepared_utc": "2026-08-17T21:38:03+02:00",
+    "smc": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\rr_nn_ladder\\input\\rr_nn_ladder.smc",
+    "smc_sha256": "e2d242d25181b6ad5ce7136456dce231889ba295ecd25593ecde073eb18e9676",
+    "working_dir": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\rr_nn_ladder\\input",
+    "output_argument": "rrnn_nn10_rr1102",
+    "staging_output_stem": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\rr_nn_ladder\\input\\rrnn_nn10_rr1102"
+  },
+  {
+    "args": [
+      "rr_nn_ladder",
+      "rrnn_nn10_rr1103",
+      "/FS:rrnn_source",
+      "/FD:rrnn_source",
+      "/NN:10",
+      "/RR:1103"
+    ],
+    "case_id": "rrnn_nn10_rr1103",
+    "executable": "D:\\PFE-U\\PAR-S-Generator\\simind\\simind.exe",
+    "executable_sha256": "f984b8753f54b9f671f9fc1bcb2b45461e7cae8d027376b446dd1ed55a9a8319",
+    "output_stem": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\rr_nn_ladder\\output\\rrnn_nn10_rr1103",
+    "prepared_utc": "2026-08-17T21:38:03+02:00",
+    "smc": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\rr_nn_ladder\\input\\rr_nn_ladder.smc",
+    "smc_sha256": "e2d242d25181b6ad5ce7136456dce231889ba295ecd25593ecde073eb18e9676",
+    "working_dir": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\rr_nn_ladder\\input",
+    "output_argument": "rrnn_nn10_rr1103",
+    "staging_output_stem": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\rr_nn_ladder\\input\\rrnn_nn10_rr1103"
+  },
+  {
+    "args": [
+      "rr_nn_ladder",
+      "rrnn_nn10_rr1104",
+      "/FS:rrnn_source",
+      "/FD:rrnn_source",
+      "/NN:10",
+      "/RR:1104"
+    ],
+    "case_id": "rrnn_nn10_rr1104",
+    "executable": "D:\\PFE-U\\PAR-S-Generator\\simind\\simind.exe",
+    "executable_sha256": "f984b8753f54b9f671f9fc1bcb2b45461e7cae8d027376b446dd1ed55a9a8319",
+    "output_stem": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\rr_nn_ladder\\output\\rrnn_nn10_rr1104",
+    "prepared_utc": "2026-08-17T21:38:03+02:00",
+    "smc": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\rr_nn_ladder\\input\\rr_nn_ladder.smc",
+    "smc_sha256": "e2d242d25181b6ad5ce7136456dce231889ba295ecd25593ecde073eb18e9676",
+    "working_dir": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\rr_nn_ladder\\input",
+    "output_argument": "rrnn_nn10_rr1104",
+    "staging_output_stem": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\rr_nn_ladder\\input\\rrnn_nn10_rr1104"
+  },
+  {
+    "args": [
+      "rr_nn_ladder",
+      "rrnn_nn10_rr1105",
+      "/FS:rrnn_source",
+      "/FD:rrnn_source",
+      "/NN:10",
+      "/RR:1105"
+    ],
+    "case_id": "rrnn_nn10_rr1105",
+    "executable": "D:\\PFE-U\\PAR-S-Generator\\simind\\simind.exe",
+    "executable_sha256": "f984b8753f54b9f671f9fc1bcb2b45461e7cae8d027376b446dd1ed55a9a8319",
+    "output_stem": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\rr_nn_ladder\\output\\rrnn_nn10_rr1105",
+    "prepared_utc": "2026-08-17T21:38:03+02:00",
+    "smc": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\rr_nn_ladder\\input\\rr_nn_ladder.smc",
+    "smc_sha256": "e2d242d25181b6ad5ce7136456dce231889ba295ecd25593ecde073eb18e9676",
+    "working_dir": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\rr_nn_ladder\\input",
+    "output_argument": "rrnn_nn10_rr1105",
+    "staging_output_stem": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\rr_nn_ladder\\input\\rrnn_nn10_rr1105"
+  }
+]

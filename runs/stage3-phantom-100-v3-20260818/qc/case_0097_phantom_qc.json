@@ -1,0 +1,151 @@
+{
+  "attenuation_contract": {
+    "reference_energy_kev": 140.5,
+    "status": "verified_type7_mu_times_voxel_v10_current_h2o_protocol",
+    "unit": "cm^-1"
+  },
+  "cantlie": {
+    "abs_error": 0.0027987082884822767,
+    "converged": true,
+    "iterations": 5,
+    "offset": 0.1146875,
+    "search": {
+      "expanded_beyond_initial_range": false,
+      "expanded_offset_range": [
+        -0.05,
+        0.12
+      ],
+      "expansions": 0,
+      "hit_expansion_limit": false,
+      "initial_offset_range": [
+        -0.05,
+        0.12
+      ],
+      "solution_on_search_boundary": false,
+      "target_bracketed": true
+    },
+    "target_left_ratio": 0.35,
+    "tilt_deg": 7.571363823100025
+  },
+  "failures": [],
+  "meta": "D:\\PFE-U\\PAR-S-Generator\\runs\\stage3-phantom-100-v3-20260818\\phantom\\case_0097_meta.json",
+  "metrics": {
+    "activity_dtype": "float32",
+    "activity_sum": 80000.00340735912,
+    "left_ratio": 0.35279870828848225,
+    "liver_volume_ml": 1604.39949904,
+    "mu_dtype": "float32",
+    "mu_max": 0.30076149106025696,
+    "mu_min": 0.0,
+    "n_tumors": 5,
+    "shape": [
+      128,
+      128,
+      128
+    ],
+    "tumors": [
+      {
+        "effective_diameter_mm": 46.736151228529835,
+        "index": 0,
+        "mode": "spiculated",
+        "nominal_diameter_mm": 46.57652159091818,
+        "outside_liver_vox": 0,
+        "overlap_previous_vox": 0,
+        "perfusion_region": "low_perfusion",
+        "placement_stratum": "central",
+        "sampled_size_bin_mm": [
+          40.0,
+          60.0
+        ],
+        "surface_margin_mm": 9.88342046054907,
+        "target_contrast": 2.9939183258933095,
+        "tnr_from_saved_activity": 0.36174712873345305,
+        "tnr_local_from_saved_activity": 2.9707800536525832,
+        "volume_vox": 619
+      },
+      {
+        "effective_diameter_mm": 34.314532782841944,
+        "index": 1,
+        "mode": "ellipsoid",
+        "nominal_diameter_mm": 31.712872536406977,
+        "outside_liver_vox": 0,
+        "overlap_previous_vox": 0,
+        "perfusion_region": "high_perfusion",
+        "placement_stratum": "central",
+        "sampled_size_bin_mm": [
+          20.0,
+          40.0
+        ],
+        "surface_margin_mm": 21.653489326203292,
+        "target_contrast": 7.798158624738711,
+        "tnr_from_saved_activity": 11.334403932102443,
+        "tnr_local_from_saved_activity": 7.808878305870173,
+        "volume_vox": 245
+      },
+      {
+        "effective_diameter_mm": 34.59239534741099,
+        "index": 2,
+        "mode": "spiculated",
+        "nominal_diameter_mm": 34.659331937014095,
+        "outside_liver_vox": 0,
+        "overlap_previous_vox": 0,
+        "perfusion_region": "high_perfusion",
+        "placement_stratum": "central",
+        "sampled_size_bin_mm": [
+          20.0,
+          40.0
+        ],
+        "surface_margin_mm": 9.88342046054907,
+        "target_contrast": 3.273960510483173,
+        "tnr_from_saved_activity": 4.741204536789117,
+        "tnr_local_from_saved_activity": 3.2664698975624216,
+        "volume_vox": 251
+      },
+      {
+        "effective_diameter_mm": 14.633243370680612,
+        "index": 3,
+        "mode": "ellipsoid",
+        "nominal_diameter_mm": 14.034369387923658,
+        "outside_liver_vox": 0,
+        "overlap_previous_vox": 0,
+        "perfusion_region": "low_perfusion",
+        "placement_stratum": "central",
+        "sampled_size_bin_mm": [
+          10.0,
+          20.0
+        ],
+        "surface_margin_mm": 7.655664569454437,
+        "target_contrast": 5.068679607996098,
+        "tnr_from_saved_activity": 0.6348890707475863,
+        "tnr_local_from_saved_activity": 5.213906726122778,
+        "volume_vox": 19
+      },
+      {
+        "effective_diameter_mm": 14.633243370680612,
+        "index": 4,
+        "mode": "ellipsoid",
+        "nominal_diameter_mm": 13.955972797987926,
+        "outside_liver_vox": 0,
+        "overlap_previous_vox": 0,
+        "perfusion_region": "high_perfusion",
+        "placement_stratum": "central",
+        "sampled_size_bin_mm": [
+          10.0,
+          20.0
+        ],
+        "surface_margin_mm": 6.25082394568908,
+        "target_contrast": 7.023578682466621,
+        "tnr_from_saved_activity": 10.245910683443977,
+        "tnr_local_from_saved_activity": 7.058956971986796,
+        "volume_vox": 19
+      }
+    ]
+  },
+  "npz": "D:\\PFE-U\\PAR-S-Generator\\runs\\stage3-phantom-100-v3-20260818\\phantom\\case_0097.npz",
+  "sha256": {
+    "meta": "6d79ef4312d400b8aaed7c0f29b6ccf1ff3742e4bb6c14879318f9b4e0302241",
+    "npz": "8f3aeef7ed3f70f0dd09ad352d7abb8e9855929a61bb1b22ab23bd152f56931a"
+  },
+  "status": "passed",
+  "warnings": []
+}

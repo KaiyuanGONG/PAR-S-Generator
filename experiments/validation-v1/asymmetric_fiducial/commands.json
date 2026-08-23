@@ -1,0 +1,19 @@
+{
+  "args": [
+    "asymmetric_fiducial",
+    "asymmetric_xyz",
+    "/FS:asymmetric_xyz",
+    "/FD:asymmetric_xyz",
+    "/NN:1000"
+  ],
+  "case_id": "asymmetric_xyz",
+  "executable": "D:\\PFE-U\\PAR-S-Generator\\simind\\simind.exe",
+  "executable_sha256": "f984b8753f54b9f671f9fc1bcb2b45461e7cae8d027376b446dd1ed55a9a8319",
+  "output_stem": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\asymmetric_fiducial\\output\\asymmetric_xyz",
+  "prepared_utc": "2026-08-17T21:38:02+02:00",
+  "smc": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\asymmetric_fiducial\\input\\asymmetric_fiducial.smc",
+  "smc_sha256": "943a38cd2d5aa0ba6458dd815037f2aa4c7c567b0cc8265db5ef34482e9f74bc",
+  "working_dir": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\asymmetric_fiducial\\input",
+  "output_argument": "asymmetric_xyz",
+  "staging_output_stem": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\asymmetric_fiducial\\input\\asymmetric_xyz"
+}

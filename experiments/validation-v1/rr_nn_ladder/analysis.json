@@ -1,0 +1,121 @@
+{
+  "analysis_blockers": [],
+  "analyzed_utc": "2026-08-17T23:19:51+00:00",
+  "experiment": "rr_nn_ladder",
+  "missing_cases": [],
+  "observations": [
+    {
+      "ci_method": "chi-square interval for normal-sampling variance, summarized at the median voxel",
+      "fixed_union_support_mean_voxelwise_variance": 0.1527817086908161,
+      "fixed_union_support_voxels": 107675,
+      "integrated_projection_sums": [
+        1014.7448181911302,
+        958.5852988477662,
+        1038.8295364628773,
+        1128.6934291988978,
+        929.5458140456877
+      ],
+      "integrated_sum_cv": 0.07634425745268655,
+      "integrated_sum_variance": 5993.727535443962,
+      "integrated_sum_variance_95ci": [
+        2151.511543323643,
+        49492.13813339526
+      ],
+      "mean_sum": 1014.0797793492718,
+      "mean_voxelwise_variance": 0.39713138478378757,
+      "median_relative_variance": 1.815644384717562,
+      "median_relative_variance_95ci": [
+        0.6517446495841153,
+        14.992360289682235
+      ],
+      "method": "voxelwise variance across independent /RR repeats",
+      "nn": 1,
+      "repeat_count": 5
+    },
+    {
+      "ci_method": "chi-square interval for normal-sampling variance, summarized at the median voxel",
+      "fixed_union_support_mean_voxelwise_variance": 0.01947443334229443,
+      "fixed_union_support_voxels": 107675,
+      "integrated_projection_sums": [
+        999.381571277751,
+        951.3872030652939,
+        951.2394502534617,
+        905.4055901411675,
+        963.2250340665456
+      ],
+      "integrated_sum_cv": 0.03523307039538093,
+      "integrated_sum_variance": 1130.0926629652283,
+      "integrated_sum_variance_95ci": [
+        405.6586481479003,
+        9331.538987760932
+      ],
+      "mean_sum": 954.127769760844,
+      "mean_voxelwise_variance": 0.029443947514379343,
+      "median_relative_variance": 3.2230964603568877,
+      "median_relative_variance_95ci": [
+        1.1569643762910504,
+        26.61414525267117
+      ],
+      "method": "voxelwise variance across independent /RR repeats",
+      "nn": 5,
+      "repeat_count": 5
+    },
+    {
+      "ci_method": "chi-square interval for normal-sampling variance, summarized at the median voxel",
+      "fixed_union_support_mean_voxelwise_variance": 0.012560103463436537,
+      "fixed_union_support_voxels": 107675,
+      "integrated_projection_sums": [
+        979.0078086135644,
+        991.3860399774242,
+        969.9543584677722,
+        973.1786699515294,
+        947.9365604666156
+      ],
+      "integrated_sum_cv": 0.01633597116080971,
+      "integrated_sum_variance": 252.2806580076839,
+      "integrated_sum_variance_95ci": [
+        90.55879578293369,
+        2083.1626230362667
+      ],
+      "mean_sum": 972.2926874953812,
+      "mean_voxelwise_variance": 0.014779297107604108,
+      "median_relative_variance": 3.6041001955325536,
+      "median_relative_variance_95ci": [
+        1.2937296745853697,
+        29.760215770415662
+      ],
+      "method": "voxelwise variance across independent /RR repeats",
+      "nn": 10,
+      "repeat_count": 5
+    },
+    {
+      "accepted_slope_interval": [
+        -1.5,
+        -0.5
+      ],
+      "clinical_poisson_observation_noise_present": false,
+      "control": "rr_nn_scaling_summary",
+      "expectation_mean_relative_range": 0.06116511283566792,
+      "expected_inverse_nn_slope": -1.0,
+      "fixed_union_support_variance_loglog_slope": -1.1193917385076597,
+      "integrated_sum_cv_by_nn": {
+        "1": 0.07634425745268655,
+        "10": 0.01633597116080971,
+        "5": 0.03523307039538093
+      },
+      "integrated_variance_loglog_slope": -1.3160735603359293,
+      "maximum_expectation_mean_relative_range": 0.1,
+      "minimum_noninteger_positive_fraction": 1.0,
+      "output_interpretation": "weighted_mc_expectation_estimator",
+      "physics_scope_limit": "Noise scaling is conditional on the current SIMIND setup; attenuation correctness failed its independent gate.",
+      "required_observation_contract": "Keep SIMIND variance-reduced expectation separate; if count-like observations are required, apply an explicitly calibrated observation-noise stage after the expectation image."
+    }
+  ],
+  "pass_fail": {
+    "nn_scaling": "passed",
+    "noise_contract": "passed",
+    "repeat_variance": "passed"
+  },
+  "scientific_limit": "Automatic artifact analysis does not itself verify the acquisition protocol or physics claim.",
+  "status": "complete_scientific_gate_passed"
+}

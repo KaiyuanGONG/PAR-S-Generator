@@ -1,0 +1,393 @@
+{
+  "completed_utc": "2026-08-18T08:13:33+00:00",
+  "experiment": "attenuation_ict",
+  "jobs": [
+    {
+      "artifacts": [
+        {
+          "bytes": 6884,
+          "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v10\\attenuation_ict\\output\\water_column_mu_0p00.res",
+          "sha256": "84223a1e6523f7cae5b4fbd305fccf59bfd1b5937baf5a201f650a77d427afcb"
+        },
+        {
+          "bytes": 8388608,
+          "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v10\\attenuation_ict\\output\\water_column_mu_0p00.ict",
+          "sha256": "2daeb1f36095b44b318410b3f4e8b5d989dcc7bb023d1426c492dab0a3053e74"
+        },
+        {
+          "bytes": 1312,
+          "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v10\\attenuation_ict\\output\\water_column_mu_0p00.hct",
+          "sha256": "d4c4e9afa484b1ebdc72b8a6a014af076f2cb910a577a226167cbb854d69c5f0"
+        },
+        {
+          "bytes": 16896,
+          "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v10\\attenuation_ict\\output\\water_column_mu_0p00.s01",
+          "sha256": "17dbe8c6d8b96bec7aef94ecf0d9a9afaf63a6d6f6b99a429ecc5f12a328f417"
+        },
+        {
+          "bytes": 16896,
+          "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v10\\attenuation_ict\\output\\water_column_mu_0p00.s02",
+          "sha256": "17dbe8c6d8b96bec7aef94ecf0d9a9afaf63a6d6f6b99a429ecc5f12a328f417"
+        },
+        {
+          "bytes": 16896,
+          "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v10\\attenuation_ict\\output\\water_column_mu_0p00.s03",
+          "sha256": "35e782085aaf1e0099d5ad0df4544eda66b6ced666dd3fecb8b3ab9125c2ccc0"
+        },
+        {
+          "bytes": 16896,
+          "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v10\\attenuation_ict\\output\\water_column_mu_0p00.s04",
+          "sha256": "35e782085aaf1e0099d5ad0df4544eda66b6ced666dd3fecb8b3ab9125c2ccc0"
+        },
+        {
+          "bytes": 16896,
+          "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v10\\attenuation_ict\\output\\water_column_mu_0p00.s05",
+          "sha256": "35e782085aaf1e0099d5ad0df4544eda66b6ced666dd3fecb8b3ab9125c2ccc0"
+        },
+        {
+          "bytes": 16896,
+          "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v10\\attenuation_ict\\output\\water_column_mu_0p00.s06",
+          "sha256": "35e782085aaf1e0099d5ad0df4544eda66b6ced666dd3fecb8b3ab9125c2ccc0"
+        },
+        {
+          "bytes": 3932160,
+          "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v10\\attenuation_ict\\output\\water_column_mu_0p00_air_w1.a00",
+          "sha256": "843a692313edcda2b2fd88dc490e30be51753881859d92153cb6b651b3dfef73"
+        },
+        {
+          "bytes": 291,
+          "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v10\\attenuation_ict\\output\\water_column_mu_0p00_air_w1.mhd",
+          "sha256": "c4b9ee69d8667b95e92dee9c02b6e2f6996d4e8d29454a689da9bb3f3ab871d0"
+        },
+        {
+          "bytes": 3932160,
+          "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v10\\attenuation_ict\\output\\water_column_mu_0p00_pri_w1.a00",
+          "sha256": "843a692313edcda2b2fd88dc490e30be51753881859d92153cb6b651b3dfef73"
+        },
+        {
+          "bytes": 291,
+          "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v10\\attenuation_ict\\output\\water_column_mu_0p00_pri_w1.mhd",
+          "sha256": "9e9423776de6bd7719faa36f1acb9be3cd10d4732b1b1d433fc02498417fa5e8"
+        },
+        {
+          "bytes": 3932160,
+          "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v10\\attenuation_ict\\output\\water_column_mu_0p00_sca_w1.a00",
+          "sha256": "9af8275830f1496e82873fd2944a1619944f6fec9a380e7ad8fe3dd039010340"
+        },
+        {
+          "bytes": 291,
+          "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v10\\attenuation_ict\\output\\water_column_mu_0p00_sca_w1.mhd",
+          "sha256": "019430f7eef53fcc0a38581a18bc4f110a024bbd8ea7f7f05ecdad6832bba667"
+        },
+        {
+          "bytes": 3932160,
+          "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v10\\attenuation_ict\\output\\water_column_mu_0p00_tot_w1.a00",
+          "sha256": "843a692313edcda2b2fd88dc490e30be51753881859d92153cb6b651b3dfef73"
+        },
+        {
+          "bytes": 291,
+          "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v10\\attenuation_ict\\output\\water_column_mu_0p00_tot_w1.mhd",
+          "sha256": "8e474729e33dedfc7cda11252ff38c85af6e934dd386e7bc0964327a9dd71f35"
+        }
+      ],
+      "case_id": "water_column_mu_0p00",
+      "command": [
+        "D:\\PFE-U\\PAR-S-Generator\\simind\\simind.exe",
+        "attenuation_ict",
+        "water_column_mu_0p00",
+        "/FS:water_column_mu_0p00",
+        "/FD:water_column_mu_0p00",
+        "/NN:10000",
+        "/IN:x21,100x/IN:x22,3x/CA:2/84:1",
+        "/RR:9600"
+      ],
+      "log": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v10\\attenuation_ict\\logs\\water_column_mu_0p00.log",
+      "log_provenance": "current_run",
+      "qc": {
+        "a00": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v10\\attenuation_ict\\output\\water_column_mu_0p00_pri_w1.a00",
+        "canonical_transform": "raw[:,::-1,:]",
+        "exit_code": 0,
+        "failures": [],
+        "metrics": {
+          "dtype": "float32",
+          "max": 6352.63330078125,
+          "mean": 5.381159889078602,
+          "noninteger_positive_fraction": 1.0,
+          "nonzero_fraction": 0.004472859700520833,
+          "shape": [
+            60,
+            128,
+            128
+          ],
+          "sum": 5289895.417359829,
+          "support_cols": [
+            58,
+            59,
+            60,
+            61,
+            62,
+            63,
+            64,
+            65,
+            66,
+            67,
+            68,
+            69
+          ],
+          "support_rows": [
+            60,
+            61,
+            62,
+            63,
+            64,
+            65,
+            66,
+            67,
+            68,
+            69
+          ]
+        },
+        "mhd": {
+          "dim_size": [
+            128,
+            128,
+            60
+          ],
+          "element_data_file": "water_column_mu_0p00_pri_w1.a00",
+          "element_type": "MET_FLOAT",
+          "exists": true
+        },
+        "res": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v10\\attenuation_ict\\output\\water_column_mu_0p00.res",
+        "res_command_tokens_matched": true,
+        "res_completion_marker": true,
+        "res_effective": {
+          "activity_time_value": 1704.0,
+          "command": "attenuation_ict water_column_mu_0p00 /FS:water_column_mu_0p00 /FD:water_column_mu_0p00 /NN:10000 /IN:x21,100x/IN:x22,3x/CA:2/84:1",
+          "detector_matrix_i": 128,
+          "detector_matrix_j": 128,
+          "detector_pitch_cm": 0.246,
+          "input_pixel_size_i_cm": 0.442,
+          "input_pixel_size_j_cm": 0.442,
+          "lower_energy_window_kev": 126.0,
+          "nn_scaling_factor": 10000.0,
+          "photon_energy_kev": 140.0,
+          "photons_per_projection": 10000,
+          "projection_count": 60,
+          "rotation_step_deg": 6.0,
+          "sensitivity_cps_per_mbq": 51.74,
+          "source": "SIMIND .res",
+          "upper_energy_window_kev": 154.0
+        },
+        "res_expected_command_tokens": [
+          "/FS:water_column_mu_0p00",
+          "/FD:water_column_mu_0p00",
+          "/NN:10000",
+          "/IN:x21,100x/IN:x22,3x/CA:2/84:1"
+        ],
+        "sha256": {
+          "a00": "843a692313edcda2b2fd88dc490e30be51753881859d92153cb6b651b3dfef73",
+          "mhd": "9e9423776de6bd7719faa36f1acb9be3cd10d4732b1b1d433fc02498417fa5e8",
+          "res": "84223a1e6523f7cae5b4fbd305fccf59bfd1b5937baf5a201f650a77d427afcb"
+        },
+        "status": "passed"
+      },
+      "status": "passed",
+      "working_dir": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v10\\attenuation_ict\\input"
+    },
+    {
+      "artifacts": [
+        {
+          "bytes": 7239,
+          "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v10\\attenuation_ict\\output\\water_column_mu_0p15.res",
+          "sha256": "728d1279d32eb0c98d9c1b984cbb6fde1c0897264353b0cff5060e1a450bc39e"
+        },
+        {
+          "bytes": 8388608,
+          "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v10\\attenuation_ict\\output\\water_column_mu_0p15.ict",
+          "sha256": "d6ec13a755aea88ebf9e260f3e7ef7138832becc45fb2e65276d622b0728a84e"
+        },
+        {
+          "bytes": 1312,
+          "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v10\\attenuation_ict\\output\\water_column_mu_0p15.hct",
+          "sha256": "97aefaebbc3b9acdfdc2ca09be752bfdddacfe4587da7c3618ced85ce3840574"
+        },
+        {
+          "bytes": 16896,
+          "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v10\\attenuation_ict\\output\\water_column_mu_0p15.s01",
+          "sha256": "f067a45cd1ff5aad8057334da4c85464585b7bf684d02f3e8af5974599fbb364"
+        },
+        {
+          "bytes": 16896,
+          "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v10\\attenuation_ict\\output\\water_column_mu_0p15.s02",
+          "sha256": "2bc71340e0c80dff20967b381c6123c88032fc07b293c3d3b547cacf39553981"
+        },
+        {
+          "bytes": 16896,
+          "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v10\\attenuation_ict\\output\\water_column_mu_0p15.s03",
+          "sha256": "6a8db8313795709dd578ce8c4b2a2ce29c36a4632e0a40b4ce748e41b9c89de9"
+        },
+        {
+          "bytes": 16896,
+          "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v10\\attenuation_ict\\output\\water_column_mu_0p15.s04",
+          "sha256": "fd38a2fff98357b02e1b0cb2dbdbb814e088dde124c10d9e61d10aefedf7e24c"
+        },
+        {
+          "bytes": 16896,
+          "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v10\\attenuation_ict\\output\\water_column_mu_0p15.s05",
+          "sha256": "17f00434c29bab0cdb2f9c577dc5d603ec82c38a34a0e84c51f83e1b94846d69"
+        },
+        {
+          "bytes": 16896,
+          "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v10\\attenuation_ict\\output\\water_column_mu_0p15.s06",
+          "sha256": "e08425bd44d54b38403ee9a02720cb0488ef2f183aae69441d31ff6261710fcd"
+        },
+        {
+          "bytes": 3932160,
+          "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v10\\attenuation_ict\\output\\water_column_mu_0p15_air_w1.a00",
+          "sha256": "162659f4c86f47b94761ae4128bc2f788e82720d14a81868b8ac57637674f158"
+        },
+        {
+          "bytes": 291,
+          "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v10\\attenuation_ict\\output\\water_column_mu_0p15_air_w1.mhd",
+          "sha256": "ff6f7848f176ce4384c32585d5f120d75ee7364a325d7d58a7749966903e13f8"
+        },
+        {
+          "bytes": 3932160,
+          "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v10\\attenuation_ict\\output\\water_column_mu_0p15_pri_w1.a00",
+          "sha256": "0122cc33f8adaabd1f28e20263e179d67dfb6a2243c69e4310baf974d9fa6760"
+        },
+        {
+          "bytes": 291,
+          "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v10\\attenuation_ict\\output\\water_column_mu_0p15_pri_w1.mhd",
+          "sha256": "1c88652e6cd8b4c4d7c261e31d715364520682374cea23b217a295a0ed05ccf3"
+        },
+        {
+          "bytes": 3932160,
+          "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v10\\attenuation_ict\\output\\water_column_mu_0p15_sca_w1.a00",
+          "sha256": "489a8f5f0545383d5231e11c1990005d4407002bd1e4d87f552ce3e26a3e329f"
+        },
+        {
+          "bytes": 291,
+          "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v10\\attenuation_ict\\output\\water_column_mu_0p15_sca_w1.mhd",
+          "sha256": "563c0df801a697b6fd7bf465bf58b704d441e2799de063d03c0d458f01fde313"
+        },
+        {
+          "bytes": 3932160,
+          "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v10\\attenuation_ict\\output\\water_column_mu_0p15_tot_w1.a00",
+          "sha256": "03e8caae71cfa071afe1f5708f44bd0540e0576c8f9f192252cd0f15f25a3f8d"
+        },
+        {
+          "bytes": 291,
+          "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v10\\attenuation_ict\\output\\water_column_mu_0p15_tot_w1.mhd",
+          "sha256": "4fcac45c1dce7ca805957cbea383bee954a335a6df47748b763753b5fd0b3479"
+        }
+      ],
+      "case_id": "water_column_mu_0p15",
+      "command": [
+        "D:\\PFE-U\\PAR-S-Generator\\simind\\simind.exe",
+        "attenuation_ict",
+        "water_column_mu_0p15",
+        "/FS:water_column_mu_0p15",
+        "/FD:water_column_mu_0p15",
+        "/NN:10000",
+        "/IN:x21,100x/IN:x22,3x/CA:2/84:1",
+        "/RR:9600"
+      ],
+      "log": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v10\\attenuation_ict\\logs\\water_column_mu_0p15.log",
+      "log_provenance": "current_run",
+      "qc": {
+        "a00": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v10\\attenuation_ict\\output\\water_column_mu_0p15_pri_w1.a00",
+        "canonical_transform": "raw[:,::-1,:]",
+        "exit_code": 0,
+        "failures": [],
+        "metrics": {
+          "dtype": "float32",
+          "max": 1634.2882080078125,
+          "mean": 1.437217773067823,
+          "noninteger_positive_fraction": 1.0,
+          "nonzero_fraction": 0.004457600911458333,
+          "shape": [
+            60,
+            128,
+            128
+          ],
+          "sum": 1412842.5596365929,
+          "support_cols": [
+            58,
+            59,
+            60,
+            61,
+            62,
+            63,
+            64,
+            65,
+            66,
+            67,
+            68,
+            69
+          ],
+          "support_rows": [
+            60,
+            61,
+            62,
+            63,
+            64,
+            65,
+            66,
+            67,
+            68,
+            69
+          ]
+        },
+        "mhd": {
+          "dim_size": [
+            128,
+            128,
+            60
+          ],
+          "element_data_file": "water_column_mu_0p15_pri_w1.a00",
+          "element_type": "MET_FLOAT",
+          "exists": true
+        },
+        "res": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v10\\attenuation_ict\\output\\water_column_mu_0p15.res",
+        "res_command_tokens_matched": true,
+        "res_completion_marker": true,
+        "res_effective": {
+          "activity_time_value": 1704.0,
+          "command": "attenuation_ict water_column_mu_0p15 /FS:water_column_mu_0p15 /FD:water_column_mu_0p15 /NN:10000 /IN:x21,100x/IN:x22,3x/CA:2/84:1",
+          "detector_matrix_i": 128,
+          "detector_matrix_j": 128,
+          "detector_pitch_cm": 0.246,
+          "input_pixel_size_i_cm": 0.442,
+          "input_pixel_size_j_cm": 0.442,
+          "lower_energy_window_kev": 126.0,
+          "nn_scaling_factor": 10000.0,
+          "photon_energy_kev": 140.0,
+          "photons_per_projection": 10000,
+          "projection_count": 60,
+          "rotation_step_deg": 6.0,
+          "sensitivity_cps_per_mbq": 20.1316,
+          "source": "SIMIND .res",
+          "upper_energy_window_kev": 154.0
+        },
+        "res_expected_command_tokens": [
+          "/FS:water_column_mu_0p15",
+          "/FD:water_column_mu_0p15",
+          "/NN:10000",
+          "/IN:x21,100x/IN:x22,3x/CA:2/84:1"
+        ],
+        "sha256": {
+          "a00": "0122cc33f8adaabd1f28e20263e179d67dfb6a2243c69e4310baf974d9fa6760",
+          "mhd": "1c88652e6cd8b4c4d7c261e31d715364520682374cea23b217a295a0ed05ccf3",
+          "res": "728d1279d32eb0c98d9c1b984cbb6fde1c0897264353b0cff5060e1a450bc39e"
+        },
+        "status": "passed"
+      },
+      "status": "passed",
+      "working_dir": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v10\\attenuation_ict\\input"
+    }
+  ],
+  "resume": false,
+  "started_utc": "2026-08-18T08:13:15+00:00",
+  "status": "completed"
+}

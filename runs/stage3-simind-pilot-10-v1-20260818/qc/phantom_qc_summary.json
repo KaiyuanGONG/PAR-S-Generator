@@ -1,0 +1,160 @@
+{
+  "case_count": 10,
+  "case_distributions": {
+    "activity_sum": {
+      "count": 10,
+      "max": 80000.00846552849,
+      "mean": 80000.00083452165,
+      "median": 79999.99927382171,
+      "min": 79999.99515986443,
+      "q25": 79999.99672806263,
+      "q75": 80000.00567807257,
+      "std": 0.004915747326459981
+    },
+    "left_ratio": {
+      "count": 10,
+      "max": 0.35416892551230617,
+      "mean": 0.34951109371419126,
+      "median": 0.349610212914676,
+      "min": 0.34536630767185217,
+      "q25": 0.3467081077127442,
+      "q75": 0.3518338872009339,
+      "std": 0.002983278522892458
+    },
+    "liver_volume_ml": {
+      "count": 10,
+      "max": 1899.6331851119999,
+      "mean": 1349.1635442896,
+      "median": 1322.8524287159998,
+      "min": 932.330537736,
+      "q25": 1285.160266104,
+      "q75": 1461.4671916779998,
+      "std": 272.3875351009685
+    },
+    "tumor_count": {
+      "1": 5,
+      "2": 1,
+      "3": 1,
+      "4": 2,
+      "5": 1
+    }
+  },
+  "claim_boundary": "Generated-population QC for the current synthetic liver protocol; not a clinical prevalence distribution.",
+  "containment_outside_voxels": 0,
+  "failed_case_count": 0,
+  "failed_cases": [],
+  "lesion_count": 23,
+  "lesion_distributions": {
+    "central_surface_margin_mm": {
+      "count": 18,
+      "max": 22.1,
+      "mean": 11.306146840699272,
+      "median": 8.84,
+      "min": 4.42,
+      "q25": 7.951748427090828,
+      "q75": 13.26,
+      "std": 4.911295286818301
+    },
+    "diameter_bins": {
+      "10_to_lt20_mm": 10,
+      "20_to_lt40_mm": 7,
+      "40_to_60_mm": 6,
+      "outside_10_to_60_mm": 0
+    },
+    "effective_diameter_mm": {
+      "count": 23,
+      "max": 54.228994667220405,
+      "mean": 27.740428729288148,
+      "median": 23.727450071479502,
+      "min": 10.490320136880253,
+      "q25": 14.633243370680612,
+      "q75": 38.88503866313498,
+      "std": 13.695881910856933
+    },
+    "effective_to_nominal_ratio": {
+      "count": 23,
+      "max": 1.0898636442626588,
+      "mean": 0.9948688184355506,
+      "median": 0.9922404607885067,
+      "min": 0.8755351255176055,
+      "q25": 0.9576467611357478,
+      "q75": 1.0414374541031912,
+      "std": 0.05586720011490323
+    },
+    "morphology_modes": {
+      "ellipsoid": 18,
+      "spiculated": 5
+    },
+    "nominal_diameter_mm": {
+      "count": 23,
+      "max": 52.32621813501664,
+      "mean": 27.925187948064316,
+      "median": 23.879504953388057,
+      "min": 11.005649122021449,
+      "q25": 15.422335140585645,
+      "q75": 39.2971015591166,
+      "std": 13.770445336241487
+    },
+    "perfusion_regions": {
+      "high_perfusion": 18,
+      "low_perfusion": 5
+    },
+    "placement_strata": {
+      "capacity_fallback_margin_relaxed": 5,
+      "central": 18
+    },
+    "sampled_size_bins": {
+      "10_to_20_mm": 10,
+      "20_to_40_mm": 7,
+      "40_to_60_mm": 6
+    },
+    "surface_margin_mm": {
+      "count": 23,
+      "max": 22.1,
+      "mean": 9.741951632122829,
+      "median": 8.84,
+      "min": 0.0,
+      "q25": 6.25082394568908,
+      "q75": 13.26,
+      "std": 5.550393261193401
+    },
+    "target_contrast": {
+      "count": 23,
+      "max": 7.975813013410862,
+      "mean": 4.643903476029601,
+      "median": 4.1266846664560735,
+      "min": 2.0645734273605987,
+      "q25": 3.2521433906624537,
+      "q75": 5.8681639118434,
+      "std": 1.8125980301468427
+    },
+    "tnr_from_saved_activity": {
+      "count": 23,
+      "max": 20.70134989793004,
+      "mean": 6.312592526968707,
+      "median": 3.9406892071762774,
+      "min": 0.3827501714744657,
+      "q25": 2.5900092830492603,
+      "q75": 10.078892636902701,
+      "std": 5.827948628414087
+    },
+    "tnr_local_from_saved_activity": {
+      "count": 23,
+      "max": 7.961793833156809,
+      "mean": 4.526205133310709,
+      "median": 4.134747756809724,
+      "min": 2.0668822038000987,
+      "q25": 3.157392905737094,
+      "q75": 5.751812539662127,
+      "std": 1.792295909744459
+    }
+  },
+  "overlap_voxels": 0,
+  "passed_case_count": 10,
+  "stage3_population_acceptance": {
+    "enforced": false,
+    "reason": "Stage-3 population gates require exactly 100 generated cases",
+    "status": "not_enforced"
+  },
+  "status": "passed"
+}

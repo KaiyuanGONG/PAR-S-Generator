@@ -7,13 +7,21 @@ SIMIND XcatBinMap convention (Index-14 = -7, Index-15 = -7):
   - Source file:  <stem>_act_av.bin   (read via /FS:<stem>)
   - Density file: <stem>_atn_av.bin   (read via /FD:<stem>)
   - Format: float32, C-order (Z, Y, X), no header
+
+The saved NPZ ``mu_map`` remains a linear attenuation coefficient in cm^-1.
+Type -7 consumes the XCAT convention ``stored = mu_cm^-1 * voxel_width_cm``;
+that single conversion is applied only when writing ``_atn_av.bin``.
 """
 
 from __future__ import annotations
 
 from pathlib import Path
+import os
 
 import numpy as np
+
+from pipeline.contracts import sha256_file
+from pipeline.simind import build_simind_tokens
 
 
 def write_bin(
@@ -32,7 +40,19 @@ def write_bin(
     """
     output_stem = Path(output_stem)
     bin_path = output_stem.parent / (output_stem.name + suffix + ".bin")
-    volume.astype(np.float32, copy=False).tofile(str(bin_path))
+    output_stem.parent.mkdir(parents=True, exist_ok=True)
+    encoded = np.ascontiguousarray(volume, dtype=np.dtype("<f4"))
+    if encoded.ndim != 3 or not np.isfinite(encoded).all():
+        raise ValueError("SIMIND binary volumes must be finite 3D arrays")
+    temp = bin_path.with_name(f".{bin_path.name}.{os.getpid()}.tmp")
+    encoded.tofile(str(temp))
+    # Read back before publishing the file.  This makes dtype/order/length an
+    # executable contract instead of a comment beside an unchecked write.
+    decoded = np.fromfile(temp, dtype=np.dtype("<f4"))
+    if decoded.size != encoded.size or not np.array_equal(decoded.reshape(encoded.shape), encoded):
+        temp.unlink(missing_ok=True)
+        raise IOError(f"Binary read-back failed for {bin_path}")
+    temp.replace(bin_path)
     return bin_path
 
 
@@ -57,8 +77,9 @@ def convert_npz_to_interfile(
     """
     Convert a single .npz phantom file to SIMIND binary pairs.
 
-    `voxel_size_mm` is retained for compatibility with older call sites.
-    The exporter writes raw arrays only and does not embed voxel metadata.
+    The analytical NPZ attenuation map is in cm^-1.  The type-7 raw density
+    input stores the dimensionless per-voxel optical thickness ``mu * dx``.
+    Both semantics and the exact conversion are returned for provenance.
     """
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -71,14 +92,60 @@ def convert_npz_to_interfile(
         if "activity" not in data or "mu_map" not in data:
             raise ValueError(f"{npz_path.name}: missing required arrays 'activity' and/or 'mu_map'.")
 
-        activity = np.asarray(data["activity"], dtype=np.float32)
-        mu_map = np.asarray(data["mu_map"], dtype=np.float32)
+        activity = np.ascontiguousarray(data["activity"], dtype=np.dtype("<f4"))
+        mu_map = np.ascontiguousarray(data["mu_map"], dtype=np.dtype("<f4"))
         _validate_npz_arrays(npz_path, activity, mu_map)
+
+        voxel_size_cm = float(voxel_size_mm) / 10.0
+        if not np.isfinite(voxel_size_cm) or voxel_size_cm <= 0:
+            raise ValueError("voxel_size_mm must be finite and positive")
+        type7_attenuation = np.ascontiguousarray(
+            mu_map * np.float32(voxel_size_cm), dtype=np.dtype("<f4")
+        )
+        recovered_mu = np.asarray(type7_attenuation / np.float32(voxel_size_cm), dtype=np.float32)
+        max_roundtrip_error = float(np.max(np.abs(recovered_mu - mu_map)))
+        if max_roundtrip_error > 1e-6:
+            raise IOError(
+                "Type-7 attenuation conversion failed round-trip tolerance: "
+                f"{max_roundtrip_error:g} cm^-1"
+            )
 
         result = {
             "act_bin": write_bin(activity, base, "_act_av"),
-            "atn_bin": write_bin(mu_map, base, "_atn_av"),
+            "atn_bin": write_bin(type7_attenuation, base, "_atn_av"),
         }
+
+    expected_bytes = int(activity.size) * np.dtype(np.float32).itemsize
+    for label in ("act_bin", "atn_bin"):
+        path = result[label]
+        if path.stat().st_size != expected_bytes:
+            raise IOError(f"Unexpected binary size after export: {path}")
+    result.update(
+        {
+            "shape": list(activity.shape),
+            "dtype": "<f4",
+            "byte_order": "little",
+            "order": "C (Z,Y,X)",
+            "expected_bytes": expected_bytes,
+            "voxel_size_mm": float(voxel_size_mm),
+            "voxel_size_cm": voxel_size_cm,
+            "act_sha256": sha256_file(result["act_bin"]),
+            "atn_sha256": sha256_file(result["atn_bin"]),
+            "readback_verified": True,
+            "analytical_mu_semantic": "linear_attenuation_coefficient",
+            "analytical_mu_unit": "cm^-1",
+            "type7_stored_semantic": "mu_cm_inverse_times_density_voxel_size_cm",
+            "type7_stored_unit": "dimensionless_per_voxel_optical_thickness",
+            "type7_conversion_formula": "stored_value = mu_cm_inverse * voxel_size_cm",
+            "type7_conversion_scale": voxel_size_cm,
+            "type7_roundtrip_max_abs_error_cm_inverse": max_roundtrip_error,
+            "analytical_mu_range_cm_inverse": [float(mu_map.min()), float(mu_map.max())],
+            "type7_stored_value_range": [
+                float(type7_attenuation.min()),
+                float(type7_attenuation.max()),
+            ],
+        }
+    )
 
     return result
 
@@ -109,12 +176,15 @@ def generate_simind_bat(
     output_dir: Path,
     bat_path: Path,
     photons_per_proj: int = 5_000_000,
+    nn_multiplier: int = 0,
+    custom_overrides: list[tuple[int, str]] | None = None,
 ) -> Path:
     """
     Generate a Windows .bat script to run SIMIND on all binary pairs.
 
     `photons_per_proj` is retained for backward compatibility but is informational only.
-    Actual photon histories are configured inside the selected `.smc` file.
+    `nn_multiplier` adds /NN:<value> to each SIMIND invocation (0 = omit).
+    `custom_overrides` adds /<index>:<value> CLI overrides.
     """
     interfile_dir = Path(interfile_dir).resolve()
     output_dir = Path(output_dir).resolve()
@@ -171,7 +241,18 @@ def generate_simind_bat(
         out_stem = output_dir / stem
         lines += [
             f'echo [{i + 1}/{len(act_bins)}] Processing {stem}...',
-            f'"%SIMIND%" {smc_stem} "{out_stem}" /FS:{stem} /FD:{stem}',
+            '"%SIMIND%" '
+            + " ".join(
+                f'"{token}"' if " " in token else token
+                for token in build_simind_tokens(
+                    smc_stem=smc_stem,
+                    output_stem=str(out_stem),
+                    source_stem=stem,
+                    density_stem=stem,
+                    nn_multiplier=nn_multiplier,
+                    overrides=custom_overrides or [],
+                )
+            ),
             "if errorlevel 1 (",
             f"    echo ERROR: Failed on {stem}",
             "    popd",
@@ -189,7 +270,13 @@ def generate_simind_bat(
     ]
 
     bat_path.parent.mkdir(parents=True, exist_ok=True)
-    with open(bat_path, "w", encoding="ascii", newline="\r\n") as f:
+    # Kept for API compatibility.  Pipeline-generated runs use the shared
+    # ``pipeline.simind`` contract; this legacy helper now at least writes
+    # atomically and is covered by the same binary read-back checks.
+    bat_path.parent.mkdir(parents=True, exist_ok=True)
+    temp = bat_path.with_name(f".{bat_path.name}.{os.getpid()}.tmp")
+    with open(temp, "w", encoding="ascii", newline="\r\n") as f:
         f.write("\n".join(lines))
+    temp.replace(bat_path)
 
     return bat_path

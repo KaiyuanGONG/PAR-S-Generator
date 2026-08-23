@@ -1,0 +1,279 @@
+{
+  "analysis_blockers": [],
+  "analyzed_utc": "2026-08-17T23:23:01+00:00",
+  "experiment": "attenuation_ict",
+  "missing_cases": [],
+  "observations": [
+    {
+      "a00_exists": true,
+      "case_id": "uniform_mu_0p05",
+      "ict_files": [
+        {
+          "byte_order": "LITTLEENDIAN",
+          "bytes": 4194304,
+          "bytes_per_pixel": 2,
+          "declared_units": "g/dm3",
+          "dtype": "<u2",
+          "finite_fraction": 1.0,
+          "header": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v8\\attenuation_ict\\output\\uniform_mu_0p05.hct",
+          "max": 325.0,
+          "mean": 314.9426221847534,
+          "min": 0.0,
+          "modal_positive_value": 325.0,
+          "number_format": "unsigned integer",
+          "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v8\\attenuation_ict\\output\\uniform_mu_0p05.ict",
+          "sha256": "97ea094a56df7fcfa7a986b3eda18afa8fa06d5e84e22b034210fbbdf991a4b1",
+          "shape": [
+            128,
+            128,
+            128
+          ],
+          "unique_positive_values": [
+            325.0
+          ],
+          "value_count": 2097152
+        }
+      ],
+      "matrix": 128,
+      "primary_csv": null,
+      "primary_csv_expected": false,
+      "projection_sum": 6627167.543344428
+    },
+    {
+      "a00_exists": true,
+      "case_id": "uniform_mu_0p15",
+      "ict_files": [
+        {
+          "byte_order": "LITTLEENDIAN",
+          "bytes": 4194304,
+          "bytes_per_pixel": 2,
+          "declared_units": "g/dm3",
+          "dtype": "<u2",
+          "finite_fraction": 1.0,
+          "header": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v8\\attenuation_ict\\output\\uniform_mu_0p15.hct",
+          "max": 975.0,
+          "mean": 944.8278665542603,
+          "min": 0.0,
+          "modal_positive_value": 975.0,
+          "number_format": "unsigned integer",
+          "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v8\\attenuation_ict\\output\\uniform_mu_0p15.ict",
+          "sha256": "6ca3b4d99a0de5fae2830b37a173153015c35804741a771b049193b4de3dd58e",
+          "shape": [
+            128,
+            128,
+            128
+          ],
+          "unique_positive_values": [
+            975.0
+          ],
+          "value_count": 2097152
+        }
+      ],
+      "matrix": 128,
+      "primary_csv": null,
+      "primary_csv_expected": false,
+      "projection_sum": 7181457.344680751
+    },
+    {
+      "a00_exists": true,
+      "case_id": "uniform_mu_0p30",
+      "ict_files": [
+        {
+          "byte_order": "LITTLEENDIAN",
+          "bytes": 4194304,
+          "bytes_per_pixel": 2,
+          "declared_units": "g/dm3",
+          "dtype": "<u2",
+          "finite_fraction": 1.0,
+          "header": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v8\\attenuation_ict\\output\\uniform_mu_0p30.hct",
+          "max": 1950.0,
+          "mean": 1889.6557331085205,
+          "min": 0.0,
+          "modal_positive_value": 1950.0,
+          "number_format": "unsigned integer",
+          "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v8\\attenuation_ict\\output\\uniform_mu_0p30.ict",
+          "sha256": "89a1d4695cb9bcdf35b28cf3012ce6178ff9b0f6e900faa1f57039060c5d9992",
+          "shape": [
+            128,
+            128,
+            128
+          ],
+          "unique_positive_values": [
+            1950.0
+          ],
+          "value_count": 2097152
+        }
+      ],
+      "matrix": 128,
+      "primary_csv": null,
+      "primary_csv_expected": false,
+      "projection_sum": 2317.178428924086
+    },
+    {
+      "a00_exists": true,
+      "case_id": "water_column_mu_0p00",
+      "ict_files": [
+        {
+          "byte_order": "LITTLEENDIAN",
+          "bytes": 4194304,
+          "bytes_per_pixel": 2,
+          "declared_units": "g/dm3",
+          "dtype": "<u2",
+          "finite_fraction": 1.0,
+          "header": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v8\\attenuation_ict\\output\\water_column_mu_0p00.hct",
+          "max": 0.0,
+          "mean": 0.0,
+          "min": 0.0,
+          "modal_positive_value": null,
+          "number_format": "unsigned integer",
+          "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v8\\attenuation_ict\\output\\water_column_mu_0p00.ict",
+          "sha256": "bb9f8df61474d25e71fa00722318cd387396ca1736605e1248821cc0de3d3af8",
+          "shape": [
+            128,
+            128,
+            128
+          ],
+          "unique_positive_values": [],
+          "value_count": 2097152
+        }
+      ],
+      "matrix": 128,
+      "primary_csv": {
+        "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v8\\attenuation_ict\\output\\water_column_mu_0p00.csv",
+        "primary_sum": 5298624.046999999,
+        "rows": 60,
+        "scatter_sum": 0.0,
+        "sha256": "67e94a4e0fab0aecfc4679157a1db77a200f0bf0ec926f6484075f300f568f15"
+      },
+      "primary_csv_expected": true,
+      "projection_sum": 5298624.04204464
+    },
+    {
+      "a00_exists": true,
+      "case_id": "water_column_mu_0p15",
+      "ict_files": [
+        {
+          "byte_order": "LITTLEENDIAN",
+          "bytes": 4194304,
+          "bytes_per_pixel": 2,
+          "declared_units": "g/dm3",
+          "dtype": "<u2",
+          "finite_fraction": 1.0,
+          "header": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v8\\attenuation_ict\\output\\water_column_mu_0p15.hct",
+          "max": 975.0,
+          "mean": 73.63436222076416,
+          "min": 0.0,
+          "modal_positive_value": 975.0,
+          "number_format": "unsigned integer",
+          "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v8\\attenuation_ict\\output\\water_column_mu_0p15.ict",
+          "sha256": "036065abfb557b7ceda48bc7862a830a228c99348caf5852422d7226fa66a286",
+          "shape": [
+            128,
+            128,
+            128
+          ],
+          "unique_positive_values": [
+            975.0
+          ],
+          "value_count": 2097152
+        }
+      ],
+      "matrix": 128,
+      "primary_csv": {
+        "path": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v8\\attenuation_ict\\output\\water_column_mu_0p15.csv",
+        "primary_sum": 5300872.36,
+        "rows": 60,
+        "scatter_sum": 1347322.5800000003,
+        "sha256": "54067f155972428baea6f7f8e4ba7a46ca76eb9c8e04c6e72ab579b1a6ee0d78"
+      },
+      "primary_csv_expected": true,
+      "projection_sum": 6648194.91759587
+    },
+    {
+      "control": "ict_linear_mapping",
+      "implied_mapping_input_per_density": 1.0,
+      "manual_basis": "SIMIND V8 manual pages 11 and 26",
+      "mapping": "SIMIND type -1 preserves the supplied density map as uint16 density*1000",
+      "mapping_input_kind": "explicit_density_g_cm3",
+      "mapping_input_to_density_slope": 1.0,
+      "maximum_relative_residual": 1.1386902816668274e-16,
+      "points": [
+        {
+          "case_id": "uniform_mu_0p05",
+          "density_input_g_cm3": 0.325,
+          "density_per_mapping_input": 1.0,
+          "derived_density_g_cm3": 0.325,
+          "ict_density_times_1000": 325.0,
+          "intended_mu_cm_inverse": 0.05,
+          "mapping_input_kind": "explicit_density_g_cm3",
+          "mapping_input_value": 0.325,
+          "stored_attenuation_value": 0.05
+        },
+        {
+          "case_id": "uniform_mu_0p15",
+          "density_input_g_cm3": 0.9749999999999999,
+          "density_per_mapping_input": 1.0000000000000002,
+          "derived_density_g_cm3": 0.975,
+          "ict_density_times_1000": 975.0,
+          "intended_mu_cm_inverse": 0.15,
+          "mapping_input_kind": "explicit_density_g_cm3",
+          "mapping_input_value": 0.9749999999999999,
+          "stored_attenuation_value": 0.15
+        },
+        {
+          "case_id": "uniform_mu_0p30",
+          "density_input_g_cm3": 1.9499999999999997,
+          "density_per_mapping_input": 1.0000000000000002,
+          "derived_density_g_cm3": 1.95,
+          "ict_density_times_1000": 1950.0,
+          "intended_mu_cm_inverse": 0.3,
+          "mapping_input_kind": "explicit_density_g_cm3",
+          "mapping_input_value": 1.9499999999999997,
+          "stored_attenuation_value": 0.3
+        }
+      ]
+    },
+    {
+      "attenuated_case": "water_column_mu_0p15",
+      "control": "analytic_water_column_pair",
+      "expected_if_stored_value_is_per_voxel": 0.049787068367863944,
+      "expected_primary_ratio": 0.26553728898702783,
+      "maximum_mu_absolute_error_cm_inverse": 0.02,
+      "maximum_ratio_relative_error": 0.1,
+      "mu_absolute_error_cm_inverse": null,
+      "mu_cm_inverse": 0.15,
+      "observed_mu_cm_inverse": null,
+      "observed_primary_weight_ratio": 1.000424320159358,
+      "observed_total_projection_sum_ratio": 1.2547021386764508,
+      "path_length_cm": 8.84,
+      "path_length_vox": 20.0,
+      "per_voxel_hypothesis_relative_error": 19.094059621415703,
+      "ratio_relative_error": 2.767547390333684,
+      "ratio_used_for_gate": 1.000424320159358,
+      "reference_case": "water_column_mu_0p00",
+      "scatter_control_valid": true,
+      "scientific_verdict": "failed_threshold",
+      "stored_attenuation_value": 0.15
+    },
+    {
+      "attenuated_sum": 4641848.178678513,
+      "common_rr": 9501,
+      "control": "penetrate_b02_primary_attenuated_followup",
+      "expected_ratio": 0.26553728898702783,
+      "interpretation_limit": "Confirms gate failure for the tested configuration; does not establish a general SIMIND defect.",
+      "manual_definition": "SIMIND V8 manual page 30: geometrically collimated primary attenuated photons",
+      "nn": 1000,
+      "observed_ratio": 1.000742324382106,
+      "reference_sum": 4638404.97756958,
+      "relative_error": 2.7687449781525597,
+      "verdict": "failed_threshold"
+    }
+  ],
+  "pass_fail": {
+    "analytic_attenuation": "failed_threshold",
+    "ict_exists": "passed",
+    "mapping_identified": "passed"
+  },
+  "scientific_limit": "Automatic artifact analysis does not itself verify the acquisition protocol or physics claim.",
+  "status": "complete_scientific_gate_failed"
+}

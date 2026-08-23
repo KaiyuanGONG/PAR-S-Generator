@@ -1,0 +1,147 @@
+{
+  "schema_version": 1,
+  "created_utc": "2026-08-18T14:42:57Z",
+  "status": "passed",
+  "scope": "synthetic_liver_spect_data_preparation_for_current_ge_870_czt_protocol_only",
+  "claim_boundary": {
+    "absolute_cps_per_mbq_claim": false,
+    "clinical_prevalence_claim": false,
+    "reconstruction_or_model_evaluation_included": false,
+    "observation_interpretation": "empirical_total_count_matching_with_seeded_poisson_sampling"
+  },
+  "parent_population": {
+    "run_id": "stage3-phantom-100-v3-20260818",
+    "qc_summary": "runs/stage3-phantom-100-v3-20260818/qc/phantom_qc_summary.json",
+    "qc_summary_sha256": "379298b7e2c78881f239172dfc194ecb84e65869cc8779ff988efe53dfe51c61",
+    "case_count": 100,
+    "passed_case_count": 100,
+    "lesion_count": 312,
+    "population_gate_status": "passed"
+  },
+  "pilot": {
+    "run_id": "stage3-simind-pilot-10-v3-20260818",
+    "run_root": "runs/stage3-simind-pilot-10-v3-20260818",
+    "selection_evidence": "experiments/stage3-protocol-pilot/pilot-selection-v3.json",
+    "selection_evidence_sha256": "1dd9472e1f9c98dee08485cd15ac60d6f4bf436d6483b386cb11dd43809e5564",
+    "case_ids": [
+      "case_0011",
+      "case_0019",
+      "case_0049",
+      "case_0100",
+      "case_0020",
+      "case_0058",
+      "case_0024",
+      "case_0088",
+      "case_0096",
+      "case_0021"
+    ],
+    "case_count": 10,
+    "finalized": true,
+    "dataset_manifest": "runs/stage3-simind-pilot-10-v3-20260818/dataset_manifest.json",
+    "dataset_manifest_sha256": "0ae80dc6bcea9d0f6780e9cee7d87472ebcff6a9a4f66318a10b81c6d4f63d61",
+    "inventory_file_count": 147,
+    "independent_inventory_failure_count": 0,
+    "parent_pilot_npz_sha256_match_count": 10,
+    "parent_pilot_npz_sha256_mismatch_count": 0,
+    "split_case_counts": {"train": 8, "val": 1, "test": 1},
+    "diagnostic_inventory_file_count": 3,
+    "accepted_expectation_membership_source": "cases.jsonl expectation records; never a directory glob"
+  },
+  "protocol": {
+    "type7_stored_formula": "mu_cm_inverse * density_voxel_size_cm",
+    "density_voxel_size_cm": 0.442,
+    "density_threshold_times_1000": 100,
+    "phantom_cross_sections": ["h2o", "h2o"],
+    "detector_matrix_index_100_101": [160, 208],
+    "projection_shape": [60, 128, 128],
+    "activity_time_index_25": 1704.0,
+    "nominal_activity_mbq": 60.0,
+    "nominal_time_s_per_projection": 28.4,
+    "nn_multiplier": 10,
+    "simind_seed_base": 930000,
+    "canonical_projection_transform": "raw[:,::-1,:]"
+  },
+  "acceptance": {
+    "projection_qc_passed": 10,
+    "projection_qc_failed": 0,
+    "observation_qc_passed": 10,
+    "observation_qc_failed": 0,
+    "all_case_file_seed_identities_matched": true,
+    "all_res_completion_markers_present": true,
+    "all_res_command_tokens_matched": true,
+    "all_effective_detector_matrices_160_208": true,
+    "all_observations_within_empirical_angular_cv_gate": true,
+    "all_observation_total_count_relative_errors_below_0_01": true
+  },
+  "aggregate_metrics": {
+    "expectation_sum": {
+      "min": 1533675.0722280294,
+      "median": 1588787.849913958,
+      "max": 1892548.874083741
+    },
+    "expectation_angular_cv": {
+      "min": 0.39129270983778336,
+      "median": 0.5130661643169916,
+      "max": 0.5724765506151042
+    },
+    "projection_nonzero_fraction": {
+      "min": 0.15538431803385416,
+      "median": 0.16311238606770834,
+      "max": 0.17182820638020832
+    },
+    "projection_noninteger_positive_fraction": {
+      "min": 0.9999937629029945,
+      "median": 1.0,
+      "max": 1.0
+    },
+    "support_row_count": {
+      "min": 91,
+      "median": 93,
+      "max": 94
+    },
+    "support_column_count": {
+      "min": 81,
+      "median": 83,
+      "max": 84
+    },
+    "observation_target_total_counts": {
+      "min": 2127366,
+      "median": 2653222.5,
+      "max": 3849215
+    },
+    "observation_realized_total_counts": {
+      "min": 2127209,
+      "median": 2653382.5,
+      "max": 3850345
+    },
+    "observation_total_count_relative_error": {
+      "min": 0.00007380018294924334,
+      "median": 0.00033875943963382875,
+      "max": 0.0008721929717805838
+    },
+    "observation_angular_cv": {
+      "min": 0.3913476408760364,
+      "median": 0.5136090247396974,
+      "max": 0.5729619361650201
+    }
+  },
+  "case_rows": [
+    {"case_id":"case_0011","rr_seed":930011,"expectation_sum":1892548.874083741,"expectation_angular_cv":0.5073032896390669,"target_total_counts":2720069,"observed_total_counts":2721099,"target_relative_error":0.0003786668647008587,"observation_angular_cv":0.5059573125550875},
+    {"case_id":"case_0019","rr_seed":930019,"expectation_sum":1569187.7858504897,"expectation_angular_cv":0.5279145583330819,"target_total_counts":2290252,"observed_total_counts":2288538,"target_relative_error":0.000748389260221146,"observation_angular_cv":0.5281471332502595},
+    {"case_id":"case_0020","rr_seed":930020,"expectation_sum":1533675.0722280294,"expectation_angular_cv":0.51882891188695,"target_total_counts":3352830,"observed_total_counts":3351828,"target_relative_error":0.0002988520145667988,"observation_angular_cv":0.5181769391577854},
+    {"case_id":"case_0021","rr_seed":930021,"expectation_sum":1569993.424655291,"expectation_angular_cv":0.5724765506151042,"target_total_counts":3254203,"observed_total_counts":3255828,"target_relative_error":0.0004993542197582634,"observation_angular_cv":0.5729619361650201},
+    {"case_id":"case_0024","rr_seed":930024,"expectation_sum":1558374.8467984074,"expectation_angular_cv":0.4781404325501837,"target_total_counts":2457893,"observed_total_counts":2456099,"target_relative_error":0.0007298934493893753,"observation_angular_cv":0.47810791148665965},
+    {"case_id":"case_0049","rr_seed":930049,"expectation_sum":1579932.017184072,"expectation_angular_cv":0.5288601691673691,"target_total_counts":3007362,"observed_total_counts":3004739,"target_relative_error":0.0008721929717805838,"observation_angular_cv":0.5288222545277061},
+    {"case_id":"case_0058","rr_seed":930058,"expectation_sum":1654910.6898934806,"expectation_angular_cv":0.5091854487132084,"target_total_counts":2353590,"observed_total_counts":2353229,"target_relative_error":0.0001533827047191737,"observation_angular_cv":0.5093675180090823},
+    {"case_id":"case_0088","rr_seed":930088,"expectation_sum":1597643.6826438438,"expectation_angular_cv":0.39129270983778336,"target_total_counts":3849215,"observed_total_counts":3850345,"target_relative_error":0.0002935663505416039,"observation_angular_cv":0.3913476408760364},
+    {"case_id":"case_0096","rr_seed":930096,"expectation_sum":1815900.837242871,"expectation_angular_cv":0.5169468799207747,"target_total_counts":2586376,"observed_total_counts":2585666,"target_relative_error":0.0002745153836874453,"observation_angular_cv":0.5178505314703126},
+    {"case_id":"case_0100","rr_seed":930100,"expectation_sum":1720031.7981374147,"expectation_angular_cv":0.39810786612701893,"target_total_counts":2127366,"observed_total_counts":2127209,"target_relative_error":0.00007380018294924334,"observation_angular_cv":0.398417581601794}
+  ],
+  "interruption_handling": {
+    "resumed": true,
+    "completed_cases_reused_after_hash_and_qc_validation": 6,
+    "truncated_staging_files_excluded": 3,
+    "diagnostic_location": "runs/stage3-simind-pilot-10-v3-20260818/diagnostics/interrupted-session-20260818",
+    "remaining_cases_resubmitted_by_case_id": 4
+  }
+}

@@ -1,0 +1,102 @@
+name: Windows v1
+
+on:
+  push:
+    branches: [master, "codex/windows-hybrid-v2-v1"]
+  pull_request:
+    branches: [master]
+
+jobs:
+  windows-native:
+    runs-on: windows-latest
+    timeout-minutes: 120
+    env:
+      PYTHONPATH: ${{ github.workspace }}\src
+      QT_QPA_PLATFORM: offscreen
+      PARS_TEST_PYTHON: ${{ github.workspace }}\.venv\Scripts\python.exe
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24.15.0"
+          cache: npm
+          cache-dependency-path: webui/frontend/package-lock.json
+
+      - name: Install Python dependencies
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $PSNativeCommandUseErrorActionPreference = $true
+          python -m venv .venv
+          .\.venv\Scripts\python.exe -m pip install --upgrade "pip==26.0.1"
+          .\.venv\Scripts\python.exe -m pip install -r requirements-windows-v1.lock.txt
+          New-Item -ItemType File -Path simind\simind.exe -Force | Out-Null
+
+      - name: Install frontend and Chromium
+        working-directory: webui/frontend
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $PSNativeCommandUseErrorActionPreference = $true
+          npm.cmd ci
+          npx.cmd playwright install chromium
+
+      - name: Python tests
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $PSNativeCommandUseErrorActionPreference = $true
+          .\.venv\Scripts\python.exe -m pytest -q
+          .\.venv\Scripts\python.exe -m ruff check main.py src\cli.py src\windows_launcher.py src\core\windows_v1.py src\core\limited_activity.py src\core\phantom_generator.py src\core\hybrid_v2_adapter.py src\core\interfile_writer.py src\core\windows_runtime.py src\pipeline\provenance.py src\pipeline\runner.py src\pipeline\qc.py src\pipeline\simind.py scripts\freeze_windows_v1_run.py scripts\compare_windows_v1_runs.py webui\server\app.py webui\server\fsapi.py
+
+      - name: Frontend lint, unit and build
+        working-directory: webui/frontend
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $PSNativeCommandUseErrorActionPreference = $true
+          npm.cmd run lint
+          npm.cmd run test:unit
+          npm.cmd run build
+
+      - name: Browser lifecycle and accessibility
+        working-directory: webui/frontend
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $PSNativeCommandUseErrorActionPreference = $true
+          npm.cmd run test:e2e
+          npm.cmd run test:a11y
+          npm.cmd run test:visual
+
+      - name: Prepare and mock Windows state machines
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $PSNativeCommandUseErrorActionPreference = $true
+          $Root = Join-Path $env:RUNNER_TEMP "pars-windows-v1"
+          New-Item -ItemType Directory -Path $Root -Force | Out-Null
+          $Prepare = Join-Path $Root "prepare.json"
+          $Mock = Join-Path $Root "mock.json"
+          .\.venv\Scripts\python.exe -m cli init --run-id ci-prepare --runs-root (Join-Path $Root "runs") --cohort-mode positive_only --positive-cases 1 --negative-cases 0 --mode prepare --simind-exe simind\simind.exe --smc simind\ge870_czt.smc --nn 1 --workers 1 --output $Prepare
+          .\.venv\Scripts\python.exe -m cli run --config $Prepare
+          .\.venv\Scripts\python.exe -m cli init --run-id ci-mock-negative --runs-root (Join-Path $Root "runs") --cohort-mode true_negative_only --positive-cases 0 --negative-cases 1 --mode mock --simind-exe simind\simind.exe --smc simind\ge870_czt.smc --nn 1 --workers 1 --output $Mock
+          .\.venv\Scripts\python.exe -m cli run --config $Mock
+
+      - name: Upload failure evidence
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: windows-v1-failure-evidence
+          include-hidden-files: true
+          path: |
+            .test-artifacts/
+            .test_tmp/
+          if-no-files-found: ignore

@@ -1,0 +1,16 @@
+{
+  "completed_utc": null,
+  "experiment": "point_line_source",
+  "notes": "",
+  "observations": [],
+  "operator": null,
+  "pass_fail": {
+    "centering": "not_evaluated",
+    "fwhm": "not_evaluated",
+    "sensitivity": "not_evaluated",
+    "symmetry": "not_evaluated"
+  },
+  "simind_version": null,
+  "started_utc": null,
+  "status": "not_run"
+}

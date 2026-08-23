@@ -1,0 +1,40 @@
+[
+  {
+    "args": [
+      "point_line_source",
+      "point_center",
+      "/FS:point_center",
+      "/FD:point_center",
+      "/NN:10"
+    ],
+    "case_id": "point_center",
+    "executable": "D:\\PFE-U\\PAR-S-Generator\\simind\\simind.exe",
+    "executable_sha256": "f984b8753f54b9f671f9fc1bcb2b45461e7cae8d027376b446dd1ed55a9a8319",
+    "output_stem": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\point_line_source\\output\\point_center",
+    "prepared_utc": "2026-08-17T21:38:03+02:00",
+    "smc": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\point_line_source\\input\\point_line_source.smc",
+    "smc_sha256": "af891b526d37d3b36961b9e64dfe52ea5b505da3c89901c1e46bde82da03cf90",
+    "working_dir": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\point_line_source\\input",
+    "output_argument": "point_center",
+    "staging_output_stem": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\point_line_source\\input\\point_center"
+  },
+  {
+    "args": [
+      "point_line_source",
+      "line_z",
+      "/FS:line_z",
+      "/FD:line_z",
+      "/NN:10"
+    ],
+    "case_id": "line_z",
+    "executable": "D:\\PFE-U\\PAR-S-Generator\\simind\\simind.exe",
+    "executable_sha256": "f984b8753f54b9f671f9fc1bcb2b45461e7cae8d027376b446dd1ed55a9a8319",
+    "output_stem": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\point_line_source\\output\\line_z",
+    "prepared_utc": "2026-08-17T21:38:03+02:00",
+    "smc": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\point_line_source\\input\\point_line_source.smc",
+    "smc_sha256": "af891b526d37d3b36961b9e64dfe52ea5b505da3c89901c1e46bde82da03cf90",
+    "working_dir": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\point_line_source\\input",
+    "output_argument": "line_z",
+    "staging_output_stem": "D:\\PFE-U\\PAR-S-Generator\\experiments\\validation-v1\\point_line_source\\input\\line_z"
+  }
+]

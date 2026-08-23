@@ -4,6 +4,7 @@ __pycache__/
 *$py.class
 *.so
 .Python
+.venv-windows-v1/
 build/
 dist/
 *.egg-info/
@@ -45,6 +46,7 @@ logs/
 
 # Settings (user-specific)
 *.ini
+.claude/settings.local.json
 
 # Pytest / local temp artifacts
 .pytest_cache/
@@ -61,5 +63,31 @@ tests/_tmp_pytest/
 # Notebook binary data (large generated files)
 notebook/*.bin
 
+# Scientific runtime payloads (large; keep local, commit ledgers/QC instead)
+experiments/**/*.bin
+experiments/**/*.a00
+experiments/**/*.ict
+experiments/**/*.dmi
+experiments/**/*.smi
+experiments/**/*.b[0-9][0-9]
+experiments/**/*.s[0-9][0-9]
+runs/**/*.bin
+runs/**/*.a00
+runs/**/*.npz
+
+# The only authorized local Gate A pilot output. Reports and manifests stay
+# reviewable in place but are not mixed into the implementation commit.
+runs/gate-a-v2-master-100-20260819/
+
 # Keep shared pytest config tracked
 !pytest.ini
+
+# web UI build artefacts
+webui/frontend/node_modules/
+webui/frontend/dist/
+.test-artifacts/
+designs/*/
+
+# Windows v1 source releases include the prebuilt local Web workbench.
+!webui/frontend/dist/
+!webui/frontend/dist/**

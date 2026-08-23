@@ -1,0 +1,13 @@
+{
+  "artifacts": [
+    "D:\\PFE-U\\PAR-S-Generator\\runs\\qa-smoke-20260817\\figures\\data_flow.svg",
+    "D:\\PFE-U\\PAR-S-Generator\\runs\\qa-smoke-20260817\\figures\\phantom_distributions.png",
+    "D:\\PFE-U\\PAR-S-Generator\\runs\\qa-smoke-20260817\\figures\\phantom_distributions.svg",
+    "D:\\PFE-U\\PAR-S-Generator\\runs\\qa-smoke-20260817\\figures\\projection_qc.png",
+    "D:\\PFE-U\\PAR-S-Generator\\runs\\qa-smoke-20260817\\figures\\projection_qc.svg"
+  ],
+  "note": "Figures are automated QC evidence, not a claim of clinical or physics validation.",
+  "phantom_rows": 5,
+  "projection_rows": 2,
+  "scope": "synthetic_liver_spect_data_preparation_only"
+}

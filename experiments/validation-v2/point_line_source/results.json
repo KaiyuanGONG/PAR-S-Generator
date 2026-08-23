@@ -1,0 +1,32 @@
+{
+  "experiment": "point_line_source",
+  "status": "passed",
+  "reviewed_utc": "2026-08-17T23:32:33.7487929Z",
+  "scope": "GE NM/CT 870 CZT zero-attenuation 300-mm raw point/line response only",
+  "execution": {
+    "status": "completed",
+    "job_count": 2,
+    "all_job_qc_passed": true
+  },
+  "pass_fail": {
+    "centering": "passed",
+    "fwhm": "passed",
+    "sensitivity": "passed",
+    "symmetry": "passed"
+  },
+  "direct_results": {
+    "point_center_offset_px": 0.7530389586584306,
+    "point_fwhm_mm": [17.68, 17.68],
+    "line_transverse_fwhm_mm": 17.68,
+    "geometric_expected_system_fwhm_mm": 17.500427931275787,
+    "line_fwhm_relative_error": 0.01026101015525976,
+    "sensitivity_cps_per_mbq": [51.6236, 51.6975]
+  },
+  "decision": "Scoped response control passed; this is not a reconstructed, patient-resolution or clinical count-scale claim.",
+  "evidence_sha256": {
+    "experiment.json": "657132ae42f62edd467733633ccd37981620ebad7c20573d07fddf3b484418a5",
+    "commands.json": "080e5689c5e3f95f8d5846a32dad3abc9ff4154f5447fc6c85dc133ddf35805d",
+    "execution.json": "b627dc9cb5fff4fcf090c5023e2930f1695a3d662b10e259e73f8b3e82602523",
+    "analysis.json": "b4b09c264079eecb79c7c2e951033524aff5e311204c9e36f9b8deee476ba676"
+  }
+}

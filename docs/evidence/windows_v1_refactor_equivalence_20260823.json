@@ -1,0 +1,208 @@
+{
+  "baseline_run_id": "windows-v1-pre-refactor-real-v2-20260823",
+  "baseline_source_commit": "3ac54662aa220abb030f19548b39dd9c23ab66a6",
+  "candidate_run_id": "windows-v1-post-refactor-real-20260823",
+  "candidate_source_commit": "6f684ce3cf54b04b6d724564938e9727a8b4d665",
+  "checks": [
+    {
+      "name": "schema_version",
+      "status": "passed"
+    },
+    {
+      "name": "generation_profile",
+      "status": "passed"
+    },
+    {
+      "name": "runtime_backend",
+      "status": "passed"
+    },
+    {
+      "name": "windows_v1",
+      "status": "passed"
+    },
+    {
+      "name": "scientific_authority",
+      "status": "passed"
+    },
+    {
+      "name": "windows_runtime",
+      "status": "passed"
+    },
+    {
+      "name": "stages",
+      "status": "passed"
+    },
+    {
+      "name": "inventory_file_count",
+      "status": "passed"
+    },
+    {
+      "name": "software_change_scope",
+      "status": "passed"
+    },
+    {
+      "name": "case_ids",
+      "status": "passed"
+    },
+    {
+      "name": "case_0001.case_role",
+      "status": "passed"
+    },
+    {
+      "name": "case_0001.split_role",
+      "status": "passed"
+    },
+    {
+      "name": "case_0001.seed",
+      "status": "passed"
+    },
+    {
+      "name": "case_0001.rr_seed",
+      "status": "passed"
+    },
+    {
+      "name": "case_0001.command",
+      "status": "passed"
+    },
+    {
+      "name": "case_0001.phantom_npz.bytes",
+      "status": "passed"
+    },
+    {
+      "name": "case_0001.phantom_npz.sha256",
+      "status": "passed"
+    },
+    {
+      "name": "case_0001.act.bytes",
+      "status": "passed"
+    },
+    {
+      "name": "case_0001.act.sha256",
+      "status": "passed"
+    },
+    {
+      "name": "case_0001.atn.bytes",
+      "status": "passed"
+    },
+    {
+      "name": "case_0001.atn.sha256",
+      "status": "passed"
+    },
+    {
+      "name": "case_0001.expectation_a00.bytes",
+      "status": "passed"
+    },
+    {
+      "name": "case_0001.expectation_a00.sha256",
+      "status": "passed"
+    },
+    {
+      "name": "case_0001.phantom_meta.scientific_fields",
+      "status": "passed"
+    },
+    {
+      "name": "case_0001.projection_qc",
+      "status": "passed"
+    },
+    {
+      "name": "case_0001.expectation_res",
+      "raw_byte_equal": false,
+      "stable_lines_equal": true,
+      "status": "passed"
+    },
+    {
+      "name": "case_0002.case_role",
+      "status": "passed"
+    },
+    {
+      "name": "case_0002.split_role",
+      "status": "passed"
+    },
+    {
+      "name": "case_0002.seed",
+      "status": "passed"
+    },
+    {
+      "name": "case_0002.rr_seed",
+      "status": "passed"
+    },
+    {
+      "name": "case_0002.command",
+      "status": "passed"
+    },
+    {
+      "name": "case_0002.phantom_npz.bytes",
+      "status": "passed"
+    },
+    {
+      "name": "case_0002.phantom_npz.sha256",
+      "status": "passed"
+    },
+    {
+      "name": "case_0002.act.bytes",
+      "status": "passed"
+    },
+    {
+      "name": "case_0002.act.sha256",
+      "status": "passed"
+    },
+    {
+      "name": "case_0002.atn.bytes",
+      "status": "passed"
+    },
+    {
+      "name": "case_0002.atn.sha256",
+      "status": "passed"
+    },
+    {
+      "name": "case_0002.expectation_a00.bytes",
+      "status": "passed"
+    },
+    {
+      "name": "case_0002.expectation_a00.sha256",
+      "status": "passed"
+    },
+    {
+      "name": "case_0002.phantom_meta.scientific_fields",
+      "status": "passed"
+    },
+    {
+      "name": "case_0002.projection_qc",
+      "status": "passed"
+    },
+    {
+      "name": "case_0002.expectation_res",
+      "raw_byte_equal": false,
+      "stable_lines_equal": true,
+      "status": "passed"
+    }
+  ],
+  "evidence_schema": "windows_v1_equivalence_report_v1",
+  "res_comparisons": {
+    "case_0001": {
+      "allowed_volatile_prefixes": [
+        "Simulation started.",
+        "Simulation stopped.",
+        "Elapsed time.......",
+        "DetectorHits/CPUsec"
+      ],
+      "baseline_sha256": "6e0547b011af0cf3211a081b3575c967b435df02991199435872cc9c15dea652",
+      "candidate_sha256": "ed30e45fb8aa9e23c162c5d2ecdd927cb5ae7cd6104c632b48b296855df7f993",
+      "raw_byte_equal": false,
+      "stable_lines_equal": true
+    },
+    "case_0002": {
+      "allowed_volatile_prefixes": [
+        "Simulation started.",
+        "Simulation stopped.",
+        "Elapsed time.......",
+        "DetectorHits/CPUsec"
+      ],
+      "baseline_sha256": "c541b99f60810e85425a8822520038b16bfa5c180eabcdd3ef5143e4da068df9",
+      "candidate_sha256": "fa1205a9ef9935357d1cc485e08292d0c9c5c3864519d62cda03d7218b1fd347",
+      "raw_byte_equal": false,
+      "stable_lines_equal": true
+    }
+  },
+  "status": "passed"
+}

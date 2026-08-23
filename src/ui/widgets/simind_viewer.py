@@ -174,10 +174,12 @@ class SimindOutputViewer(QWidget):
             data = np.fromfile(path, dtype=np.float32)
             n_total = data.size
             detected = False
-            for n_col in (128, 64, 256):
+            for n_col in (128, 160, 208, 64, 256):
                 if n_total % (n_col * n_col) == 0:
                     n_proj = n_total // (n_col * n_col)
-                    self._proj_data = data.reshape(n_proj, n_col, n_col)
+                    # Validated current-data contract: acquisition view order
+                    # is retained and only the detector row is flipped.
+                    self._proj_data = data.reshape(n_proj, n_col, n_col)[:, ::-1, :]
                     self._n_proj = n_proj
                     self._n_row = n_col
                     self._n_col = n_col

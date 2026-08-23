@@ -1,0 +1,106 @@
+{
+  "attenuation_contract": {
+    "reference_energy_kev": 140.5,
+    "status": "verified_type7_mu_times_voxel_v10_current_h2o_protocol",
+    "unit": "cm^-1"
+  },
+  "cantlie": {
+    "abs_error": 0.0018879302347156734,
+    "converged": true,
+    "iterations": 5,
+    "offset": 0.135625,
+    "search": {
+      "expanded_beyond_initial_range": true,
+      "expanded_offset_range": [
+        -0.05,
+        0.16999999999999998
+      ],
+      "expansions": 1,
+      "hit_expansion_limit": false,
+      "initial_offset_range": [
+        -0.05,
+        0.12
+      ],
+      "solution_on_search_boundary": false,
+      "target_bracketed": true
+    },
+    "target_left_ratio": 0.35,
+    "tilt_deg": -2.9686707548278033
+  },
+  "failures": [],
+  "meta": "D:\\PFE-U\\PAR-S-Generator\\runs\\stage3-phantom-100-20260818\\phantom\\case_0041_meta.json",
+  "metrics": {
+    "activity_dtype": "float32",
+    "activity_sum": 79999.99683523178,
+    "left_ratio": 0.35188793023471565,
+    "liver_volume_ml": 930.776221752,
+    "mu_dtype": "float32",
+    "mu_max": 0.30077695846557617,
+    "mu_min": 0.0,
+    "n_tumors": 4,
+    "shape": [
+      128,
+      128,
+      128
+    ],
+    "tumors": [
+      {
+        "effective_diameter_mm": 14.633243370680612,
+        "index": 0,
+        "mode": "ellipsoid",
+        "nominal_diameter_mm": 13.811334999188794,
+        "outside_liver_vox": 0,
+        "overlap_previous_vox": 0,
+        "placement_stratum": "central",
+        "surface_margin_mm": 14.659481573370867,
+        "tnr_from_saved_activity": 2.6147983962578283,
+        "volume_vox": 19
+      },
+      {
+        "effective_diameter_mm": 14.633243370680612,
+        "index": 1,
+        "mode": "ellipsoid",
+        "nominal_diameter_mm": 16.21479765736786,
+        "outside_liver_vox": 0,
+        "overlap_previous_vox": 0,
+        "placement_stratum": "central",
+        "surface_margin_mm": 13.26,
+        "tnr_from_saved_activity": 7.505559862823271,
+        "volume_vox": 19
+      },
+      {
+        "effective_diameter_mm": 14.633243370680612,
+        "index": 2,
+        "mode": "spiculated",
+        "nominal_diameter_mm": 12.991365406595428,
+        "outside_liver_vox": 0,
+        "overlap_previous_vox": 0,
+        "placement_stratum": "central",
+        "surface_margin_mm": 9.88342046054907,
+        "tnr_from_saved_activity": 7.328984603473564,
+        "volume_vox": 19
+      },
+      {
+        "effective_diameter_mm": 34.865864366638206,
+        "index": 3,
+        "mode": "spiculated",
+        "nominal_diameter_mm": 35.75568416141382,
+        "outside_liver_vox": 0,
+        "overlap_previous_vox": 0,
+        "placement_stratum": "central",
+        "surface_margin_mm": 7.655664569454437,
+        "tnr_from_saved_activity": 5.420440454391193,
+        "volume_vox": 257
+      }
+    ]
+  },
+  "npz": "D:\\PFE-U\\PAR-S-Generator\\runs\\stage3-phantom-100-20260818\\phantom\\case_0041.npz",
+  "sha256": {
+    "meta": "d08163a478daf78e7f3235402614f6811082e1857426d08a9245aeb6230632ba",
+    "npz": "70ce9d79f34ced6db3d08cf4575bc38301371b9a3d44c07c834ddf9002c99568"
+  },
+  "status": "passed",
+  "warnings": [
+    "cantlie_search_range_expanded"
+  ]
+}

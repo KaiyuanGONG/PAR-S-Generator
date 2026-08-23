@@ -1,4 +1,4 @@
-﻿"""
+"""
 Simulation workspace.
 """
 
@@ -6,9 +6,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from PyQt6.QtCore import QProcess, QThread, Qt, pyqtSignal, pyqtSlot
+from PyQt6.QtCore import QThread, Qt, pyqtSignal, pyqtSlot
 from PyQt6.QtGui import QColor, QTextCursor
 from PyQt6.QtWidgets import (
+    QCheckBox,
     QFileDialog,
     QFormLayout,
     QGroupBox,
@@ -18,6 +19,8 @@ from PyQt6.QtWidgets import (
     QMessageBox,
     QProgressBar,
     QPushButton,
+    QScrollArea,
+    QSpinBox,
     QSplitter,
     QTabWidget,
     QTextEdit,
@@ -26,10 +29,13 @@ from PyQt6.QtWidgets import (
 )
 
 from core.interfile_writer import batch_convert_npz_to_interfile, generate_simind_bat
+from core.simind_runner import SimindBatchConfig, SimindBatchWorker
 from core.validation import ValidationReport, validate_simulation_inputs
 from ui.app_state import AppState, SimulationConfig
 from ui.i18n import language_manager, tr
+from ui.widgets.override_table import OverrideTable
 from ui.widgets.simind_viewer import SimindOutputViewer
+from ui.widgets.smc_viewer import SmcViewer
 
 
 class ConvertWorker(QThread):
@@ -54,13 +60,14 @@ class ConvertWorker(QThread):
             self.error.emit(str(exc))
 
 
-class SimulationPage(QWidget):
+class _LegacySimulationPage(QWidget):
+    """Unwired historical page retained only to preserve existing local work."""
     simulation_finished = pyqtSignal(str)
 
     def __init__(self, app_state: AppState, parent=None):
         super().__init__(parent)
         self._app_state = app_state
-        self._process: QProcess | None = None
+        self._batch_worker: SimindBatchWorker | None = None
         self._build_ui()
         self._auto_detect_simind()
         self._sync_from_state(self._app_state.simulation_config)
@@ -90,11 +97,16 @@ class SimulationPage(QWidget):
         splitter.setHandleWidth(2)
         splitter.setStyleSheet("QSplitter::handle { background: #2d3139; }")
 
+        # ── Left panel (scrollable) ──────────────────────────────────
+        left_scroll = QScrollArea()
+        left_scroll.setWidgetResizable(True)
+        left_scroll.setFrameShape(QScrollArea.Shape.NoFrame)
         left = QWidget()
         left_layout = QVBoxLayout(left)
-        left_layout.setContentsMargins(0, 0, 0, 0)
+        left_layout.setContentsMargins(0, 0, 8, 0)
         left_layout.setSpacing(12)
 
+        # Step 1: Binary Export
         self.grp_step1 = QGroupBox()
         form1 = QFormLayout(self.grp_step1)
         self.lbl_npz_dir = QLabel()
@@ -128,6 +140,7 @@ class SimulationPage(QWidget):
         left_layout.addWidget(self.conv_progress)
         left_layout.addWidget(self.lbl_conv_status)
 
+        # Step 2: SIMIND Configuration
         self.grp_step2 = QGroupBox()
         form2 = QFormLayout(self.grp_step2)
         self.lbl_simind_exe = QLabel()
@@ -137,6 +150,7 @@ class SimulationPage(QWidget):
         self.btn_simind = QPushButton()
         self.btn_simind.clicked.connect(lambda: self._browse_file(self.edit_simind_exe, "SIMIND Executable (simind.exe);;All Files (*)"))
         self.edit_smc = QLineEdit()
+        self.edit_smc.textChanged.connect(self._on_smc_changed)
         self.btn_smc = QPushButton()
         self.btn_smc.clicked.connect(lambda: self._browse_file(self.edit_smc, "SIMIND Config (*.smc);;All Files (*)"))
         self.edit_sim_out = QLineEdit()
@@ -151,17 +165,73 @@ class SimulationPage(QWidget):
         form2.addRow(QLabel(""), self.lbl_sim_note)
         left_layout.addWidget(self.grp_step2)
 
+        # Step 3: Batch Run (new runtime controls)
         self.grp_step3 = QGroupBox()
-        run_layout = QVBoxLayout(self.grp_step3)
+        step3_layout = QVBoxLayout(self.grp_step3)
+
+        # Runtime params
+        runtime_form = QFormLayout()
+        runtime_form.setSpacing(6)
+
+        self.lbl_nn = QLabel()
+        self.spin_nn = QSpinBox()
+        self.spin_nn.setRange(1, 10000)
+        self.spin_nn.setValue(10)
+        self.spin_nn.setToolTip("NN photon multiplier (x1000 per projection)")
+        runtime_form.addRow(self.lbl_nn, self.spin_nn)
+
+        self.lbl_parallel = QLabel()
+        self.spin_parallel = QSpinBox()
+        self.spin_parallel.setRange(1, 32)
+        self.spin_parallel.setValue(3)
+        runtime_form.addRow(self.lbl_parallel, self.spin_parallel)
+
+        self.lbl_case_range = QLabel()
+        case_range_widget = QWidget()
+        case_range_layout = QHBoxLayout(case_range_widget)
+        case_range_layout.setContentsMargins(0, 0, 0, 0)
+        case_range_layout.setSpacing(4)
+        self.spin_case_start = QSpinBox()
+        self.spin_case_start.setRange(0, 99999)
+        self.spin_case_start.setValue(0)
+        self.spin_case_start.setMinimumWidth(70)
+        lbl_dash = QLabel(" - ")
+        self.spin_case_end = QSpinBox()
+        self.spin_case_end.setRange(0, 99999)
+        self.spin_case_end.setValue(99999)
+        self.spin_case_end.setMinimumWidth(70)
+        case_range_layout.addWidget(self.spin_case_start)
+        case_range_layout.addWidget(lbl_dash)
+        case_range_layout.addWidget(self.spin_case_end)
+        case_range_layout.addStretch()
+        runtime_form.addRow(self.lbl_case_range, case_range_widget)
+
+        self.chk_skip = QCheckBox()
+        self.chk_skip.setChecked(True)
+        runtime_form.addRow(QLabel(""), self.chk_skip)
+
+        step3_layout.addLayout(runtime_form)
+
+        # Override table
+        self.lbl_overrides = QLabel()
+        self.lbl_overrides.setStyleSheet("color: #8a9099; font-size: 11px; margin-top: 6px;")
+        step3_layout.addWidget(self.lbl_overrides)
+        self.override_table = OverrideTable()
+        step3_layout.addWidget(self.override_table)
+
+        # .bat path
         self.lbl_bat_path = QLabel()
         self.edit_bat_path = QLineEdit()
         self.btn_bat = QPushButton()
         self.btn_bat.clicked.connect(lambda: self._browse_save(self.edit_bat_path, "Batch Script (*.bat)"))
-        run_layout.addWidget(self._labeled_field(self.lbl_bat_path, self._browse_row(self.edit_bat_path, self.btn_bat)))
+        step3_layout.addWidget(self._labeled_field(self.lbl_bat_path, self._browse_row(self.edit_bat_path, self.btn_bat)))
+
         self.lbl_bat_note = QLabel("")
         self.lbl_bat_note.setWordWrap(True)
         self.lbl_bat_note.setStyleSheet("color: #6b7280; font-size: 11px;")
-        run_layout.addWidget(self.lbl_bat_note)
+        step3_layout.addWidget(self.lbl_bat_note)
+
+        # Action buttons
         btn_row = QHBoxLayout()
         self.btn_gen_bat = QPushButton()
         self.btn_gen_bat.clicked.connect(self._on_gen_bat)
@@ -170,9 +240,11 @@ class SimulationPage(QWidget):
         self.btn_run_sim.clicked.connect(self._on_run_simind)
         btn_row.addWidget(self.btn_gen_bat)
         btn_row.addWidget(self.btn_run_sim)
-        run_layout.addLayout(btn_row)
+        step3_layout.addLayout(btn_row)
+
         left_layout.addWidget(self.grp_step3)
 
+        # Step 4: Visual Check
         self.grp_step4 = QGroupBox()
         step4_layout = QVBoxLayout(self.grp_step4)
         self.lbl_step4_note = QLabel("")
@@ -181,13 +253,18 @@ class SimulationPage(QWidget):
         step4_layout.addWidget(self.lbl_step4_note)
         left_layout.addWidget(self.grp_step4)
         left_layout.addStretch()
-        splitter.addWidget(left)
 
+        left_scroll.setWidget(left)
+        splitter.addWidget(left_scroll)
+
+        # ── Right panel ──────────────────────────────────────────────
         right = QWidget()
         right_layout = QVBoxLayout(right)
         right_layout.setContentsMargins(0, 0, 0, 0)
         right_layout.setSpacing(4)
         self.right_tabs = QTabWidget()
+
+        # Tab 0: Console
         self.console_widget = QWidget()
         console_layout = QVBoxLayout(self.console_widget)
         console_layout.setContentsMargins(0, 4, 0, 0)
@@ -206,8 +283,15 @@ class SimulationPage(QWidget):
         self.btn_stop.clicked.connect(self._on_stop)
         console_layout.addWidget(self.btn_stop)
         self.right_tabs.addTab(self.console_widget, "")
+
+        # Tab 1: SMC Parameters
+        self.smc_viewer = SmcViewer()
+        self.right_tabs.addTab(self.smc_viewer, "")
+
+        # Tab 2: SPECT Preview
         self.spect_preview = SimindOutputViewer(view_title="SPECT Preview")
         self.right_tabs.addTab(self.spect_preview, "")
+
         right_layout.addWidget(self.right_tabs)
         splitter.addWidget(right)
         splitter.setSizes([520, 560])
@@ -218,7 +302,7 @@ class SimulationPage(QWidget):
         self.lbl_title.setText(tr("Simulate"))
         self.grp_step1.setTitle(tr("Step 1: Raw Binary Export"))
         self.grp_step2.setTitle(tr("Step 2: SIMIND Configuration"))
-        self.grp_step3.setTitle(tr("Step 3: Script or Run"))
+        self.grp_step3.setTitle(tr("Step 3: Batch Run"))
         self.grp_step4.setTitle(tr("Step 4: Visual Check"))
         self.lbl_npz_dir.setText(tr("npz directory:"))
         self.lbl_interfile_dir.setText(tr("Binary output:"))
@@ -226,6 +310,11 @@ class SimulationPage(QWidget):
         self.lbl_simind_exe.setText(tr("simind.exe:"))
         self.lbl_smc.setText(tr(".smc config:"))
         self.lbl_sim_out.setText(tr("Output directory") + ":")
+        self.lbl_nn.setText(tr("NN multiplier:"))
+        self.lbl_parallel.setText(tr("Max parallel:"))
+        self.lbl_case_range.setText(tr("Case range:"))
+        self.chk_skip.setText(tr("Skip completed cases"))
+        self.lbl_overrides.setText(tr("Custom overrides (/index:value):"))
         self.lbl_bat_path.setText(tr("Save .bat to:"))
         self.btn_npz.setText(tr("Browse"))
         self.btn_interfile.setText(tr("Browse"))
@@ -234,9 +323,9 @@ class SimulationPage(QWidget):
         self.btn_sim_out.setText(tr("Browse"))
         self.btn_bat.setText(tr("Browse"))
         self.btn_convert.setText(tr("Convert All Cases"))
-        self.btn_gen_bat.setText(tr("Generate .bat Script"))
-        self.btn_run_sim.setText(tr("▶  Run SIMIND Now"))
-        self.btn_stop.setText(tr("■  Stop"))
+        self.btn_gen_bat.setText(tr("Export .bat"))
+        self.btn_run_sim.setText(tr("Run SIMIND Batch"))
+        self.btn_stop.setText(tr("Stop"))
         self.lbl_sim_note.setText(tr("Photon histories remain controlled by the selected .smc file, not by a fake UI slider."))
         self.lbl_bat_note.setText(tr("Use the .bat script when you want to inspect or run SIMIND outside the application."))
         self.lbl_step4_note.setText(tr("After a successful run, the first .a00 file will be loaded automatically into SPECT Preview for a quick visual check."))
@@ -244,9 +333,14 @@ class SimulationPage(QWidget):
         self.edit_interfile_dir.setPlaceholderText(tr("Binary output directory"))
         self.edit_sim_out.setPlaceholderText(tr("SIMIND output directory"))
         self.right_tabs.setTabText(0, tr("Console"))
-        self.right_tabs.setTabText(1, tr("SPECT Preview"))
+        self.right_tabs.setTabText(1, tr("SMC Parameters"))
+        self.right_tabs.setTabText(2, tr("SPECT Preview"))
         self.spect_preview.retranslate_ui()
+        self.smc_viewer.retranslate_ui()
+        self.override_table.retranslate_ui()
         self._sync_from_state(self._app_state.simulation_config)
+
+    # ── Helpers ───────────────────────────────────────────────────
 
     def _browse_row(self, edit: QLineEdit, btn: QPushButton) -> QWidget:
         w = QWidget()
@@ -297,6 +391,8 @@ class SimulationPage(QWidget):
                 sim_cfg.smc_file = str(bundled_smc)
         self._app_state.set_simulation_config(sim_cfg)
 
+    # ── State sync ────────────────────────────────────────────────
+
     def _update_state_from_ui(self):
         config = SimulationConfig(
             npz_dir=self.edit_npz_dir.text().strip(),
@@ -304,6 +400,12 @@ class SimulationPage(QWidget):
             simind_exe=self.edit_simind_exe.text().strip(),
             smc_file=self.edit_smc.text().strip(),
             sim_output_dir=self.edit_sim_out.text().strip() or "output/simind",
+            nn_multiplier=self.spin_nn.value(),
+            max_parallel=self.spin_parallel.value(),
+            case_start=self.spin_case_start.value(),
+            case_end=self.spin_case_end.value(),
+            skip_completed=self.chk_skip.isChecked(),
+            custom_overrides=self.override_table.get_overrides(),
         )
         self._app_state.set_simulation_config(config)
 
@@ -313,6 +415,13 @@ class SimulationPage(QWidget):
         self.edit_simind_exe.setText(config.simind_exe)
         self.edit_smc.setText(config.smc_file)
         self.edit_sim_out.setText(config.sim_output_dir)
+        self.spin_nn.setValue(config.nn_multiplier)
+        self.spin_parallel.setValue(config.max_parallel)
+        self.spin_case_start.setValue(config.case_start)
+        self.spin_case_end.setValue(config.case_end)
+        self.chk_skip.setChecked(config.skip_completed)
+        self.override_table.set_overrides(list(config.custom_overrides))
+
         phantom = self._app_state.phantom_config
         self.lbl_source_meta.setText(
             tr("Matrix/Voxel summary").format(
@@ -340,6 +449,17 @@ class SimulationPage(QWidget):
             color="#4fc3f7",
         )
         self._sync_from_state(self._app_state.simulation_config)
+
+    def _on_smc_changed(self, text: str):
+        """Reload SMC viewer when .smc path changes."""
+        path = text.strip()
+        if path and Path(path).exists():
+            self.smc_viewer.load_smc(path)
+        else:
+            self.smc_viewer.clear()
+        self._update_state_from_ui()
+
+    # ── Validation ────────────────────────────────────────────────
 
     def _update_validation_banner(self, report: ValidationReport):
         if report.errors:
@@ -407,6 +527,8 @@ class SimulationPage(QWidget):
             return False
         return True
 
+    # ── Binary Export ─────────────────────────────────────────────
+
     def _on_convert(self):
         if not self._validate_for_conversion():
             return
@@ -443,6 +565,8 @@ class SimulationPage(QWidget):
         self._log(f"[ERROR] {msg}", color="#ff6b6b")
         QMessageBox.critical(self, tr("Conversion Error"), msg)
 
+    # ── .bat export ───────────────────────────────────────────────
+
     def _resolve_bat_path(self) -> Path:
         bat_path = self.edit_bat_path.text().strip()
         if bat_path:
@@ -453,6 +577,7 @@ class SimulationPage(QWidget):
     def _on_gen_bat(self):
         if not self._validate_for_simind():
             return
+        self._update_state_from_ui()
         bat_path = self._resolve_bat_path()
         try:
             generate_simind_bat(
@@ -461,6 +586,8 @@ class SimulationPage(QWidget):
                 smc_file=Path(self.edit_smc.text()),
                 output_dir=Path(self.edit_sim_out.text()),
                 bat_path=bat_path,
+                nn_multiplier=self.spin_nn.value(),
+                custom_overrides=self.override_table.get_overrides(),
             )
             self._log(tr("[OK] .bat script generated: {path}").format(path=bat_path), color="#4caf50")
             QMessageBox.information(self, tr("Done"), tr("Script saved to:\n{path}").format(path=bat_path))
@@ -468,93 +595,120 @@ class SimulationPage(QWidget):
             self._log(f"[ERROR] {exc}", color="#ff6b6b")
             QMessageBox.critical(self, tr("Error"), str(exc))
 
+    # ── SIMIND Batch Run (parallel) ───────────────────────────────
+
     def _on_run_simind(self):
-        if self._process and self._process.state() != QProcess.ProcessState.NotRunning:
-            self._log(tr("[WARN] SIMIND process is already running."), color="#ffa726")
+        if self._batch_worker and self._batch_worker.isRunning():
+            self._log(tr("[WARN] SIMIND batch is already running."), color="#ffa726")
             return
 
         if not self._validate_for_simind():
             return
+        self._update_state_from_ui()
 
-        bat_path = self._resolve_bat_path()
-        try:
-            generate_simind_bat(
-                interfile_dir=Path(self.edit_interfile_dir.text()),
-                simind_exe=Path(self.edit_simind_exe.text()),
-                smc_file=Path(self.edit_smc.text()),
-                output_dir=Path(self.edit_sim_out.text()),
-                bat_path=bat_path,
+        # Verify interfile dir has binary files
+        interfile_dir = Path(self.edit_interfile_dir.text().strip())
+        if not interfile_dir.exists() or not any(interfile_dir.glob("case_*_act_av.bin")):
+            QMessageBox.warning(
+                self, tr("Missing Input"),
+                tr("No binary files found. Run Step 1 first to convert .npz to interfile."),
             )
-        except Exception as exc:
-            self._log(tr("[ERROR] Failed to generate .bat: {msg}").format(msg=exc), color="#ff6b6b")
-            QMessageBox.critical(self, tr("Error"), str(exc))
             return
 
-        self._log(tr("[INFO] Launching SIMIND batch: {path}").format(path=bat_path), color="#4fc3f7")
+        batch_cfg = SimindBatchConfig(
+            simind_exe=Path(self.edit_simind_exe.text().strip()),
+            smc_file=Path(self.edit_smc.text().strip()),
+            interfile_dir=interfile_dir,
+            output_dir=Path(self.edit_sim_out.text().strip() or "output/simind"),
+            nn_multiplier=self.spin_nn.value(),
+            max_parallel=self.spin_parallel.value(),
+            case_start=self.spin_case_start.value(),
+            case_end=self.spin_case_end.value(),
+            skip_completed=self.chk_skip.isChecked(),
+            custom_overrides=self.override_table.get_overrides(),
+        )
+
+        self._log(
+            tr("[INFO] Launching SIMIND batch: NN={nn}, parallel={par}").format(
+                nn=batch_cfg.nn_multiplier,
+                par=batch_cfg.max_parallel,
+            ),
+            color="#4fc3f7",
+        )
         self.sim_progress.setVisible(True)
         self.sim_progress.setRange(0, 0)
         self.lbl_sim_status.setText(tr("SIMIND is running..."))
         self.btn_run_sim.setEnabled(False)
+        self.right_tabs.setCurrentIndex(0)
 
-        self._process = QProcess(self)
-        self._process.readyReadStandardOutput.connect(self._on_sim_stdout)
-        self._process.readyReadStandardError.connect(self._on_sim_stderr)
-        self._process.errorOccurred.connect(self._on_sim_error)
-        self._process.finished.connect(self._on_sim_finished)
-        self._process.start("cmd.exe", ["/c", str(bat_path)])
+        self._batch_worker = SimindBatchWorker(batch_cfg)
+        self._batch_worker.log.connect(self._on_batch_log)
+        self._batch_worker.progress.connect(self._on_batch_progress)
+        self._batch_worker.all_done.connect(self._on_batch_done)
+        self._batch_worker.start()
 
-    def _on_sim_stdout(self):
-        if not self._process:
-            return
-        data = self._process.readAllStandardOutput().data().decode("utf-8", errors="replace")
-        for line in data.splitlines():
-            if line.strip():
-                self._log(line, color="#8b949e")
+    @pyqtSlot(str)
+    def _on_batch_log(self, msg: str):
+        if msg.startswith("[ERROR]") or "FAIL" in msg:
+            color = "#ff6b6b"
+        elif msg.startswith("[WARN]") or "KILLED" in msg:
+            color = "#ffa726"
+        elif msg.startswith("[OK]"):
+            color = "#4caf50"
+        elif msg.startswith("[INFO]"):
+            color = "#4fc3f7"
+        else:
+            color = "#8b949e"
+        self._log(msg, color)
 
-    def _on_sim_stderr(self):
-        if not self._process:
-            return
-        data = self._process.readAllStandardError().data().decode("utf-8", errors="replace")
-        for line in data.splitlines():
-            if line.strip():
-                self._log(line, color="#ff6b6b")
+    @pyqtSlot(int, int, int, float)
+    def _on_batch_progress(self, completed: int, total: int, failed: int, eta: float):
+        self.sim_progress.setRange(0, total)
+        self.sim_progress.setValue(completed)
+        eta_str = f" | ETA: {eta:.0f}s" if eta > 0 else ""
+        self.lbl_sim_status.setText(
+            tr("Running: {done}/{total} done, {failed} failed{eta}").format(
+                done=completed, total=total, failed=failed, eta=eta_str,
+            )
+        )
 
-    @pyqtSlot(QProcess.ProcessError)
-    def _on_sim_error(self, process_error):
-        if process_error != QProcess.ProcessError.FailedToStart:
-            return
-
-        msg = self._process.errorString() if self._process else ""
+    @pyqtSlot(int, int, list)
+    def _on_batch_done(self, completed: int, failed: int, failed_stems: list):
         self.sim_progress.setVisible(False)
         self.btn_run_sim.setEnabled(True)
-        self.lbl_sim_status.setText(tr("SIMIND failed to start."))
-        self._log(tr("[ERROR] SIMIND process failed to start: {msg}").format(msg=msg), color="#ff6b6b")
-        QMessageBox.critical(self, tr("Error"), tr("SIMIND process failed to start: {msg}").format(msg=msg))
 
-    @pyqtSlot(int, QProcess.ExitStatus)
-    def _on_sim_finished(self, exit_code: int, status):
-        self.sim_progress.setVisible(False)
-        self.btn_run_sim.setEnabled(True)
-        self.lbl_sim_status.setText("" if exit_code == 0 else tr("SIMIND exited with code {code}.").format(code=exit_code))
-        if exit_code == 0:
-            self._log(tr("[OK] SIMIND simulation completed successfully."), color="#4caf50")
+        if failed == 0 and completed > 0:
+            self.lbl_sim_status.setText(tr("Batch complete: {count} cases.").format(count=completed))
             self.simulation_finished.emit(self.edit_sim_out.text())
+            # Auto-load first .a00
             out_dir = Path(self.edit_sim_out.text())
             a00_files = sorted(out_dir.glob("*.a00"))
             if a00_files:
-                self.right_tabs.setCurrentIndex(1)
+                self.right_tabs.setCurrentIndex(2)
                 self.spect_preview.load_file(str(a00_files[0]))
-                self._log(tr("[INFO] Auto-loaded first .a00: {name}").format(name=a00_files[0].name), color="#4fc3f7")
+                self._log(
+                    tr("[INFO] Auto-loaded first .a00: {name}").format(name=a00_files[0].name),
+                    color="#4fc3f7",
+                )
+        elif completed == 0 and failed == 0:
+            self.lbl_sim_status.setText(tr("Nothing to run."))
         else:
-            self._log(tr("[ERROR] SIMIND exited with code {code}.").format(code=exit_code), color="#ff6b6b")
+            self.lbl_sim_status.setText(
+                tr("Batch done: {done} OK, {failed} failed.").format(done=completed, failed=failed)
+            )
 
-        self._process = None
+        self._batch_worker = None
 
     def _on_stop(self):
-        if self._process and self._process.state() != QProcess.ProcessState.NotRunning:
-            self._process.kill()
+        if self._batch_worker and self._batch_worker.isRunning():
+            self._batch_worker.stop()
             self.btn_run_sim.setEnabled(True)
             self.sim_progress.setVisible(False)
             self.lbl_sim_status.setText(tr("Stopped by user."))
-            self._log(tr("[WARN] Process terminated by user."), color="#ffa726")
+            self._log(tr("[WARN] Batch stopped by user."), color="#ffa726")
 
+
+# External imports of the historical name now receive the canonical page,
+# whose execution path is PipelineRunner.  The private class above is not
+# added to MainWindow and cannot become a second production workflow.
+from ui.pages.pipeline_pages import SimulationSetupPage as SimulationPage

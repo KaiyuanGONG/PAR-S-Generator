@@ -4,7 +4,7 @@ QMainWindow, QDialog, QWidget {
     background-color: #1e2128;
     color: #c8ccd4;
     font-family: "Segoe UI", "Arial", sans-serif;
-    font-size: 13px;
+    font-size: 14px;
 }
 
 /* ── Sidebar Navigation ── */
@@ -37,6 +37,8 @@ QMainWindow, QDialog, QWidget {
     text-align: left;
     font-size: 13px;
     margin: 2px 8px;
+    font-family: "Bahnschrift", "Segoe UI", sans-serif;
+    letter-spacing: 0.3px;
 }
 
 #nav_btn:hover {
@@ -55,6 +57,13 @@ QMainWindow, QDialog, QWidget {
     border: 1px solid #2d3139;
     border-radius: 10px;
     margin: 12px;
+}
+
+#project_card QLabel {
+    color: #f2b84b;
+    font-family: "Cascadia Mono", "Consolas", monospace;
+    font-size: 11px;
+    letter-spacing: 0.8px;
 }
 
 QPushButton#secondary_btn {
@@ -101,7 +110,6 @@ QGroupBox::title {
     padding: 0 6px;
     color: #6b7280;
     font-size: 11px;
-    text-transform: uppercase;
     letter-spacing: 1px;
 }
 
@@ -266,7 +274,6 @@ QHeaderView::section {
     border-bottom: 1px solid #3a4049;
     padding: 6px 8px;
     font-size: 11px;
-    text-transform: uppercase;
     letter-spacing: 0.5px;
 }
 
@@ -343,7 +350,6 @@ QStatusBar {
 QLabel#section_label {
     color: #6b7280;
     font-size: 11px;
-    text-transform: uppercase;
     letter-spacing: 1px;
 }
 
@@ -431,7 +437,7 @@ QTextEdit, QPlainTextEdit {
 
 #field_label {
     color: #8a9099;
-    font-size: 11px;
+    font-size: 12px;
     min-height: 16px;
 }
 
@@ -512,3 +518,6 @@ QCheckBox#param_advanced_toggle::indicator {
     font-size: 11px;
     font-weight: bold;
 }
+
+/* polish: labels must not paint their own background */
+QLabel { background: transparent; }

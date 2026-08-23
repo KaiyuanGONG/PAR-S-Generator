@@ -1,0 +1,16 @@
+{
+  "angular_cv": 0.47810791148665965,
+  "angular_cv_empirical_range": [
+    0.33360226698745143,
+    0.6201742992846553
+  ],
+  "angular_cv_passed": true,
+  "claim_boundary": "empirical distribution matching; not activity, administered-dose, scanner-sensitivity, or absolute cps/MBq calibration",
+  "observed_total_counts": 2456099.0,
+  "policy": "empirical_total_counts",
+  "status": "passed",
+  "target_relative_error": 0.0007298934493893753,
+  "target_total_counts": 2457893,
+  "total_count_passed": true,
+  "total_count_relative_error_maximum": 0.01
+}
