@@ -10,6 +10,7 @@ from typing import Any
 SCHEMA_VERSION = "windows_v1"
 GENERATION_PROFILE = "hybrid_v2_limited_activity_v1"
 RUNTIME_BACKEND = "windows_native"
+PROTOCOL_STATUS = "gate_abc_complete_windows_v1"
 MAX_SAFE_INTEGER = 2**53 - 1
 GATE_A_GENERATOR_COMMIT = "921e2e723804ed9ce1771d79c6a3cead9885c8fd"
 LIMITED_ACTIVITY_UPSTREAM_SOURCE_SHA256 = (

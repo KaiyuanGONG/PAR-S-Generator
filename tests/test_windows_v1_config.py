@@ -5,6 +5,7 @@ import pytest
 from core.windows_v1 import (
     GENERATION_PROFILE,
     MAX_SAFE_INTEGER,
+    PROTOCOL_STATUS,
     WindowsV1Config,
     WindowsV1ConfigError,
 )
@@ -41,6 +42,7 @@ def test_windows_v1_is_expectation_only_and_rejects_legacy_observation_output():
     config = PipelineConfig.for_windows_v1(run_id="expectation-only", windows_v1=windows)
     assert config.create_poisson_observation is False
     assert config.observation_policy == "fixed_scale"
+    assert config.protocol_status == PROTOCOL_STATUS
 
     with pytest.raises(ValueError, match="offline observation"):
         PipelineConfig.for_windows_v1(
@@ -50,6 +52,17 @@ def test_windows_v1_is_expectation_only_and_rejects_legacy_observation_output():
             observation_policy="empirical_total_counts",
             observation_protocol_status="empirical_protocol_matching",
         )
+
+
+def test_windows_v1_rejects_the_pre_gate_c_protocol_status_on_resume():
+    config = PipelineConfig.for_windows_v1(
+        run_id="gate-complete",
+        windows_v1=WindowsV1Config.from_dict({}),
+    ).to_dict()
+    config["protocol_status"] = "stage3_protocol_promoted_pilot_pending"
+
+    with pytest.raises(ValueError, match="protocol_status"):
+        PipelineConfig.from_dict(config)
 
 
 @pytest.mark.parametrize(

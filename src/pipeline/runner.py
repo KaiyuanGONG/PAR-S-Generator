@@ -21,6 +21,7 @@ from core.phantom_generator import PhantomConfig, PhantomGenerator, PreviewOverr
 from core.seeds import SeedBundle
 from core.windows_v1 import (
     GENERATION_PROFILE,
+    PROTOCOL_STATUS,
     RUNTIME_BACKEND,
     SCHEMA_VERSION,
     WindowsV1Config,
@@ -112,6 +113,8 @@ class PipelineConfig:
                 raise ValueError(f"Windows v1 generation_profile must be {GENERATION_PROFILE}")
             if self.runtime_backend != RUNTIME_BACKEND:
                 raise ValueError(f"Windows v1 runtime_backend must be {RUNTIME_BACKEND}")
+            if self.protocol_status != PROTOCOL_STATUS:
+                raise ValueError(f"Windows v1 protocol_status must be {PROTOCOL_STATUS}")
             if not isinstance(self.windows_v1, WindowsV1Config):
                 raise ValueError("Windows v1 requires an authoritative windows_v1 configuration")
             expected_phantom = self.windows_v1.to_phantom_config()
@@ -290,6 +293,9 @@ class PipelineConfig:
             if key in kwargs and kwargs[key] != expected:
                 raise ValueError("Windows v1 does not create an offline observation output")
         kwargs.update(observation_contract)
+        if "protocol_status" in kwargs and kwargs["protocol_status"] != PROTOCOL_STATUS:
+            raise ValueError(f"Windows v1 protocol_status must be {PROTOCOL_STATUS}")
+        kwargs["protocol_status"] = PROTOCOL_STATUS
         return cls(
             run_id=run_id,
             runs_root=runs_root,

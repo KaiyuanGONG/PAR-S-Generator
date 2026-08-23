@@ -115,7 +115,7 @@ export default function NewDataset({ protocol, defaults }: { protocol: Protocol 
           <span className="section-state" data-state={contractMatches ? "passed" : "failed"}>{contractMatches ? t("protocol.validatedPreset") : t("status.failed")}</span>
         </header>
         <div className="contract-intro">
-          <div><strong>{String(draft.protocol_label ?? "GE 870 CZT current liver SPECT research protocol")}</strong><span className="mono">{String(draft.protocol_status ?? "stage3_protocol_promoted_pilot_pending")}</span></div>
+          <div><strong>{String(draft.protocol_label ?? "GE 870 CZT current liver SPECT research protocol")}</strong><span className="mono">{String(draft.protocol_status ?? "gate_abc_complete_windows_v1")}</span></div>
           <span className="section-state" data-state="passed">windows_v1 · hybrid_v2_limited_activity_v1</span>
         </div>
         <div className="contract-grid">
