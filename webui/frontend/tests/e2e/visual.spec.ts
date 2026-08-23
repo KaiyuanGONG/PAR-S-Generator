@@ -11,6 +11,12 @@ async function useEmptyRunFixture(page: import("@playwright/test").Page) {
   await page.route("**/api/tasks", (route) => route.fulfill({ json: { tasks: [] } }));
 }
 
+async function waitForStableDraft(page: import("@playwright/test").Page) {
+  await expect(
+    page.locator("button.lifecycle-link").first().locator(".lifecycle-state"),
+  ).toHaveAttribute("data-state", "ready");
+}
+
 for (const combination of combinations) {
   for (const [index, workspace] of workspaces.entries()) {
     test(`${workspace} ${combination.locale} ${combination.theme}`, async ({ page }) => {
@@ -21,6 +27,7 @@ for (const combination of combinations) {
         localStorage.removeItem("pars.workspace.windows-v1");
       }, combination);
       await page.goto("/");
+      await waitForStableDraft(page);
       if (index > 0) await page.locator("button.lifecycle-link").nth(index).click();
       await expect(page.locator(`.workspace-scroll[data-workspace="${workspace}"]`)).toBeVisible();
       await expect(page).toHaveScreenshot(`${workspace}-${combination.locale}-${combination.theme}.png`, {
@@ -44,6 +51,7 @@ for (const locale of ["zh", "fr"] as const) {
           localStorage.removeItem("pars.workspace.windows-v1");
         }, { locale, theme });
         await page.goto("/");
+        await waitForStableDraft(page);
         if (index > 0) await page.locator("button.lifecycle-link").nth(index).click();
         await expect(page.locator(`.workspace-scroll[data-workspace="${workspace}"]`)).toBeVisible();
         expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
@@ -65,6 +73,7 @@ test("Phantom synchronized four-view workbench", async ({ page }) => {
     localStorage.removeItem("pars.workspace.windows-v1");
   });
   await page.goto("/");
+  await waitForStableDraft(page);
   await page.locator("button.lifecycle-link").filter({ hasText: "Phantom" }).click();
   await page.getByRole("button", { name: /Regenerate preview/i }).click();
   await expect(page.locator(".surface-canvas canvas")).toBeVisible({ timeout: 30_000 });

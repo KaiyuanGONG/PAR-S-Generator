@@ -83,6 +83,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: windows-v1-failure-evidence
+          include-hidden-files: true
           path: |
             .test-artifacts/
             .test_tmp/
