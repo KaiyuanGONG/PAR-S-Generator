@@ -1,7 +1,7 @@
 # PAR-S Generator — 详细变更对比文档
 
 > [!WARNING]
-> **历史文档，非现役执行规范。** 本文保留用于追溯早期设计与审计，包含已被替代的 UI、命令、路径或物理假设。请勿直接执行其中的 SIMIND 命令或据此启动数据生产。当前唯一现役入口为仓库根目录 `README.md`；科学状态见 `docs/DECISION_GATES.md` 与 `docs/VALIDATION_RESULTS_2026-08-17.md`，方法合同见 `docs/METHODS_SYNTHETIC_DATA.md`。
+> **历史文档，非现役执行规范。** 本文保留用于追溯早期设计与审计，包含已被替代的 UI、命令、路径或物理假设。请勿直接执行其中的 SIMIND 命令或据此启动数据生产。当前入口见仓库根目录 `README.md`；唯一科学合同见 `docs/WINDOWS_V1_SCIENTIFIC_AUTHORITY.md`，完整验收见 `docs/WINDOWS_V1_ACCEPTANCE.md`。`docs/DECISION_GATES.md` 与旧验证报告仅作为历史证据。
 
 > **文档说明**：本文档逐项对比原始 PAR-S `notebooks/DataCreation_SYN.ipynb` 与 `notebooks/DataPreparation.ipynb` 中的代码，与最终开发的 PAR-S Generator 桌面应用（`src/core/phantom_generator.py`、`src/core/interfile_writer.py`、`src/core/batch_runner.py`）之间的所有差异。分为**参数变更**、**逻辑完善**、**架构重构**、**新增功能**四大类。
 

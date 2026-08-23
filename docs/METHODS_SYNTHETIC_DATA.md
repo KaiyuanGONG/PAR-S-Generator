@@ -1,18 +1,47 @@
-# Synthetic liver SPECT data preparation — Methods draft
+# Synthetic liver SPECT data preparation — Windows v1 active method
 
 ## Scope and claim boundary
 
-This section describes the static synthetic-data preparation stage of PAR-S for the current liver SPECT protocol and a GE NM/CT 870 CZT configuration. The workflow produces parameterized activity and attenuation volumes, SIMIND inputs, projection expectations, optional observation realizations, quality-control evidence and immutable dataset manifests. It does not include image reconstruction, network training, inference or model evaluation. Scanner- and protocol-specific physical claims remain conditional on the validation experiments listed in `DECISION_GATES.md`.
+This section describes the active native-Windows production profile
+`hybrid_v2_limited_activity_v1` for the current liver SPECT protocol and a GE
+NM/CT 870 CZT configuration. It produces activity and physical attenuation
+volumes, SIMIND ACT/ATN inputs, projection expectations, quality-control
+evidence and immutable dataset manifests. It does not create a separate
+Poisson observation layer and does not include reconstruction, network
+training, inference or model evaluation. The exact authority and public
+parameter boundary are defined in `WINDOWS_V1_SCIENTIFIC_AUTHORITY.md`;
+scanner- and protocol-specific claims remain bounded by the historical
+validation evidence in `DECISION_GATES.md`.
 
 ## Workflow overview
 
-We implemented one run-isolated workflow with the ordered stages `Generate → Phantom QC → Export → SIMIND plan/expectation → Projection QC → optional Observation → Package`. Both the graphical interface and command-line interface call the same `PipelineRunner`; neither defines a separate data-generation algorithm or SIMIND command grammar. Each run receives a unique identifier and a dedicated directory containing its effective configuration, case ledger, inputs, outputs, logs, QC records, figures and checksums. A stage can reuse an artifact only after its recorded checksum and stage-specific structural checks pass. A finalized dataset manifest is immutable and must pass its recorded checksum before it can be reopened.
+We implemented one run-isolated workflow with the ordered active stages
+`Generate → Phantom QC → Export → SIMIND plan/expectation → Projection QC →
+Package`. The local Web application, FastAPI boundary and command-line
+interface call the same `PipelineRunner`; none defines a separate generation
+algorithm or SIMIND command grammar. Each run receives a unique identifier and
+a dedicated directory containing its effective configuration, case ledger,
+inputs, outputs, logs, QC records, figures and checksums. A stage can reuse an
+artifact only after its recorded checksum and stage-specific structural checks
+pass. A finalized dataset manifest is immutable and must pass its recorded
+checksum before it can be reopened. The ledger reader retains the historical
+`observation` stage name solely so older evidence can still be inspected.
 
 This design addresses three failure modes of the previous workflow: outputs from different batches could share a directory, completion could be inferred from the mere presence of an `.a00` file, and dataset membership and splits were recomputed outside the generator. The run ledger instead makes every effective parameter and every accepted artifact explicit.
 
 ## Parameterized liver and lesion generation
 
-Volumes are represented on a 128 × 128 × 128 grid with 4.42-mm isotropic voxels. The liver is generated from intersected and smoothed analytical right- and left-lobe primitives, a body support and dome and fossa constraints. Global translation, scale, rotation and detail perturbations are sampled from the effective run configuration using a per-case deterministic random-number generator. A tilted Cantlie plane separates the lobes. Its offset is solved against the requested left-lobe fraction using adaptive bracket expansion. The initial and expanded ranges, expansion count, expansion-limit state, boundary state, achieved fraction, absolute error, iteration count and convergence state are stored for every case.
+Volumes are represented on a locked 128 × 128 × 128 grid with 4.42-mm
+isotropic voxels. Patient, torso and liver anatomy come from the frozen Gate A
+V2 population generator. A deterministic case seed is domain-separated into
+patient, liver-shape, attenuation, lesion and activity streams. Patient and
+liver targets are sampled from the evidence-backed population profile; liver
+shape fitting may retry with derived shape-attempt seeds, and every rejected
+and accepted attempt is recorded. V2 region labels 1–3 define the left liver
+and labels 4–5 define the right liver; their disjoint union must exactly equal
+the accepted liver mask. The legacy analytical anatomy and legacy Cantlie
+solver remain available only through historical paths and are not used by this
+profile.
 
 Each default phantom contains one to five lesions. A diameter bin is sampled once per lesion from 10–20, 20–40 or 40–60 mm with probabilities 0.45, 0.40 and 0.15, respectively, and morphology is sampled as an ellipsoid or a spiculated lesion with probabilities 0.7 and 0.3. Failed placement attempts retain the presampled size stratum; a failed whole layout restarts all lesion positions rather than resampling the failed lesion into a new, preferentially smaller stratum. Ellipsoids are evaluated in physical local coordinates divided by the requested semi-axes; this avoids the earlier bounding-box normalization that inflated their size. Candidate masks are accepted only if non-empty, fully contained in the liver and non-overlapping with previously accepted lesions. Central and explicitly configured subcapsular lesions use separate liver-surface depth criteria. If an entire multifocal burden cannot fit in the eroded central-liver compartment after the configured layout attempts, the minimum surface-margin constraint is progressively relaxed for the smallest remaining lesion strata. Such lesions remain fully contained and non-overlapping, are labelled `capacity_fallback_margin_relaxed`, and are analyzed separately rather than being presented as ordinary central lesions.
 
@@ -20,9 +49,26 @@ The stored lesion record is derived from the accepted mask, not only from the sa
 
 ## Activity and attenuation volumes
 
-One of four configured perfusion patterns—whole liver, tumour only, left-lobe dominant or right-lobe dominant—is sampled for each default case. Normal-liver activity and a superior–inferior gradient are assigned before lesion activity. Lesion activity is set using the sampled target contrast relative to the local pre-lesion activity. The resulting clean source is normalized to a configured sum (80,000 by default) and stored as `float32`. It is an activity-distribution input for SIMIND and is not labelled as a measured count image. No Python point-spread-function blur or Poisson sampling is applied to this source; collimator–detector response and Monte Carlo transport belong to SIMIND.
+LimitedActivity v1 selects exactly one feasible whole-, right- or left-liver
+perfusion territory. The default `auto_equal_feasible` policy samples uniformly
+over the feasible territories; an explicitly locked territory fails rather
+than falling back when it cannot contain every lesion and its required local
+background ring. Residual background 0.05 and superior–inferior gradient gain
+0.08 are locked. Each lesion is assigned a target TNR within the requested
+2–8 subrange relative to a 1–3-voxel Euclidean background ring inside the
+selected territory, excluding every lesion. The persisted local TNR must be
+within 2% of its target. The resulting source is normalized to 80,000 and
+stored as contiguous `float32`. A true-negative case contains no lesion mask or
+record but retains non-zero liver activity. No Python point-spread-function
+blur or Poisson sampling is applied; collimator–detector response and Monte
+Carlo transport belong to SIMIND.
 
-The attenuation volume contains analytical body, lung, spine, liver and fat regions with configurable values. The current defaults are 0.15, 0.05, 0.30, 0.16 and 0.09 cm⁻¹, respectively, referenced in project metadata to 140.5 keV. A smoothed low-amplitude perturbation is added inside the body and air is set to zero. The analytical array is stored as `float32` μ in cm⁻¹ together with its reference energy and contract status. For SIMIND type−7 only, the exported density-map voxel value is `μ × Δx`, where Δx is the density-map voxel width in centimetres. No fitted attenuation factor is applied.
+The physical attenuation volume is the V2 `mu_true_140kev` material map selected
+by the Gate A adapter and stored as `float32` μ in cm⁻¹. Its source profile,
+evidence registry and both physical and CT-like map hashes are recorded; the
+degraded CT-like map is not substituted for production μ. For SIMIND type−7,
+the exported ATN voxel value is `μ × 0.442`, where 0.442 cm is the locked voxel
+width. No fitted attenuation factor is applied.
 
 ## Binary export and SIMIND configuration
 
@@ -34,13 +80,25 @@ All SIMIND jobs are constructed by one command builder. A job record contains th
 
 The nominal activity–time contract is 60 MBq × 28.4 s per projection, encoded explicitly as `/25:1704`. This choice is supported by a read-only aggregation of ten unique original local GE 870 liver SPECT acquisitions: all had 60 views and their DICOM `ActualFrameDuration` values had median 28.354 s (range 27.809–28.439 s). The SIMIND v8 manual defines Index-25 as the activity–acquisition-time product for projection scaling. The legacy path name containing `20s` is therefore not treated as protocol metadata. Because the available DICOM dose fields are zero, this establishes the synthetic nominal contract but not patient-administered activity or absolute cps/MBq.
 
-## Projection expectation and observation layers
+## Projection expectation and historical observation evidence
 
 The SIMIND `.a00` output is stored as a projection expectation layer. Five independent `/RR` streams at each of `/NN` 1, 5 and 10 showed integrated coefficients of variation of 0.0763, 0.0352 and 0.0163; integrated and fixed-support variance log–log slopes were −1.316 and −1.119, respectively. All positive samples were non-integer and the expectation mean varied by 6.12% across the ladder. Under this tested configuration, `.a00` is therefore classified as a variance-reduced weighted Monte Carlo expectation estimator, not as a clinical Poisson observation. This repeated-realization evidence supersedes any Fano interpretation based on spatial variation in one image.
 
-If an observation layer is needed, it is generated in a distinct directory by seeded Poisson sampling of a non-negative expectation after an explicit scale factor. The expectation is never overwritten. The observation record stores its seed, scale, protocol status, parent phantom identifier, inherited split, realization identifier and checksum. For the current empirical policy, the scale is sampled or fitted so that total counts and angular-profile variability follow eight accepted de-identified raw TOMO series: totals 2.042–4.113 million (median 2.653 million) and angular CV 0.3336–0.6202 (median 0.4706). This is recorded as empirical protocol matching, not absolute cps/MBq calibration. The separation permits repeated observations without allowing realizations from one phantom to enter different data splits.
+Windows v1 packages the accepted SIMIND expectation directly after projection
+QC. The older seeded Poisson transform and its empirical matching evidence are
+retained as analysis history, but the strict Windows v1 configuration forces it
+off and rejects attempts to enable it. A future observation product would
+require a new named schema/profile and fresh validation; it must not be silently
+added to a Windows v1 run.
 
-For Stage-3 joint verification, 100 generated phantoms were subjected to population QC and a deterministic standardized-feature maximin procedure selected ten cases spanning liver volume, left-lobe fraction, lesion count, mean effective lesion diameter, mean saved-activity TNR and minimum surface margin. All 100 phantoms passed case QC and the predeclared anatomy/lesion distribution gates. The ten selected phantoms were then executed with the promoted SIMIND contract. All ten weighted expectations passed projection and command-token QC, and all ten separate Poisson observations passed their empirical total-count and angular-CV gates. Observation totals were 2.127–3.850 million and angular CV was 0.3913–0.5730. These pilot measurements verify joint software/protocol consistency in the selected cases; they are not clinical prevalence or absolute-sensitivity estimates.
+Historically, Stage-3 subjected 100 generated phantoms to population QC and
+selected ten cases with a deterministic standardized-feature maximin
+procedure. All 100 passed the declared population gates, and all ten weighted
+expectations passed projection and command-token QC. The same pilot also
+tested a separate Poisson observation policy; those observation results remain
+evidence for that retired policy, not output requirements of Windows v1. The
+pilot establishes scoped software/protocol consistency, not clinical
+prevalence or absolute sensitivity.
 
 ## Quality control and orientation
 
@@ -50,7 +108,13 @@ Raw projection files are reshaped as `(view, detector row, detector column)`. A 
 
 ## Dataset partitioning, provenance and figures
 
-Cases are sorted by phantom identifier and permuted once with NumPy `default_rng(42)`. The first 80%, next 10% and final 10% are assigned to training, validation and test partitions. For the frozen 500-case legacy set this gives exactly 400, 50 and 50 phantoms and reproduces the existing PAR-S_2 split algorithm. The exact identifiers are persisted in `splits.json`; later observation realizations inherit their parent phantom's assignment.
+Positive cases are sorted by identifier and deterministically assigned to the
+configured train/validation/test fractions. Windows v1 true negatives are
+generated directly with zero lesions, recorded with `case_role=true_negative`
+and `split_role=independent_test_control`, and forced into the test partition;
+they are not inferred by stripping lesions from positive cases. The frozen
+500-case legacy set retains its historical 400/50/50 split. Exact identifiers
+and roles are persisted in `splits.json`, `cases.jsonl` and the final manifest.
 
 `cases.jsonl` stores per-case identifiers, seeds, absolute working paths, portable run-relative paths, split, artifact checksums and QC evidence. `dataset_manifest.json` inventories every packaged file by relative path, byte size and SHA-256 digest and records protocol and physical-contract statuses. Distribution tables are exported as CSV and figures as editable SVG plus PNG. These figures describe the generated dataset and QC outcomes; they are not used as evidence for clinical prevalence or scanner-wide generalization.
 
@@ -58,4 +122,14 @@ Cases are sorted by phantom identifier and permuted once with NumPy `default_rng
 
 The existing 500-case dataset was frozen by read-only checksum reference rather than silently rewritten. Its 3,000 phantom and projection source artifacts are inventoried, and the exact split is persisted. The audit confirmed deterministic phantom reproduction and correct binary export, but identified lesion-size inflation in the previous ellipsoid implementation, frequent liver-surface contact, occasional lesion overlap, a constrained left-lobe distribution, non-integer weighted projection values and unresolved attenuation and field-of-view contracts. Its old directory also mislabels the now-supported 28.4-s nominal exposure as `20s`. Consequently, the legacy set is labelled `legacy_weighted_mc_expectation_like_output`; it is a reproducible baseline, not a physics-validated clinical count dataset.
 
-The asymmetric-orientation, scoped type−7 attenuation, native detector FOV, scoped point/line response and repeated `/RR`–`/NN` controls passed, and the local activity–time review supports the nominal 60 MBq × 28.4 s contract. Index-100/101=160/208 reproduced a 39.36×51.168-cm native aperture while retaining the 128×128, 4.42-mm projection grid. At the tested zero-attenuation 300-mm geometry, point and line FWHM were 17.68 mm versus a 17.50-mm specification-derived prediction, with 0.753-pixel centring error. Eight raw local TOMO series define the empirical observation distribution without supporting absolute cps/MBq. The Stage-3 100-case population QC and finalized ten-case corrected SIMIND pilot jointly passed their predeclared gates, permitting a full corrected synthetic-data production run under the unchanged contract. No full-scale corrected production dataset has yet been generated. The present workflow and this Methods text are intentionally limited to synthetic liver SPECT data preparation under the current protocol.
+The asymmetric-orientation, scoped type−7 attenuation, native detector FOV,
+scoped point/line response and repeated `/RR`–`/NN` controls passed, and the
+local activity–time review supports the nominal 60 MBq × 28.4 s contract.
+Index-100/101=160/208 reproduced a 39.36×51.168-cm native aperture while
+retaining the 128×128, 4.42-mm projection grid. At the tested zero-attenuation
+300-mm geometry, point and line FWHM were 17.68 mm versus a 17.50-mm
+specification-derived prediction, with 0.753-pixel centring error. Gate A/B/C
+evidence is complete for its declared scope. The server Formal 550 execution is
+an external large-batch operation and is neither a Windows v1 backend nor a
+Windows v1 release gate. This Methods text remains limited to synthetic liver
+SPECT data preparation under the fixed protocol.

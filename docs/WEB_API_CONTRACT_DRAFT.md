@@ -1,4 +1,4 @@
-# PAR-S local Web API contract — v1
+# PAR-S local Web API contract — Windows v1
 
 Scope: a localhost-only FastAPI boundary around the existing `PipelineRunner`,
 phantom generator, SMC parser, validation-experiment preparer and projection
@@ -12,8 +12,8 @@ stream. The production React bundle is served from the same origin.
 
 | Endpoint | Result / authority |
 |---|---|
-| `GET /api/health` | service version, Python/PyQt availability and repository root |
-| `GET /api/defaults` | `PipelineConfig.to_dict()` including nested `PhantomConfig` |
+| `GET /api/health` | service name/version and repository root |
+| `GET /api/defaults` | strict `PipelineConfig.for_windows_v1(...).to_dict()` |
 | `GET /api/protocol` | scoped protocol constants, stage order, detector/projection geometry and canonical transform |
 | `GET /api/runs?root=<runs_root>` | allowlisted run scan including `config_path` for recovery |
 | `GET /api/run?root=<run_root>` | full `run.json`, case count and effective configuration |
@@ -33,15 +33,18 @@ filesystem allowlist before reading it.
 | Endpoint | Body | Semantics |
 |---|---|---|
 | `POST /api/run/preflight` | create-run payload | Normalize and validate the complete draft, parse the selected SMC, return checks/digest/canonical config; writes nothing and never launches SIMIND |
-| `POST /api/runs` | `{run_id,runs_root,cases,mode,config_overrides}` | Create one editable, server-normalized config JSON; no run execution |
+| `POST /api/runs` | `{run_id,runs_root,mode,windows_v1,simind_exe,smc_file,nn_multiplier,max_simind_workers}` | Create one strict, server-normalized Windows v1 config JSON; unknown fields are rejected and no run is executed |
 | `POST /api/experiments/prepare` | `{destination,simind_exe,smc_file}` | Call the frozen five-experiment preparer; returns `prepared_not_run` and never executes SIMIND |
-| `POST /api/run/start` | `{config_path,resume=false,finalize=false,allow_simind_execution=false}` | Start or explicitly resume `PipelineRunner.run_all()` in a background task. The Web UI always sends `finalize:false` |
+| `POST /api/run/start` | `{config_path,resume=false,finalize=false,allow_simind_execution=false,allow_unverified_runtime=false,allow_large_simind_execution=false}` | Start or explicitly resume `PipelineRunner.run_all()` in a background task. The Web UI always sends `finalize:false`; real SIMIND, unknown runtime hashes and more than ten real cases have independent consent gates |
 | `POST /api/tasks/{task_id}/pause` | none | `runner.request_pause()`; the task stops at the next safe boundary |
 | `POST /api/run/finalize` | `{run_root}` | Reserve the run and call only `PipelineRunner.open(root).finalize()`; returns finalized state, manifest path and package SHA-256 |
 
-The complete draft is mapped as top-level protocol, simulation and observation
-fields plus `config_overrides.phantom`. Preview and create use the same
-PhantomConfig-shaped object.
+The complete production draft is the strict top-level transport/runtime
+surface plus `windows_v1`, whose public fields are `schema_version`,
+`generation_profile`, `runtime_backend`, `cohort`, `lesions` and `seed`.
+Preview and create both derive the same locked `PhantomConfig` from this object.
+Old profiles, unknown fields and an offline observation request are rejected;
+they are never silently migrated.
 
 ## 3. Phantom-derived inspection
 
@@ -61,7 +64,7 @@ never transferred to the browser.
 
 | Endpoint | Notes |
 |---|---|
-| `GET /api/run/projection?root=&case=&view=&layer=` | selected run case/view, expectation or observation, after `raw[:,::-1,:]` |
+| `GET /api/run/projection?root=&case=&view=&layer=` | selected run case/view after `raw[:,::-1,:]`; Windows v1 produces `expectation`, while `observation` is accepted only for read-only inspection of historical runs |
 | `GET /api/run/sinogram?root=&case=&row=&layer=` | detector columns horizontal and acquisition views vertical |
 | `GET /api/artifact/inspect?path=` | safe `.a00` shape/type/transform/count statistics; rejects malformed or excessive stacks |
 | `GET /api/artifact/projection?path=&view=` | selected canonical projection PNG |
@@ -75,7 +78,8 @@ Artifact endpoints only accept allowlisted `.a00` files containing whole
 | Endpoint | Notes |
 |---|---|
 | `GET /api/fs/list?path=` | roots, parent, directories and files with size/mtime; never lists outside configured roots |
-| `GET /api/fs/validate?path=&kind=simind_exe\|smc\|runs_root` | existence/type/extension and SMC parsing as applicable |
+| `GET /api/fs/validate?path=&kind=simind_exe\|smc\|runs_root\|export_root` | existence/type/extension and Windows path rules as applicable |
+| `POST /api/fs/pick` | `{kind,initial_path}` invokes the native Windows file/folder dialog; cancellation returns `{cancelled:true,path:null}` without changing the draft and an accepted parent is authorized only for the current service session |
 
 Filesystem errors use HTTP rather than an `{error}` payload with status 200:
 403 outside allowlist, 404 missing, 409 I/O/runtime conflict and 422 wrong type,
@@ -95,14 +99,18 @@ polling, for example:
 {"type":"finished","finalized":false,"run_root":"..."}
 ```
 
-Ordered vocabulary: `generate → phantom_qc → export → simind_plan → expectation
-→ projection_qc → observation → package → finalize`. The watcher may expose a
-pipeline-internal spelling in raw diagnostics; the typed UI maps known names.
+Active Windows v1 execution is `generate → phantom_qc → export → simind_plan →
+expectation → projection_qc → package → finalize`. The watcher also recognizes
+the historical `observation` stage so old ledgers remain reviewable; a new
+Windows v1 run never enters it.
 
 ## 7. Lifecycle and safety invariants
 
 - Execute mode requires both a UI acknowledgement and
   `allow_simind_execution:true`; the server returns 403 without it.
+- An unverified SIMIND/SMC pair additionally requires
+  `allow_unverified_runtime:true`; more than ten real cases additionally require
+  `allow_large_simind_execution:true` after cost review.
 - Start defaults to `finalize:false`. Normal Web execution always ends in Review;
   Seal is a separate explicit action.
 - A paused task is resumable only through `resume:true`. Running work, paused work

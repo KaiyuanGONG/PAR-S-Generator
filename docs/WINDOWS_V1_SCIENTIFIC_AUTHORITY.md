@@ -22,8 +22,27 @@ Web / FastAPI / CLI
 - `schema_version=windows_v1`
 - `generation_profile=hybrid_v2_limited_activity_v1`
 - `runtime_backend=windows_native`
+- `protocol_status=gate_abc_complete_windows_v1`
 
 `runtime_backend` 是 provenance 预留字段，不是 v1 的可选后端。Linux、WSL 与服务器批量执行不进入 v1 UI、状态机或发布门槛。
+
+## Windows v1 公开参数边界
+
+| 项目 | 合同 |
+| --- | --- |
+| 队列 | `positive_only`、`true_negative_only`、`mixed`；数量为正整数，无静默产品上限 |
+| 阳性病灶数 | 1–5 闭区间内均匀抽样 |
+| 真阴性 | 病灶数强制为 0；角色 `true_negative`，用途 `independent_test_control` |
+| 尺寸 | `[10,20)`、`[20,40)`、`[40,60] mm`；默认权重 0.45/0.40/0.15 |
+| 权重 | 三项非负且总和大于 0；原值和归一化值均进入 manifest |
+| TNR | 用户范围必须位于 2–8 且 min≤max；局部实测相对误差不超过目标 2% |
+| 区域 | 默认 `auto_equal_feasible`；可锁 whole/right/left，不可行时明确失败 |
+| Seed | 0–9,007,199,254,740,991；派生随机流域隔离并持久化 |
+| NN / worker | NN 1–1,000,000（默认 10）；worker 1–32（正式验收为 1） |
+| 锁定项 | 128³、4.42 mm、80,000 counts、residual_bg=0.05、gradient_gain=0.08、物理 μ-map、形态与采集/FOV 合同 |
+
+旧配置、未知字段、越界值与非 Windows backend 一律拒绝；不得截断、
+补默认或静默迁移。真实执行超过 10 例时必须单独确认成本。
 
 ## 来源与边界
 
@@ -61,3 +80,18 @@ LimitedActivity 的上游源码 SHA-256 为 `43e0b4de9231710d2956c1446c7afb373b2
 - `ge870_czt.smc` SHA-256 `4d10eab246a7a6690663230d2f33aeb3c32f67c598af36b56d1575f0e3551d10`
 
 哈希不匹配可以在独立二次确认后执行，但 manifest 必须为 `unverified_runtime`，不得宣称 `validated_windows_v1`。
+
+## 2026-08-23 行为冻结证据
+
+- 重构前真实基线：commit `3ac54662aa220abb030f19548b39dd9c23ab66a6`，
+  mixed 1 阳性 + 1 真阴性、seed 42、NN=10、worker=1。
+- 活跃路径重构：commit `6f684ce3cf54b04b6d724564938e9727a8b4d665`；
+  数值公式、随机抽样、QC、SIMIND 和二进制写入代码未改。
+- `windows_v1_refactor_equivalence_20260823.json` 的 42 项检查全部通过：
+  两例 NPZ、ACT、ATN、a00 逐字节一致，命令/seed/角色/QC 一致；`.res`
+  仅运行起止时间、耗时和性能计数行不同，其余行一致。
+- 两次运行的 SIMIND/SMC 前后哈希均等于本文件列出的验证值，投影 QC
+  均通过，且没有进入历史 observation stage。
+
+证据文件位于 `docs/evidence/`。这些证据证明重构行为保持，不扩大
+scanner、疾病或 protocol 的科学适用范围。

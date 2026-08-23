@@ -1,5 +1,8 @@
 # PAR-S Generator implementation and verification report — 2026-08-17
 
+> [!IMPORTANT]
+> Historical implementation report. It predates the Hybrid V2 + LimitedActivity Windows v1 integration; current authority is `WINDOWS_V1_SCIENTIFIC_AUTHORITY.md`.
+
 ## Outcome
 
 PAR-S Generator now has one auditable, run-isolated data-preparation workflow. Its endpoint is a finalized synthetic dataset package. It contains no reconstruction, training, inference, checkpoint or model-evaluation workflow, and `D:\PFE-U\PAR-S_2` was kept read-only.

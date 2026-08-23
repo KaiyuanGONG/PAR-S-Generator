@@ -1,5 +1,8 @@
 # PAR-S synthetic-data validation results — 2026-08-17/18
 
+> [!IMPORTANT]
+> Historical Gate B/C validation evidence. Use `WINDOWS_V1_SCIENTIFIC_AUTHORITY.md` for the active anatomy/activity/profile and `WINDOWS_V1_ACCEPTANCE.md` for release acceptance.
+
 ## Gate 1: asymmetric array and projection orientation
 
 **Decision: passed for newly generated data under the current SIMIND 8.0 GE 870 research configuration.** This section validates array axes and projection orientation only. The remaining Stage 2 controls and the overall stop decision are reported below; the separate activity–time review is recorded in `LOCAL_PROTOCOL_EVIDENCE_2026-08-17.md`.

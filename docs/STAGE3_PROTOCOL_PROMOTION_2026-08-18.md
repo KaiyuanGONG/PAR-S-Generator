@@ -1,5 +1,8 @@
 # Stage 3 protocol promotion and pilot report
 
+> [!IMPORTANT]
+> Historical Gate C evidence: the active Windows v1 profile is defined in `WINDOWS_V1_SCIENTIFIC_AUTHORITY.md` and packages the SIMIND expectation without the observation stage evaluated in this report.
+
 ## Scope
 
 This report covers synthetic liver SPECT data preparation for the current GE NM/CT 870 CZT research protocol. It does not cover PAR-S reconstruction, training, inference, or model evaluation. Count matching is empirical; no absolute cps/MBq claim is made.

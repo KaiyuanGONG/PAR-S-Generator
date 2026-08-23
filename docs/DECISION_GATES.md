@@ -1,5 +1,8 @@
 # PAR-S synthetic-data scientific decision gates
 
+> [!IMPORTANT]
+> This file is the retained Gate B/C validation record. The only active new-production contract is Windows v1 `hybrid_v2_limited_activity_v1`, defined in `WINDOWS_V1_SCIENTIFIC_AUTHORITY.md`. In particular, the observation policy evaluated below is historical evidence and is not a Windows v1 production stage.
+
 The software pipeline is complete without these experiments, but a production dataset must not be labelled physics-validated until every blocking gate passes. Stage 2 was reopened and completed on 2026-08-18 with exact commands, logs, headers, hashes and machine-readable analyses. Orientation, type−7 attenuation, detector FOV, point/line response and RR/NN sampling passed their scoped controls. An empirical observation policy was selected from eight de-identified raw local TOMO series. Stage 3 then promoted those contracts into the single production path, passed a 100-case phantom-population QC run and finalized a 10-case corrected SIMIND pilot. No full-scale corrected production dataset has yet been generated.
 
 The compact machine-readable decision indexes are `docs/evidence/stage2_validation_summary_2026-08-18.json` and `docs/evidence/stage3_pilot_summary_2026-08-18.json`; each executed experiment or run directory retains its detailed analysis/QC, command plan, logs and artifact hashes. Historical packages may additionally retain curated `results.json` files.

@@ -1,82 +1,68 @@
-# PAR-S Web UI functional traceability
+# PAR-S Windows v1 Web UI functional traceability
 
-Baseline: Git tag `pyqt-v0.5-freeze` (`f423b81`). The frozen PyQt application is
-the workflow contract. The React/FastAPI workbench can reorganize the tasks, but
-the service remains a thin boundary around `PipelineRunner` and the existing
-phantom/SMC/readback code.
+The active contract is `windows_v1` / `hybrid_v2_limited_activity_v1` /
+`windows_native`. The frozen PyQt application at tag `pyqt-v0.5-freeze` is a
+historical comparison target, not a scientific or workflow authority. The
+React/FastAPI workbench remains a thin boundary around `PipelineRunner` and the
+shared generator, exporter, SIMIND command builder, readback and QC code.
 
-Status vocabulary: **complete** is reachable in the current Web UI and backed by
-the named API/runner behavior; **replaced** means the old control is superseded by
-an explicit new mechanism; **bounded** means the capability remains available but
-the current scientific run contract intentionally restricts it.
+Status vocabulary: **complete** is reachable in the current application and
+backed by the named evidence; **historical-read** means old evidence can be
+viewed but cannot create or resume production; **bounded** means the strict
+scientific profile intentionally restricts the capability.
 
 ## Contract-to-implementation matrix
 
-| Capability | Frozen behavior | Current Web implementation | Automated evidence | Status |
-|---|---|---|---|---|
-| Run identity and root | Edit run ID, case count and destination before execution | Protocol edits a shared v3 draft; allowlisted directory browser and `fs/validate` verify the root | lifecycle E2E; filesystem API tests | complete |
-| Protocol contract | Label/status, activity, exposure and SMC Index-25; require `activity × time = Index-25` | Readable validated preset with explicit expert override and live product gate | lifecycle E2E; runner validation regression | complete |
-| Delayed plan lock | Apply settings before executing | Protocol and Phantom only advance readiness. Simulation preflight is the sole `Lock run plan` action; server normalization then makes the run read-only | lifecycle E2E; reducer tests | complete |
-| Reset defaults | Reset editable settings | Confirmed `Reset draft` restores `/api/defaults`; sealed/locked runs require Fork instead | workbench E2E; reducer tests | complete |
-| Phantom preview/run parity | Preview and batch share one `PhantomConfig` | `toPhantomConfig()` supplies both preview and `config_overrides.phantom`; a preview digest is invalidated by every draft edit | workspace/unit tests; preview API tests; lifecycle E2E | complete |
-| Phantom cohort parameters | Matrix/voxel, geometry jitter, lobe ratio, tumor count/contrast/morphology, perfusion, counts/background and placement constraints | Recommended controls plus a disclosed expert layer; measured lesion surface margin is retained | preview API tests; visual/E2E checks | complete |
-| Phantom matrix boundary | PyQt exposed research matrix controls although the frozen runner only validates `128³` | `128³` is labelled as the validated run matrix. Other frozen discrete sizes are expert, preview-only research values and correctly receive preflight 422 | preflight API regression | bounded |
-| Reproducible seeds | Preview draw plus global batch seed strategy | Preview seed/case navigation is separate from editable `global_seed`/`use_global_seed`; Next draw uses the incremented seed | workspace mapping tests; browser E2E | complete |
-| Phantom preset exchange | Save/load Phantom JSON | Browser download/upload round-trips the actual draft payload; managed output fields are not trusted from the file | lint/build; browser interaction surface | complete |
-| Multi-plane inspection | Three orthogonal slices, overlays and measured metrics | Activity/μ, liver/tumor masks or contours, direction labels, scale, probe and lesion jump controls | preview API tests; browser E2E | complete |
-| Fourth Phantom view | Frozen PyQt had a separate 3D Surface tab; its four-grid cell held metrics | The fourth cell defaults to interactive 3D and toggles to MIP. All four views share one voxel cursor; dragging, sliders, lesion jumps and keyboard movement update together | linked-cursor E2E; 61 visual snapshots | complete |
-| Simulation paths | Browse executable and SMC | Both buttons open the allowlisted server-side file browser; no dead native-dialog placeholders remain | filesystem API tests; axe | complete |
-| SMC preflight/provenance | Parse the selected SMC and display acquisition plus raw expert indices/flags | `run/preflight` checks paths, type-7 inputs, shape/sampling, cross sections, activity-time and detector request without creating a run | preflight API tests | complete |
-| Transport settings | Mode, `/NN`, workers and deterministic `/RR` base | All enter the shared draft and effective server config; Execute still requires a second Run confirmation | lifecycle E2E; API lifecycle tests | complete |
-| Observation contract | Poisson on/off, empirical/fixed policy, scale and status | Presets plus expert controls for policy, scale, protocol status and seed offset; UI transitions only produce runner-valid combinations | Simulation unit tests; preflight/lifecycle tests | complete |
-| Validation experiment preparation | Prepare five experiment packages without launching SIMIND | Allowlisted destination browser calls the existing `prepare_all_experiments()` via `POST /api/experiments/prepare` | preflight API tests | complete |
-| Effective contract inspection | Read complete effective `PipelineConfig` before Run | Run Center exposes server-normalized canonical JSON and copy action | build/E2E lifecycle fixture | complete |
-| Start/execute gate | Explicit confirmation before real SIMIND | Execute Start/Resume stays disabled until the checkbox is selected and the server also requires `allow_simind_execution:true` | lifecycle/API tests | complete |
-| Pause/resume | Pause at a safe boundary; explicitly resume | `pause-requested` is visible; paused registry entries can be atomically resumed while running conflicts remain 409 | lifecycle E2E; API lifecycle tests | complete |
-| No automatic finalize | Run first, review, then finalize | every start sends `finalize:false`; completed tasks enter Review | lifecycle E2E; API lifecycle tests | complete |
-| Run monitoring | Ordered stages, case ledger and execution feedback | Nine pipeline stages, aggregate progress, per-case QC and live WebSocket stream with polling recovery | lifecycle E2E | complete |
-| Review refresh/evidence | Refresh ledger, inspect stage JSON, per-case backend/effective `.res` values and images | Manual refresh, expandable/copyable stage records, linked ledger/effective evidence and expectation/observation projection/sinogram | review API tests; lifecycle E2E | complete |
-| Arbitrary `.a00` inspection | Open a projection file and inspect shape/views/sinogram/statistics | Allowlisted artifact browser plus safe summary, canonical projection and correctly oriented sinogram endpoints | review API tests | complete |
-| Review export | Preserve evidence outside the screen | Cases CSV and QC JSON report are generated from the currently loaded real ledger/evidence | browser build/E2E surface | complete |
-| Manifest and splits | Inspect package inventory and fixed partition | Review and Seal read real `dataset_manifest.json` and `splits.json`; no synthetic manifest is generated in Web code | API lifecycle and lifecycle E2E | complete |
-| Explicit Seal | Readiness checklist, irreversible acknowledgement, Finalize and hash | Separate Seal workspace requires readiness, exact run ID and acknowledgement; calls only `PipelineRunner.open(root).finalize()` and displays package SHA-256 | lifecycle E2E; API concurrency/gate tests | complete |
-| Immutable run/fork | Sealed data is read-only | sealed reducer rejects edits; Fork creates a new draft/run identity without altering the sealed root | reducer tests; lifecycle E2E | complete |
-| Refresh recovery | Recover selected run/task after reload | `pars.workspace.v3` stores only draft/view and lookup pointers; `/api/runs`, `/api/tasks` and ledger state are authoritative after reload | lifecycle E2E; workspace tests | complete |
-| Error semantics | Actionable validation/path/conflict failures | Shared localized notice guides 403/404/409/422 and preserves raw server detail in a disclosure | ErrorNotice unit tests; API error regressions | complete |
-| Theme/language | Desktop settings | English, Simplified Chinese and French plus light/dark/system theme are persisted; pre-paint bootstrap avoids a light flash | i18n/unit/E2E/visual tests | complete |
-| Desktop accessibility | Keyboard-operable scientific workstation | skip link, landmarks, labelled controls, visible focus, ≥24 px targets, reduced motion, non-colour status and keyboard-linked imaging cursor | axe 6-workspace suite; keyboard E2E; token contrast tests | complete |
+| Capability | Windows v1 implementation | Evidence | Status |
+|---|---|---|---|
+| Run identity and root | Run ID and a native/local validated runs root are chosen before creation; each root is run-isolated | filesystem/API tests; lifecycle E2E | complete |
+| Unique production profile | The UI emits only `schema_version=windows_v1`, `generation_profile=hybrid_v2_limited_activity_v1`, `runtime_backend=windows_native`; unknown/legacy fields are rejected server-side | config/API boundary tests | complete |
+| Cohort roles | Positive-only, true-negative-only and mixed queues expose separate positive/negative counts; true negatives are zero-lesion independent test controls | Windows v1 config/generator/pipeline tests | complete |
+| Lesion controls | Count interval 1–5, three fixed size bands with editable non-negative weights, TNR subrange 2–8 and feasible territory policy | boundary tests; preview/API tests | complete |
+| Locked physical values | 128³, 4.42 mm, 80,000 activity counts, residual background 0.05, gradient gain 0.08, physical μ-map and acquisition/FOV constants are readable but not editable | preflight/config tests | bounded |
+| Preview/run parity | Preview and batch both derive the same locked `PhantomConfig` from `windows_v1`; every scientific draft edit invalidates the preview digest | workspace/unit/API/E2E tests | complete |
+| Reproducible seeds | Global seed is limited to the JavaScript-safe integer range and produces recorded domain-separated patient/liver/μ/lesion/activity streams | schema and generator tests | complete |
+| Multi-plane inspection | Activity/μ slices, liver/tumor masks or contours, direction labels, scale, voxel probe, lesion jumps, linked cursor, 3D/MIP | preview/API/E2E/visual tests | complete |
+| Native path selection | SIMIND `.exe`, SMC `.smc`, runs root and experiment export root use a short-lived GUI-main-thread helper for Windows native dialogs; cancellation preserves the draft and accepted parents are session-scoped | filesystem/path/helper/API tests; real-desktop acceptance remains manual | bounded |
+| Path safety | Local fixed drives only; UNC, inaccessible/read-only, wrong extension, reserved/trailing-dot-space and resolved paths over 240 characters fail preflight; spaces and Unicode are supported | Windows runtime/path tests | complete |
+| Runtime provenance | Preflight shows executable/SMC hashes. Hash mismatch requires independent execute consent and yields `unverified_runtime`; hashes are recalculated before and after execution | runtime/SIMIND/API tests; native evidence | complete |
+| SIMIND settings | Prepare/mock/execute, NN 1–1,000,000 and workers 1–32 enter the canonical config; NN=1/10/>10 and >10 real-case cost messages are explicit | unit/API/lifecycle tests | complete |
+| Observation boundary | Windows v1 packages the projection expectation after QC and exposes no production observation controls | config rejection and Simulation unit tests | bounded |
+| Historical observation review | Review can display observation artifacts and QC from older ledgers without enabling their creation or resume as Windows v1 | review API/UI tests | historical-read |
+| Validation experiment preparation | The export-root picker and `POST /api/experiments/prepare` create the frozen experiment packages without launching SIMIND | API tests | complete |
+| Effective contract inspection | Run Center displays the server-normalized canonical JSON before execution | build/E2E lifecycle | complete |
+| Execution consent | Real execution, unverified runtime and a real batch over ten cases require separate confirmations; prepare/mock bypass only the real-cost gate | API gate tests; E2E | complete |
+| Pause/resume integrity | Pause occurs at safe boundaries; resume rechecks config fingerprint, inputs, intermediate artifacts and runtime hashes, and conflicts return 409 | lifecycle/integrity tests; native resume evidence | complete |
+| Active monitoring | Generate, Phantom QC, Export, SIMIND plan, Expectation, Projection QC and Package are monitored; Finalize is separate. The watcher recognizes historical Observation only for compatibility | lifecycle E2E; run ledgers | complete |
+| Projection orientation | Projection and sinogram views use the single validated `raw[:, ::-1, :]` transform | orientation/API/visual tests | complete |
+| Review and export | Real ledger/stage evidence, `.res` excerpt, projections, sinograms, manifest and splits are reviewable; CSV/QC exports derive from loaded evidence | API/E2E tests | complete |
+| Explicit finalize | Seal requires readiness, exact run ID and acknowledgement and calls only `PipelineRunner.open(root).finalize()` | lifecycle/concurrency/gate tests | complete |
+| Immutable run/fork | Finalized data are read-only; Fork creates a new draft/run identity and never edits the sealed root | reducer/E2E tests | complete |
+| Refresh recovery | Storage key `pars.workspace.windows-v1`, payload schema 4, keeps draft/view and lookup pointers only; server run/task/ledger state is authoritative. Old schema-3 payloads are ignored, not migrated | workspace tests; lifecycle E2E | complete |
+| Error semantics | Localized notices distinguish 403/404/409/422 while retaining bounded raw detail | unit/API tests | complete |
+| Theme/language/accessibility | English, Simplified Chinese and French; light/dark/system; keyboard navigation, visible focus, reduced motion and non-colour status | unit/E2E/axe/visual tests | complete |
 
-## Intentional replacements and exclusions
+## Intentional exclusions
 
-- The old autosave toggle is replaced by versioned, always-on local draft
-  persistence. Runtime evidence is never trusted from local storage.
-- The old global default-output field is replaced by an explicit, validated
-  runs root and mandatory run-isolated layout. Global SIMIND/SMC settings are
-  now per-plan inputs so provenance is visible before locking.
-- The old About dialog is replaced by persistent product, contract, service
-  version and repository-root diagnostics in the shell.
-- The historical `ResultsPage` code was not reachable from the frozen main
-  window and is not treated as a product contract.
-- Cancel/kill, cloud, authentication, multi-user operation, reconstruction,
-  model management and `select-pilot` are not exposed. No backend verb exists
-  for a safe hard cancel, and this work does not add fake UI for it.
-- Tests never launch real SIMIND. Execute mode is covered only at the explicit
-  authorization boundary; scientific execution remains an operator action.
+- Linux, WSL, server scheduling, cloud execution, authentication and multi-user
+  operation are not Windows v1 modes or UI switches.
+- Reconstruction, training, inference, checkpoint/model management and hard
+  process cancellation are outside this product boundary.
+- Browser automation never launches real SIMIND. Native NN=10 evidence is an
+  operator/release step recorded separately in `WINDOWS_V1_ACCEPTANCE.md`.
+- Legacy PyQt, legacy/master, Task12/Task13 full V2 and old observation drafts
+  remain inspectable history and cannot be silently continued as Windows v1.
 
 ## Verification and visual evidence
 
-- `npm run lint`, `npm run test:unit`, `npm run build`
-- `npm run test:e2e` — full Plan → preview → preflight → lock → Run →
-  pause/resume → Review → explicit Seal plus reload/offline recovery
-- `npm run test:a11y` — axe scan of all six workspaces at 1280×720
-- `npm run test:visual` — 36 screenshots at 1440×900 (six workspaces × three
-  languages × two themes), 24 screenshots at 1280×720 (Chinese/French × two
-  themes), plus a populated synchronized Phantom screenshot
-- focused Web API tests cover preview, filesystem, preflight, Review and
-  lifecycle/finalize races
-- full Python regression includes generator/pipeline contracts and frozen PyQt
-  smoke tests
+- Python: 279 tests, including Gate A 100-case regression, LimitedActivity and
+  Windows v1 integration; active paths also pass the pinned Ruff rules.
+- Frontend: lint; 19 unit tests; production build; 6 E2E; 6 accessibility; 61
+  visual comparisons with no baseline update.
+- Native Windows: one positive plus one true-negative, seed 42, NN=10,
+  worker=1, verified runtime; the pre/post-refactor comparison passed 42/42
+  checks including byte-identical NPZ, ACT, ATN and `.a00` artifacts.
 
 Playwright baselines live in
-`webui/frontend/tests/e2e/visual.spec.ts-snapshots/`; curated, unmasked runtime
-screenshots live under `docs/evidence/`.
+`webui/frontend/tests/e2e/visual.spec.ts-snapshots/`; curated UI and
+machine-readable acceptance evidence live under `docs/evidence/`.

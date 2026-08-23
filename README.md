@@ -20,9 +20,27 @@ and the old PyQt workflow remain inspectable historical evidence, never
 alternative production modes. The scientific provenance and boundaries are
 defined in [Windows v1 scientific authority](docs/WINDOWS_V1_SCIENTIFIC_AUTHORITY.md).
 
+The editable Windows v1 surface is deliberately narrow: positive,
+true-negative or mixed queues; 1–5 lesions for positive cases; fixed physical
+size bands `[10,20)`, `[20,40)`, `[40,60] mm`; non-negative size weights; TNR
+within 2–8; feasible whole/right/left/automatic territory selection; a
+JavaScript-safe integer seed; NN 1–1,000,000; and 1–32 workers. True-negative
+cases always contain zero lesions and are marked `independent_test_control`.
+Matrix 128³, 4.42-mm voxels, 80,000 activity counts, physical μ-map, array
+order and acquisition/FOV constants are locked rather than silently migrated
+from older profiles.
+
 Every invocation uses `runs/<run_id>/`; files from different runs are never globbed into one batch. `run.json` stores the strict effective configuration and stage evidence, `cases.jsonl` stores roles and case-level provenance/QC, `splits.json` fixes the phantom-level partition, and `dataset_manifest.json` inventories packaged files by relative path, byte size and SHA-256 checksum. Resume rechecks the configuration fingerprint, input/runtime hashes and stage evidence. A finalized manifest is immutable.
 
-Current scientific limitations are visible states, not hidden defaults. Array/orientation, the scoped type−7 attenuation contract, native 160×208 detector FOV, the scoped 300-mm point/line response control and repeated `/RR`–`/NN` sampling controls passed. Local evidence supports the nominal 60 MBq × 28.4 s activity–time contract (SIMIND Index-25 = 1704) and defines an empirical observation distribution from eight de-identified raw TOMO series. Stage 3 promoted these contracts, passed a 100-case phantom-population QC run and finalized a ten-case corrected SIMIND pilot. This permits full corrected synthetic-data production under the unchanged protocol; it is not an absolute cps/MBq or model-performance claim. See [decision gates](docs/DECISION_GATES.md).
+Current scientific limitations are visible states, not hidden defaults.
+Array/orientation, the scoped type−7 attenuation contract, native 160×208
+detector FOV, the scoped 300-mm point/line response control and repeated
+`/RR`–`/NN` sampling controls passed. Local evidence supports the nominal
+60 MBq × 28.4 s activity–time contract (SIMIND Index-25 = 1704). Historical
+Gate B/C work also evaluated an empirical observation policy, but Windows v1
+does not create that layer. The 100-case population QC and ten-case corrected
+SIMIND pilot permit production within their scoped protocol; they are not
+absolute cps/MBq or model-performance claims. See [decision gates](docs/DECISION_GATES.md).
 
 ## Desktop application
 
@@ -127,7 +145,7 @@ runs/<run_id>/
 ├── phantom/
 ├── simind_input/
 ├── expectation/
-├── observation/
+├── observation/     # historical-ledger compatibility; empty in Windows v1
 ├── qc/
 ├── logs/
 └── figures/
@@ -172,12 +190,18 @@ SIMIND V8 is invoked with a validated safe basename in its working directory. Af
 - [Windows v1 scientific authority](docs/WINDOWS_V1_SCIENTIFIC_AUTHORITY.md)
 - [Windows v1 complete acceptance procedure](docs/WINDOWS_V1_ACCEPTANCE.md)
 - [Repository governance](docs/REPOSITORY_GOVERNANCE.md)
+- `docs/evidence/windows_v1_pre_refactor_real_20260823.json` — frozen native
+  Windows mixed two-case baseline at commit `3ac5466`.
+- `docs/evidence/windows_v1_post_refactor_real_20260823.json` and
+  `windows_v1_refactor_equivalence_20260823.json` — native Windows NN=10
+  post-refactor evidence and 42/42 behavior-equivalence checks.
 - `manifests/legacy-v1-weighted-mc/` — read-only checksum freeze of the 500 historical cases.
 - `runs/qa-smoke-20260817/` — finalized two-case deterministic software smoke, explicitly not scientific data.
 - `runs/stage3-phantom-100-v3-20260818/` — accepted 100-case generated-population QC evidence.
 - `runs/stage3-simind-pilot-10-v3-20260818/` — finalized corrected ten-case SIMIND/observation pilot.
 - `docs/evidence/stage3_pilot_summary_2026-08-18.json` — compact machine-readable Stage-3 verdict and per-case metrics.
-- `docs/evidence/` — native Windows UI screenshots.
+- `docs/evidence/` — UI screenshots and machine-readable Windows acceptance
+  evidence.
 
 ## Verification
 
@@ -185,7 +209,13 @@ SIMIND V8 is invoked with a validated safe basename in its working directory. Af
 .\scripts\verify_windows_v1.ps1 -SkipRealSimind
 ```
 
-The script checks the exact local runtime hashes, Python suite, frontend lint/unit/build/E2E/a11y/visual, loopback launcher, prepare and mock state machines. Without `-SkipRealSimind`, it asks for the exact phrase `RUN SIMIND` before the required one-positive/one-true-negative NN=10, worker=1 native acceptance. See the [complete manual procedure](docs/WINDOWS_V1_ACCEPTANCE.md) for path-picker and corruption/resume cases.
+The script checks the exact local runtime hashes, Python suite, controlled Ruff
+rules for the active path, frontend lint/unit/build/E2E/a11y/visual, loopback
+launcher, prepare and mock state machines. Without `-SkipRealSimind`, it asks
+for the exact phrase `RUN SIMIND` before the required
+one-positive/one-true-negative NN=10, worker=1 native acceptance. See the
+[complete manual procedure](docs/WINDOWS_V1_ACCEPTANCE.md) for path-picker and
+corruption/resume cases.
 
 Web checks run separately from `webui/frontend`:
 

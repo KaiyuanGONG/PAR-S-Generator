@@ -157,3 +157,42 @@
 - QC、manifest、命令和验证状态一致。
 
 最后附上全量测试日志、两例真实证据、等价性对照、合并 SHA 和拟发布 `v1.0.0` SHA。只有全部通过才允许合并和打标签。
+
+## 11. 2026-08-23 本地候选验收记录
+
+本节记录已经实际执行的候选门槛；尚未合并或打标签时，不得把它写成
+GitHub 已发布。
+
+- Python：279/279 通过，包含 Gate A 100 例数值/manifest 回归、
+  LimitedActivity v1 与原生 picker helper/API；仅保留 14 个第三方弃用
+  warning。
+- 活跃 Python 路径 Ruff：通过。
+- 前端：lint 通过；unit 19/19；build 通过；E2E 6/6；a11y 6/6；
+  visual 61/61，基线未更新。
+- `verify_windows_v1.ps1 -SkipBrowserTests -SkipRealSimind`：验证运行时
+  哈希、上述 Python/Ruff/unit/build、loopback launcher、阳性 prepare 和
+  真阴性 mock，最终退出码 0。浏览器门槛在同一提交上单独完整执行。
+- 重构前真实证据：
+  `docs/evidence/windows_v1_pre_refactor_real_20260823.json`，source commit
+  `3ac54662aa220abb030f19548b39dd9c23ab66a6`。
+- 重构后真实证据：
+  `docs/evidence/windows_v1_post_refactor_real_20260823.json`，source commit
+  `6f684ce3cf54b04b6d724564938e9727a8b4d665`。
+- 两次均为 mixed 1 阳性 + 1 真阴性、seed 42、NN=10、worker=1、验证
+  runtime；两例 projection QC 通过并 finalized。重构后运行曾在第二例
+  中途由前台会话终止；残片被隔离后，严格 resume 复核配置/provenance，
+  跳过已完成首例并从零重跑第二例，最终通过。
+- `docs/evidence/windows_v1_refactor_equivalence_20260823.json`：42/42
+  检查通过；NPZ/ACT/ATN/a00 逐字节一致，`.res` 稳定科学行一致。
+- 人工交互审计发现同步 FastAPI worker 直接创建 Qt 对话框会挂起；当前
+  实现改为短生命周期 GUI-main-thread helper，Unicode JSON 往返、取消不
+  修改会话授权和 helper 失败的类型化 422 已自动验证。Codex 托管进程
+  无法接入可见 Window Station，因此真实桌面上的“取消、选择含空格/
+  中文目录、EXE/SMC”仍是发布前人工勾选项，不在本节伪报通过。
+- 最终 canonical Windows v1 配置把旧
+  `stage3_protocol_promoted_pilot_pending` 修正并锁定为
+  `gate_abc_complete_windows_v1`；旧状态恢复被拒绝。该提交只改变状态
+  provenance 与显示，不改变体模数组、ACT/ATN、SIMIND token 或投影读取。
+
+合并 commit、`v1.0.0` tag、GitHub CI/PR 与最终发布包 SHA 仍须在远端
+发布闭环完成后补入 closeout 报告。
