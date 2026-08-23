@@ -99,23 +99,11 @@ export interface SimulationDraft extends DraftObject {
   simind_overrides?: JsonValue;
 }
 
-/** Observation settings also map to top-level PipelineConfig keys. */
-export interface ObservationDraft extends DraftObject {
-  create_poisson_observation?: boolean;
-  observation_policy?: string;
-  observation_scale?: number;
-  observation_seed_offset?: number;
-  observation_protocol_status?: string;
-  empirical_reference_counts?: JsonValue;
-  empirical_angular_cv_range?: JsonValue;
-}
-
 export interface DraftRunConfig {
   identity: RunIdentityDraft;
   protocol: ProtocolDraft;
   phantom: PhantomDraft;
   simulation: SimulationDraft;
-  observation: ObservationDraft;
 }
 
 export interface ActiveRunReference {
@@ -133,7 +121,6 @@ export interface DraftDirtyState {
   protocol: boolean;
   phantom: boolean;
   simulation: boolean;
-  observation: boolean;
 }
 
 export interface PlanReadinessState {
@@ -167,7 +154,6 @@ export type WorkspaceAction =
   | { type: "draft/protocol"; patch: Partial<ProtocolDraft> }
   | { type: "draft/phantom"; patch: Partial<PhantomDraft> }
   | { type: "draft/simulation"; patch: Partial<SimulationDraft> }
-  | { type: "draft/observation"; patch: Partial<ObservationDraft> }
   | {
       type: "plan/section";
       section: PlanSection;
@@ -257,7 +243,6 @@ const CLEAN_DRAFT: DraftDirtyState = {
   protocol: false,
   phantom: false,
   simulation: false,
-  observation: false,
 };
 
 const EMPTY_PLAN: PlanReadinessState = {
@@ -341,16 +326,6 @@ const SIMULATION_FIELDS = [
   "simind_overrides",
 ] as const;
 
-const OBSERVATION_FIELDS = [
-  "create_poisson_observation",
-  "observation_policy",
-  "observation_scale",
-  "observation_seed_offset",
-  "observation_protocol_status",
-  "empirical_reference_counts",
-  "empirical_angular_cv_range",
-] as const;
-
 const PROTOCOL_FIELDS = [
   "protocol_label",
   "protocol_status",
@@ -378,13 +353,6 @@ function draftFromPipelineConfig(defaults: Record<string, unknown> | null | unde
   const negativeCases = Number.isInteger(cohort.negative_cases) ? Number(cohort.negative_cases) : 0;
   const cases = positiveCases + negativeCases;
   const runId = stringValue(source.run_id, "liver-spect-run");
-  const observation = knownPipelineFields(source, OBSERVATION_FIELDS) as ObservationDraft;
-
-  observation.create_poisson_observation = false;
-  observation.observation_policy = "fixed_scale";
-  observation.observation_protocol_status = "toy";
-  observation.observation_scale ??= 1;
-
   return {
     identity: {
       runId: runId === "unnamed" ? "liver-spect-run" : runId,
@@ -400,7 +368,6 @@ function draftFromPipelineConfig(defaults: Record<string, unknown> | null | unde
       mode: runMode(source.simulation_mode),
       ...knownPipelineFields(source, SIMULATION_FIELDS),
     } as SimulationDraft,
-    observation,
   };
 }
 
@@ -511,7 +478,6 @@ function applyDefaults(state: WorkspaceState, defaults: Record<string, unknown>)
         protocol: state.dirty.protocol ? state.draft.protocol : incoming.protocol,
         phantom: state.dirty.phantom ? state.draft.phantom : incoming.phantom,
       simulation: state.dirty.simulation ? state.draft.simulation : incoming.simulation,
-      observation: state.dirty.observation ? state.draft.observation : incoming.observation,
     },
   };
 }
@@ -574,7 +540,7 @@ export function workspaceReducer(state: WorkspaceState, action: WorkspaceAction)
       return {
         ...state,
         draft: action.draft,
-        dirty: { identity: true, protocol: true, phantom: true, simulation: true, observation: true },
+        dirty: { identity: true, protocol: true, phantom: true, simulation: true },
         plan: {
           ...EMPTY_PLAN,
           sections: { ...EMPTY_PLAN.sections },
@@ -629,19 +595,6 @@ export function workspaceReducer(state: WorkspaceState, action: WorkspaceAction)
         ...state,
         draft: { ...state.draft, simulation: { ...state.draft.simulation, ...action.patch } },
         dirty: { ...state.dirty, simulation: true },
-        plan: {
-          ...state.plan,
-          sections: { ...state.plan.sections, simulation: "incomplete" },
-          preflightConfigDigest: null,
-        },
-        lifecycle: "draft",
-      };
-    case "draft/observation":
-      if (!unlocked(state)) return state;
-      return {
-        ...state,
-        draft: { ...state.draft, observation: { ...state.draft.observation, ...action.patch } },
-        dirty: { ...state.dirty, observation: true },
         plan: {
           ...state.plan,
           sections: { ...state.plan.sections, simulation: "incomplete" },
@@ -870,20 +823,18 @@ function parseDraft(value: unknown, fallback: DraftRunConfig): DraftRunConfig {
     protocol: jsonObject(value.protocol) as ProtocolDraft,
     phantom: jsonObject(value.phantom) as PhantomDraft,
     simulation: simulation as SimulationDraft,
-    observation: jsonObject(value.observation) as ObservationDraft,
   };
 }
 
 function parseDirty(value: unknown): DraftDirtyState {
   if (!isRecord(value)) {
-    return { identity: true, protocol: true, phantom: true, simulation: true, observation: true };
+    return { identity: true, protocol: true, phantom: true, simulation: true };
   }
   return {
     identity: booleanValue(value.identity, true),
     protocol: booleanValue(value.protocol, true),
     phantom: booleanValue(value.phantom, true),
     simulation: booleanValue(value.simulation, true),
-    observation: booleanValue(value.observation, true),
   };
 }
 

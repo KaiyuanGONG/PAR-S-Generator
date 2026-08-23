@@ -46,7 +46,9 @@ jobs:
 
       - name: Python tests
         shell: pwsh
-        run: .\.venv\Scripts\python.exe -m pytest -q
+        run: |
+          .\.venv\Scripts\python.exe -m pytest -q
+          .\.venv\Scripts\python.exe -m ruff check main.py src\cli.py src\windows_launcher.py src\core\windows_v1.py src\core\limited_activity.py src\core\phantom_generator.py src\core\hybrid_v2_adapter.py src\core\interfile_writer.py src\core\windows_runtime.py src\pipeline\provenance.py src\pipeline\runner.py src\pipeline\qc.py src\pipeline\simind.py scripts\freeze_windows_v1_run.py scripts\compare_windows_v1_runs.py webui\server\app.py webui\server\fsapi.py
 
       - name: Frontend lint, unit and build
         working-directory: webui/frontend

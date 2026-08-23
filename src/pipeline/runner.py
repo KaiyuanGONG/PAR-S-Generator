@@ -9,8 +9,6 @@ from __future__ import annotations
 
 import json
 import hashlib
-import platform
-import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
@@ -21,17 +19,12 @@ import numpy as np
 from core.interfile_writer import convert_npz_to_interfile
 from core.phantom_generator import PhantomConfig, PhantomGenerator, PreviewOverrides
 from core.seeds import SeedBundle
-from core.smc_parser import parse_smc
 from core.windows_v1 import (
-    GATE_A_GENERATOR_COMMIT,
-    GATE_C_CONFIG_SHA256,
     GENERATION_PROFILE,
-    LIMITED_ACTIVITY_UPSTREAM_SOURCE_SHA256,
     RUNTIME_BACKEND,
     SCHEMA_VERSION,
     WindowsV1Config,
 )
-from core.windows_runtime import assess_windows_runtime
 from pipeline.contracts import (
     ACTIVITY_TIME_CONTRACT_STATUS,
     CANONICAL_PROJECTION_TRANSFORM,
@@ -55,6 +48,7 @@ from pipeline.contracts import (
 from pipeline.figures import export_run_figures
 from pipeline.gate_a_report import write_gate_a_reports
 from pipeline.observation import assign_empirical_count_targets, sample_poisson_observation
+from pipeline.provenance import build_runtime_provenance
 from pipeline.qc import (
     assess_gate_a_v2_population,
     assess_stage3_phantom_population,
@@ -313,7 +307,7 @@ class PipelineRunner:
 
     def __init__(self, config: PipelineConfig, *, resume: bool = False):
         self.config = config
-        provenance = self._runtime_provenance(config)
+        provenance = build_runtime_provenance(config)
         run_root = Path(config.runs_root).resolve() / config.run_id
         if resume:
             self.layout = RunLayout.open(run_root)
@@ -336,140 +330,6 @@ class PipelineRunner:
                 provenance=provenance,
             )
         self._pause_requested = False
-
-    @staticmethod
-    def _runtime_provenance(config: PipelineConfig) -> dict:
-        src_root = Path(__file__).resolve().parents[1]
-        source_files = [
-            src_root / "core" / "phantom_generator.py",
-            src_root / "core" / "interfile_writer.py",
-            src_root / "pipeline" / "runner.py",
-            src_root / "pipeline" / "qc.py",
-            src_root / "pipeline" / "simind.py",
-            src_root / "pipeline" / "observation.py",
-            src_root / "pipeline" / "pilot.py",
-        ]
-        v2_inputs = None
-        if config.phantom.anatomy_model == "v2_population":
-            source_files.extend(
-                src_root / relative
-                for relative in (
-                    "core/anatomy_v2.py",
-                    "core/attenuation_model_v2.py",
-                    "core/hybrid_v2_adapter.py",
-                    "core/liver_geometry.py",
-                    "core/liver_regions.py",
-                    "core/measurements.py",
-                    "core/population_sampler.py",
-                    "core/schemas_v2.py",
-                    "core/seeds.py",
-                    "pipeline/gate_a_report.py",
-                )
-            )
-            if config.phantom.activity_model == "limited_v1":
-                source_files.extend(
-                    (
-                        src_root / "core" / "limited_activity.py",
-                        src_root / "core" / "windows_v1.py",
-                    )
-                )
-            project_root = src_root.parent
-            profile_path = Path(config.phantom.v2_population_profile)
-            registry_path = Path(config.phantom.v2_evidence_registry)
-            if not profile_path.is_absolute():
-                profile_path = project_root / profile_path
-            if not registry_path.is_absolute():
-                registry_path = project_root / registry_path
-            profile_path = profile_path.resolve()
-            registry_path = registry_path.resolve()
-            v2_inputs = {
-                "population_profile": {
-                    "path": str(profile_path),
-                    "sha256": sha256_file(profile_path),
-                },
-                "evidence_registry": {
-                    "path": str(registry_path),
-                    "sha256": sha256_file(registry_path),
-                },
-            }
-        exe = Path(config.simind_exe).resolve()
-        smc = Path(config.smc_file).resolve()
-        evidence = Path(config.empirical_count_evidence).resolve()
-        pilot_selection = (
-            Path(config.pilot_selection_evidence).resolve()
-            if config.pilot_selection_evidence is not None
-            else None
-        )
-        if smc.is_file():
-            parsed = parse_smc(smc)
-            actual_cross_sections = tuple(value.lower() for value in parsed.data_files[:2])
-            if actual_cross_sections != tuple(
-                value.lower() for value in config.phantom_cross_sections
-            ):
-                raise ValueError(
-                    "SMC cross-section tables do not match the effective type-7 contract: "
-                    f"{actual_cross_sections}"
-                )
-            if int(round(parsed.get_value(14))) != -7 or int(round(parsed.get_value(15))) != -7:
-                raise ValueError("Current protocol requires SIMIND phantom/source type -7")
-            if not parsed.get_flag(11):
-                raise ValueError("Current protocol requires Flag-11 phantom interactions")
-            if not np.isclose(
-                parsed.get_value(31), config.phantom.voxel_size_mm / 10.0, atol=1e-6
-            ):
-                raise ValueError("SMC density voxel size conflicts with the phantom voxel size")
-        return {
-            "generator": "PhantomGenerator.generate_one",
-            "schema_version": config.schema_version,
-            "generation_profile": config.generation_profile,
-            "runtime_backend": config.runtime_backend,
-            "scientific_authority": {
-                "gate_a_generator_commit": GATE_A_GENERATOR_COMMIT,
-                "limited_activity_upstream_source_sha256": LIMITED_ACTIVITY_UPSTREAM_SOURCE_SHA256,
-                "gate_c_config_sha256": GATE_C_CONFIG_SHA256,
-            },
-            "windows_platform": {
-                "system": platform.system(),
-                "release": platform.release(),
-                "version": platform.version(),
-                "machine": platform.machine(),
-                "python": sys.version,
-            },
-            "projection_orientation": CANONICAL_PROJECTION_TRANSFORM,
-            "protocol_scope": "liver_only_current_protocol",
-            "software_sha256": {
-                path.relative_to(src_root).as_posix(): sha256_file(path) for path in source_files
-            },
-            "v2_inputs": v2_inputs,
-            "simind_executable": {
-                "path": str(exe),
-                "sha256": sha256_file(exe) if exe.is_file() else None,
-            },
-            "smc": {
-                "path": str(smc),
-                "sha256": sha256_file(smc) if smc.is_file() else None,
-            },
-            "windows_runtime": assess_windows_runtime(exe, smc).to_dict(),
-            "type7_attenuation": {
-                "stored_formula": "mu_cm_inverse * density_voxel_size_cm",
-                "density_threshold_times_1000": config.type7_density_threshold_times_1000,
-                "phantom_cross_sections": list(config.phantom_cross_sections),
-                "validation_evidence": "experiments/validation-v10/attenuation_ict/analysis.json",
-            },
-            "empirical_count_evidence": {
-                "path": str(evidence),
-                "sha256": sha256_file(evidence) if evidence.is_file() else None,
-                "absolute_cps_per_mbq_claim": False,
-            },
-            "pilot_selection_evidence": (
-                {
-                    "path": str(pilot_selection),
-                    "sha256": sha256_file(pilot_selection),
-                }
-                if pilot_selection is not None
-                else None
-            ),
-        }
 
     def request_pause(self) -> None:
         """Pause after the currently running case/stage boundary."""
@@ -514,6 +374,18 @@ class PipelineRunner:
     def _assert_hash(self, path: Path, expected: str, context: str) -> None:
         if not path.is_file() or not expected or sha256_file(path) != expected:
             raise RuntimeError(f"Resume rejected: corrupt or missing {context}: {path}")
+
+    def _artifact_inventory(self) -> list[dict]:
+        excluded = {"dataset_manifest.json", "run.json"}
+        return [
+            {
+                "path": path.relative_to(self.layout.root).as_posix(),
+                "bytes": path.stat().st_size,
+                "sha256": sha256_file(path),
+            }
+            for path in sorted(self.layout.root.rglob("*"))
+            if path.is_file() and path.name not in excluded
+        ]
 
     def _relative(self, path: Path) -> str:
         """Return a portable run-relative path for packaged provenance."""
@@ -1206,20 +1078,7 @@ class PipelineRunner:
         )
         report = write_gate_a_reports(self.layout.root, cases, self.config)
 
-        inventory: list[dict] = []
-        excluded = {"dataset_manifest.json", "run.json"}
-        for path in sorted(
-            path
-            for path in self.layout.root.rglob("*")
-            if path.is_file() and path.name not in excluded
-        ):
-            inventory.append(
-                {
-                    "path": path.relative_to(self.layout.root).as_posix(),
-                    "bytes": path.stat().st_size,
-                    "sha256": sha256_file(path),
-                }
-            )
+        inventory = self._artifact_inventory()
         manifest = {
             "dataset_id": self.config.run_id,
             "created_utc": utc_now(),
@@ -1299,11 +1158,7 @@ class PipelineRunner:
                 "finalized dataset manifest",
             )
             return manifest
-        cases = (
-            self.simulate_or_mock()
-            if self.config.schema_version == SCHEMA_VERSION
-            else self.create_observations()
-        )
+        cases = self._cases_for_package()
         required_data_stage = "expectation"
         if self.config.simulation_mode == "prepare":
             required_data_stage = "simind_plan"
@@ -1321,18 +1176,8 @@ class PipelineRunner:
         })
         figure_evidence = export_run_figures(self.layout.root, cases)
 
-        inventory: list[dict] = []
-        # ``run.json`` is a mutable ledger that is finalized immediately after
-        # packaging, so it must not be represented as an immutable payload.
-        excluded = {"dataset_manifest.json", "run.json"}
-        for path in sorted(p for p in self.layout.root.rglob("*") if p.is_file() and p.name not in excluded):
-            inventory.append(
-                {
-                    "path": path.relative_to(self.layout.root).as_posix(),
-                    "bytes": path.stat().st_size,
-                    "sha256": sha256_file(path),
-                }
-            )
+        inventory = self._artifact_inventory()
+        provenance = self.ledger.load().get("provenance", {})
         manifest = {
             "dataset_id": self.config.run_id,
             "created_utc": utc_now(),
@@ -1397,15 +1242,9 @@ class PipelineRunner:
                 "protocol_status": self.config.observation_protocol_status,
                 "absolute_cps_per_mbq_claim": False,
             },
-            "scientific_authority": self.ledger.load()
-            .get("provenance", {})
-            .get("scientific_authority"),
-            "windows_runtime": self.ledger.load()
-            .get("provenance", {})
-            .get("windows_runtime"),
-            "windows_platform": self.ledger.load()
-            .get("provenance", {})
-            .get("windows_platform"),
+            "scientific_authority": provenance.get("scientific_authority"),
+            "windows_runtime": provenance.get("windows_runtime"),
+            "windows_platform": provenance.get("windows_platform"),
             "simind_jobs": json.loads(
                 (self.layout.subdir("logs") / "simind_jobs.json").read_text(encoding="utf-8")
             ),
@@ -1422,6 +1261,11 @@ class PipelineRunner:
             file_count=len(inventory),
         )
         return manifest_path
+
+    def _cases_for_package(self) -> list[dict]:
+        if self.config.schema_version == SCHEMA_VERSION:
+            return self.simulate_or_mock()
+        return self.create_observations()
 
     def finalize(self) -> dict:
         state = self.ledger.load()

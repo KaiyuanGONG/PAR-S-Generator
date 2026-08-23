@@ -165,6 +165,7 @@ def test_v2_runtime_provenance_covers_adapter_sources_and_population_inputs(
         "core/schemas_v2.py",
         "core/seeds.py",
         "pipeline/gate_a_report.py",
+        "pipeline/provenance.py",
     } <= set(provenance["software_sha256"])
     assert set(provenance["v2_inputs"]) == {
         "population_profile",

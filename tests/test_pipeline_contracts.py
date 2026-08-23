@@ -347,7 +347,8 @@ def test_two_case_pipeline_smoke_and_strong_resume(tmp_path: Path):
     assert (root / "figures" / "phantom_distribution_data.csv").exists()
     run_state = json.loads((root / "run.json").read_text(encoding="utf-8"))
     assert set(run_state["provenance"]["software_sha256"]) >= {
-        "core/phantom_generator.py", "pipeline/runner.py", "pipeline/qc.py", "pipeline/simind.py"
+        "core/phantom_generator.py", "pipeline/provenance.py", "pipeline/runner.py",
+        "pipeline/qc.py", "pipeline/simind.py"
     }
     assert run_state["provenance"]["smc"]["sha256"]
     assert run_state["provenance"]["type7_attenuation"]["density_threshold_times_1000"] == 100

@@ -50,10 +50,11 @@ function New-CliConfig {
         [int]$Nn
     )
     $ConfigPath = Join-Path $VerificationRoot "$RunId.json"
-    & $Python -m cli init --run-id $RunId --runs-root (Join-Path $VerificationRoot "runs") `
+    $InitOutput = & $Python -m cli init --run-id $RunId --runs-root (Join-Path $VerificationRoot "runs") `
         --cohort-mode $CohortMode --positive-cases $PositiveCases --negative-cases $NegativeCases `
         --mode $Mode --simind-exe $SimindExe --smc $SmcFile --nn $Nn --workers 1 --output $ConfigPath
     if ($LASTEXITCODE -ne 0) { throw "Failed to create $Mode verification config." }
+    if ($InitOutput) { Write-Host ($InitOutput -join [Environment]::NewLine) }
     return $ConfigPath
 }
 
@@ -67,6 +68,26 @@ try {
 
     # The label intentionally records the equivalent portable command: python -m pytest.
     Invoke-Checked "Python full suite (python -m pytest)" { & $Python -m pytest -q }
+    Invoke-Checked "Ruff active Windows v1 path" {
+        & $Python -m ruff check `
+            main.py `
+            src\cli.py `
+            src\windows_launcher.py `
+            src\core\windows_v1.py `
+            src\core\limited_activity.py `
+            src\core\phantom_generator.py `
+            src\core\hybrid_v2_adapter.py `
+            src\core\interfile_writer.py `
+            src\core\windows_runtime.py `
+            src\pipeline\provenance.py `
+            src\pipeline\runner.py `
+            src\pipeline\qc.py `
+            src\pipeline\simind.py `
+            scripts\freeze_windows_v1_run.py `
+            scripts\compare_windows_v1_runs.py `
+            webui\server\app.py `
+            webui\server\fsapi.py
+    }
 
     Push-Location $FrontendRoot
     try {

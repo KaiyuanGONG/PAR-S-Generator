@@ -3,42 +3,7 @@ import { ApiError, api, type PreflightResult } from "../api";
 import ErrorNotice from "../components/ErrorNotice";
 import FileBrowser from "../components/FileBrowser";
 import { useI18n, type TranslationKey } from "../i18n";
-import { toCreateRunRequest, useWorkspace, type ObservationDraft, type RunMode } from "../workspace";
-
-export const EXPECTATION_ONLY_OBSERVATION = {
-  create_poisson_observation: false,
-  observation_policy: "fixed_scale",
-  observation_protocol_status: "toy",
-} as const satisfies Partial<ObservationDraft>;
-
-export const EMPIRICAL_OBSERVATION = {
-  create_poisson_observation: true,
-  observation_policy: "empirical_total_counts",
-  observation_protocol_status: "empirical_protocol_matching",
-} as const satisfies Partial<ObservationDraft>;
-
-export function observationEnabledPatch(enabled: boolean, currentStatus: string): Partial<ObservationDraft> {
-  return enabled
-    ? { create_poisson_observation: true }
-    : {
-        create_poisson_observation: false,
-        observation_policy: "fixed_scale",
-        observation_protocol_status: currentStatus === "empirical_protocol_matching" ? "toy" : currentStatus,
-      };
-}
-
-export function observationPolicyPatch(policy: string, currentStatus: string): Partial<ObservationDraft> {
-  return policy === "empirical_total_counts"
-    ? {
-        create_poisson_observation: true,
-        observation_policy: policy,
-        observation_protocol_status: "empirical_protocol_matching",
-      }
-    : {
-        observation_policy: "fixed_scale",
-        observation_protocol_status: currentStatus === "empirical_protocol_matching" ? "toy" : currentStatus,
-      };
-}
+import { toCreateRunRequest, useWorkspace, type RunMode } from "../workspace";
 
 type BrowserTarget = "exe" | "smc" | "experiments" | null;
 

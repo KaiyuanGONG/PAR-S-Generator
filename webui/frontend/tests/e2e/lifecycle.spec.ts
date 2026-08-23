@@ -163,8 +163,8 @@ test("a stale saved run pointer is explained and can be cleared", async ({ page 
     localStorage.setItem("pars.workspace.windows-v1", JSON.stringify({
       version: 4,
       view: "run",
-      draft: { identity: { runId: "missing-run", runsRoot: "runs", cohortMode: "positive_only", positiveCases: 1, negativeCases: 0, cases: 1 }, simulation: { mode: "prepare" }, phantom: {}, protocol: {}, observation: {} },
-      dirty: { identity: false, protocol: false, phantom: false, simulation: false, observation: false },
+      draft: { identity: { runId: "missing-run", runsRoot: "runs", cohortMode: "positive_only", positiveCases: 1, negativeCases: 0, cases: 1 }, simulation: { mode: "prepare" }, phantom: {}, protocol: {} },
+      dirty: { identity: false, protocol: false, phantom: false, simulation: false },
       activeRun: {
         runId: "missing-run",
         runRoot: "D:\\missing\\run",

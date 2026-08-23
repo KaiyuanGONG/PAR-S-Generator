@@ -14,3 +14,4 @@ PyQt6==6.7.1
 PyQt6-Qt6==6.7.3
 PyQt6-sip==13.11.0
 pytest==9.0.2
+ruff==0.13.1

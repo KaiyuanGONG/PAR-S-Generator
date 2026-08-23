@@ -72,10 +72,7 @@ describe("RunWorkspace draft contract", () => {
       nn_multiplier: 12,
     });
     expect(request).not.toHaveProperty("config_overrides");
-    expect(draft.observation).toMatchObject({
-      create_poisson_observation: false,
-      observation_policy: "fixed_scale",
-    });
+    expect(draft).not.toHaveProperty("observation");
   });
 
   it("locks canonical server config and requires an explicit fork before editing", () => {

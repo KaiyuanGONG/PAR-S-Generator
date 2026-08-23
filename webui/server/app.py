@@ -16,7 +16,6 @@ import json
 import math
 import sys
 import threading
-from dataclasses import asdict, is_dataclass
 from pathlib import Path
 from typing import Literal
 
@@ -56,12 +55,6 @@ app.add_middleware(
     allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
     allow_methods=["*"], allow_headers=["*"],
 )
-
-
-def _jsonable(value):
-    if is_dataclass(value):
-        return asdict(value)
-    return value
 
 
 # ── static info ────────────────────────────────────────────────────────────
