@@ -9,6 +9,7 @@
 *.qss text eol=lf
 *.ps1 text eol=lf
 *.smc text eol=lf -whitespace
+simind/ge870_czt.smc -text -eol -whitespace
 *.mhd text eol=lf
 *.res text eol=lf -whitespace
 *.hct text eol=lf -whitespace
